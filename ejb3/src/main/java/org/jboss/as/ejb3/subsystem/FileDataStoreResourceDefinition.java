@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
@@ -35,13 +18,12 @@ import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.OperationEntry;
 import org.jboss.as.controller.services.path.PathManager;
 import org.jboss.as.controller.services.path.ResolvePathHandler;
-import org.jboss.as.ejb3.timerservice.persistence.TimerPersistence;
 import org.jboss.dmr.ModelType;
 
 /**
  * {@link org.jboss.as.controller.ResourceDefinition} for the file data store
  */
-public class FileDataStoreResourceDefinition extends SimpleResourceDefinition {
+public class FileDataStoreResourceDefinition extends TimerPersistenceResourceDefinition {
     public static final SimpleAttributeDefinition PATH =
             new SimpleAttributeDefinitionBuilder(EJB3SubsystemModel.PATH, ModelType.STRING, false)
                     .setAllowExpression(true)
@@ -58,22 +40,21 @@ public class FileDataStoreResourceDefinition extends SimpleResourceDefinition {
     private final PathManager pathManager;
 
     private static final AttributeDefinition[] ATTRIBUTES = new AttributeDefinition[] { PATH, RELATIVE_TO };
-    private static final FileDataStoreAdd ADD_HANDLER = new FileDataStoreAdd(ATTRIBUTES);
+    private static final FileDataStoreAdd ADD_HANDLER = new FileDataStoreAdd();
 
     public FileDataStoreResourceDefinition(final PathManager pathManager) {
         super(new SimpleResourceDefinition.Parameters(EJB3SubsystemModel.FILE_DATA_STORE_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.FILE_DATA_STORE))
                 .setAddHandler(ADD_HANDLER)
-                .setRemoveHandler(new ServiceRemoveStepHandler(TimerPersistence.SERVICE_NAME, ADD_HANDLER))
+                .setRemoveHandler(new ServiceRemoveStepHandler(CAPABILITY.getCapabilityServiceName(), ADD_HANDLER))
                 .setAddRestartLevel(OperationEntry.Flag.RESTART_ALL_SERVICES)
-                .setRemoveRestartLevel(OperationEntry.Flag.RESTART_ALL_SERVICES)
-                .setCapabilities(TimerServiceResourceDefinition.TIMER_PERSISTENCE_CAPABILITY));
+                .setRemoveRestartLevel(OperationEntry.Flag.RESTART_ALL_SERVICES));
         this.pathManager = pathManager;
     }
 
     @Override
     public void registerAttributes(ManagementResourceRegistration resourceRegistration) {
         for (AttributeDefinition attr : ATTRIBUTES) {
-            resourceRegistration.registerReadWriteAttribute(attr, null, new ReloadRequiredWriteAttributeHandler(attr));
+            resourceRegistration.registerReadWriteAttribute(attr, null, ReloadRequiredWriteAttributeHandler.INSTANCE);
         }
     }
 

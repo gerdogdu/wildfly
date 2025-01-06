@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright (c) 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.component;
 
@@ -40,13 +23,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
-import javax.ejb.EJBLocalObject;
-import javax.ejb.TimerService;
-import javax.ejb.TransactionAttributeType;
-import javax.ejb.TransactionManagementType;
-import javax.transaction.TransactionSynchronizationRegistry;
+import jakarta.ejb.EJBLocalObject;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.ejb.TransactionManagementType;
+import jakarta.transaction.TransactionSynchronizationRegistry;
 
 import org.jboss.as.controller.capability.CapabilityServiceSupport;
+import org.jboss.as.controller.registry.Resource;
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.Component;
@@ -91,8 +74,7 @@ import org.jboss.as.ejb3.security.SecurityDomainInterceptorFactory;
 import org.jboss.as.ejb3.security.SecurityRolesAddingInterceptor;
 import org.jboss.as.ejb3.subsystem.EJB3RemoteResourceDefinition;
 import org.jboss.as.ejb3.suspend.EJBSuspendHandlerService;
-import org.jboss.as.ejb3.timerservice.AutoTimer;
-import org.jboss.as.ejb3.timerservice.NonFunctionalTimerService;
+import org.jboss.as.ejb3.timerservice.spi.AutoTimer;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -119,7 +101,7 @@ import org.wildfly.security.authz.Roles;
 /**
  * @author <a href="mailto:cdewolf@redhat.com">Carlo de Wolf</a>
  *
- * NOTE: References in this document to Enterprise JavaBeans(EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
+ * NOTE: References in this document to Enterprise JavaBeans (EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
  *
  */
 public abstract class EJBComponentDescription extends ComponentDescription {
@@ -203,10 +185,11 @@ public abstract class EJBComponentDescription extends ComponentDescription {
      * The ejb local home view
      */
     private EjbHomeViewDescription ejbHomeView;
+
     /**
-     * TODO: this should not be part of the description
+     * The management resource for the associated timer service, if present
      */
-    private TimerService timerService = NonFunctionalTimerService.DISABLED;
+    private Resource timerServiceResource;
 
     /**
      * If true this component is accessible via CORBA
@@ -973,13 +956,12 @@ public abstract class EJBComponentDescription extends ComponentDescription {
         }
     }
 
-
-    public TimerService getTimerService() {
-        return timerService;
+    public Resource getTimerServiceResource() {
+        return this.timerServiceResource;
     }
 
-    public void setTimerService(final TimerService timerService) {
-        this.timerService = timerService;
+    public void setTimerServiceResource(Resource timerServiceResource) {
+        this.timerServiceResource = timerServiceResource;
     }
 
     public EnterpriseBeanMetaData getDescriptorData() {

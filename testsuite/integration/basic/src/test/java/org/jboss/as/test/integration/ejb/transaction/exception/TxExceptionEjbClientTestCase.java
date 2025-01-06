@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ejb.transaction.exception;
@@ -27,7 +10,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.rmi.RemoteException;
 
-import javax.transaction.UserTransaction;
+import jakarta.transaction.UserTransaction;
 
 import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.junit.Arquillian;
@@ -68,20 +51,20 @@ public class TxExceptionEjbClientTestCase extends TxExceptionBaseTestCase {
             case NONE:
                 switch (testCnf.getEjbType()) {
                 case EJB2:
-                    assertThat(receivedEx.getClass(), equalTo(javax.transaction.TransactionRolledbackException.class));
+                    assertThat(receivedEx.getClass(), equalTo(jakarta.transaction.TransactionRolledbackException.class));
                     break;
                 case EJB3:
-                    assertThat(receivedEx.getClass(), equalTo(javax.ejb.EJBTransactionRolledbackException.class));
+                    assertThat(receivedEx.getClass(), equalTo(jakarta.ejb.EJBTransactionRolledbackException.class));
                     break;
                 }
                 break;
             case HEURISTIC_CAUSED_BY_XA_EXCEPTION:
             case HEURISTIC_CAUSED_BY_RM_SPECIFIC_XA_EXCEPTION:
-                assertThat(receivedEx.getClass(), equalTo(javax.transaction.HeuristicMixedException.class));
+                assertThat(receivedEx.getClass(), equalTo(jakarta.transaction.HeuristicMixedException.class));
                 break;
             case ROLLBACK_CAUSED_BY_XA_EXCEPTION:
             case ROLLBACK_CAUSED_BY_RM_SPECIFIC_XA_EXCEPTION:
-                assertThat(receivedEx.getClass(), equalTo(javax.transaction.RollbackException.class));
+                assertThat(receivedEx.getClass(), equalTo(jakarta.transaction.RollbackException.class));
                 break;
             }
             break;
@@ -94,29 +77,29 @@ public class TxExceptionEjbClientTestCase extends TxExceptionBaseTestCase {
                     assertThat(receivedEx.getClass(), equalTo(java.rmi.RemoteException.class));
                     break;
                 case EJB3:
-                    assertThat(receivedEx.getClass(), equalTo(javax.ejb.EJBException.class));
+                    assertThat(receivedEx.getClass(), equalTo(jakarta.ejb.EJBException.class));
                     break;
                 }
                 break;
             case HEURISTIC_CAUSED_BY_XA_EXCEPTION:
-                assertThat(receivedEx.getClass(), equalTo(javax.ejb.EJBException.class));
-                assertThat(receivedEx.getCause().getClass(), equalTo(javax.transaction.HeuristicMixedException.class));
+                assertThat(receivedEx.getClass(), equalTo(jakarta.ejb.EJBException.class));
+                assertThat(receivedEx.getCause().getClass(), equalTo(jakarta.transaction.HeuristicMixedException.class));
                 break;
             case HEURISTIC_CAUSED_BY_RM_SPECIFIC_XA_EXCEPTION:
-                assertThat(receivedEx.getClass(), equalTo(javax.ejb.EJBException.class));
+                assertThat(receivedEx.getClass(), equalTo(jakarta.ejb.EJBException.class));
                 // FIXME WFLY-8794
-                // assertThat("HeuristicMixedException should be cause.", receivedEx.getCause().getClass(), equalTo(javax.transaction.HeuristicMixedException.class));
+                // assertThat("HeuristicMixedException should be cause.", receivedEx.getCause().getClass(), equalTo(jakarta.transaction.HeuristicMixedException.class));
                 assertThat(receivedEx.getCause().getClass(), equalTo(java.lang.ClassNotFoundException.class));
                 break;
             case ROLLBACK_CAUSED_BY_XA_EXCEPTION:
-                assertThat(receivedEx.getClass(), equalTo(javax.ejb.EJBTransactionRolledbackException.class));
-                assertThat(receivedEx.getCause().getClass(), equalTo(javax.transaction.RollbackException.class));
+                assertThat(receivedEx.getClass(), equalTo(jakarta.ejb.EJBTransactionRolledbackException.class));
+                assertThat(receivedEx.getCause().getClass(), equalTo(jakarta.transaction.RollbackException.class));
                 break;
             case ROLLBACK_CAUSED_BY_RM_SPECIFIC_XA_EXCEPTION:
                 // FIXME should be EJBTransactionRolledbackException
-                assertThat(receivedEx.getClass(), equalTo(javax.ejb.EJBException.class));
+                assertThat(receivedEx.getClass(), equalTo(jakarta.ejb.EJBException.class));
                 // FIXME WFLY-8794
-                // assertThat("HeuristicMixedException should be cause.", receivedEx.getCause().getClass(), equalTo(javax.transaction.HeuristicMixedException.class));
+                // assertThat("HeuristicMixedException should be cause.", receivedEx.getCause().getClass(), equalTo(jakarta.transaction.HeuristicMixedException.class));
                 assertThat(receivedEx.getCause().getClass(), equalTo(java.lang.ClassNotFoundException.class));
                 break;
             }

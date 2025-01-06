@@ -9,11 +9,18 @@ WildFly team;
 :doctype: book
 :icons: font
 :source-highlighter: coderay
-ifdef::env-github[:imagesdir: images/]
+
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 // ifndef::ebook-format[:leveloffset: 1]
 
-(C) 2017 The original authors.
+(C) The WildFly Authors.
 
 ifdef::basebackend-html[toc::[]]
 :numbered:
@@ -24,87 +31,106 @@ ifdef::basebackend-html[toc::[]]
 WildFly {wildflyVersion} is the latest release in a series of JBoss open-source
 application server offerings. WildFly {wildflyVersion} is an exceptionally fast,
 lightweight and powerful implementation of the Jakarta
-Platform specifications. The state-of-the-art architecture built on the
-Modular Service Container enables services on-demand when your
-application requires them. The table below lists the technologies available in WildFly {wildflyVersion}
+Enterprise Edition 10 specifications. WildFly's modular architecture built on the
+JBoss Modules and JBoss Modular Service Container projects enables services on-demand when your
+application requires them. The table below lists the Jakarta technologies available in WildFly {wildflyVersion}
 server configuration profiles.
 
 [cols=",,,,",options="header"]
 |=======================================================================
 |Jakarta EE Platform Technology |Jakarta EE Full Platform |Jakarta EE Web
-Profile |WildFly {wildflyVersion} Full Platform |WildFly {wildflyVersion} Web Profile
+Profile |WildFly {wildflyVersion} Full Configuration |WildFly {wildflyVersion} Default Configuration
 
-|Jakarta WebSocket |X |X |X |X
+|Jakarta Activation 2.1 |X |-- |X |X
 
-|Jakarta JSON Processing 1.1 |X |X |X |X
+|Jakarta Annotations 2.1 |X |X |X |X
 
-|Jakarta JSON Binding Specification 1.0 |X |X |X |X
+|Jakarta Authentication 3.0 |X |X |X |X
 
-|Jakarta Servlet 4.0 |X |X |X |X
+|Jakarta Authorization 2.1 |X |-- |X |--
 
-|Jakarta Server Faces 2.3 |X |X |X |X
+|Jakarta Batch 2.1 |X |-- |X |--
 
-|Jakarta Expression Language 3.0 |X |X |X |X
+|Jakarta Bean Validation 3.0 |X |X |X |X
 
-|Jakarta Server Pages 2.3 |X |X |X |X
+|Jakarta Concurrency 3.0 |X |X |X |X
 
-|Jakarta Standard Tag Library 1.2 |X |X |X
-|X
+|Jakarta Connectors 2.1 |X |-- |X |X
 
-|Jakarta Batch 1.0 |X |-- |X |--
+|Jakarta Contexts and Dependency Injection 4.0 |X |X |X |X
 
-|Jakarta Concurrency |X |X |X |X
+|Jakarta Data 1.0
+(xref:Admin_Guide.adoc#Feature_stability_levels[`preview` stability] )| -- |-- |-- | --
 
-|Jakarta Contexts and Dependency Injection 2.0 |X |X |X |X
+|Jakarta Debugging Support for Other Languages 2.0 |X |X |X |X
 
-|Jakarta Dependency Injection |X |X |X |X
+|Jakarta Dependency Injection 2.0 |X |X |X |X
 
-|Jakarta Bean Validation 2.0 |X |X |X |X
+|Jakarta Enterprise Beans 4.0 |X |X(Lite) |X |X(Lite)
 
-|Jakarta Enterprise Beans 3.2 |XCMP 2.0Optional |X(Lite) |XCMP
-2.0Not Available |X(Lite)
+|Jakarta Enterprise Web Services 2.0 |Optional |-- |X |X
 
-|Jakarta Interceptors 1.2 |X |X |X |X
+|Jakarta Expression Language 5.0 |X |X |X |X
 
-|Jakarta Connectors 1.7 |X |-- |X |X
+|Jakarta Interceptors 2.1 |X |X |X |X
 
-|Jakarta Persistence 2.2 |X |X |X |X
+|Jakarta JSON Binding 3.0 |X |X |X |X
 
-|Jakarta Annotations 1.3 |X |X |X |X
+|Jakarta JSON Processing 2.1 |X |X |X |X
 
-|Jakarta Messaging 2.0 |X |-- |X |--
+|Jakarta Mail 2.1 |X |-- |X |X
 
-|Jakarta Transactions 1.3 |X |X |X |X
+|Jakarta Messaging 3.1 |X |-- |X |--
 
-|Jakarta Mail 1.6 |X |-- |X |X
+| Jakarta MVC 2.1
+(xref:Admin_Guide.adoc#Feature_stability_levels[`preview` stability])|--|--|--|--
 
-|Jakarta RESTful Web Services 2.1 |X |X |X |X
+|Jakarta Pages 3.1 |X |X |X |X
 
-|Jakarta Enterprise Web Services 1.3 |X |-- |X |--
+|Jakarta Persistence 3.1 |X |X |X |X
 
-|Jakarta XML Web Services Specification 2.3 |X |X |X |X
+|Jakarta RESTful Web Services 3.1 |X |X |X |X
 
-|Jakarta Web Services Metadata |X |-- |X |--
+|Jakarta Security 3.0 |X |X |X |X
 
-|Jakarta XML RPC 1.1 |Optional |-- |-- |--
+|Jakarta Faces 4.0 |X |X |X |X
 
-|Jakarta SOAP with Attachments 1.3 |X |-- |X |--
+|Jakarta Servlet 6.0 |X |X |X |X
 
-|Jakarta XML Registries |Optional |-- |-- |--
+|Jakarta SOAP with Attachments 3.0 |Optional |-- |X |X
 
-|Jakarta XML Binding Specification 2.3 |X |X |X |X
+|Jakarta Standard Tag Library 3.0 |X |X |X |X
 
-|Jakarta Authentication 1.1 |X |-- |X |--
+|Jakarta Transactions 2.0 |X |X |X |X
 
-|Jakarta Authorization 1.5 |X |-- |X |--
+|Jakarta WebSocket 2.1 |X |X |X |X
 
-|Jakarta EE Application Deployment 1.2 |Optional |-- |-- |--
+|Jakarta XML Binding 4.0 |Optional |X |X |X
 
-|Jakarta Management 1.1 |X |  |X | 
+|Jakarta XML Web Services 4.0 |Optional |-- |X |X
+|=======================================================================
 
-|Jakarta Debugging Support for Other Languages 1.0 |X |X |X |X
+[WARNING]
+====
+WildFly Preview {wildflyVersion} is currently aiming at providing an early look at Jakarta EE 11, and therefore provides different versions of a number of the Jakarta specifications listed above. See xref:WildFly_and_WildFly_Preview.adoc#wildfly-preview-ee11[EE 11 Support in WildFly Preview] for details.
+====
 
-|Jakarta Security 1.0 |X |X |X |X
+WildFly {wildflyVersion} also provides support for a number of MicroProfile technologies:
+
+[cols=",,",options="header"]
+|=======================================================================
+|MicroProfile Technology |WildFly {wildflyVersion} Default Configuration |WildFly {wildflyVersion} MicroProfile Configuration
+|MicroProfile Config 3.1 |X |X
+|MicroProfile Fault Tolerance 4.1 |-- |X
+|MicroProfile Health 4.0 |-- |X
+|MicroProfile JWT Authentication 2.1 |X |X
+|MicroProfile LRA 2.0 |-- |--
+|MicroProfile OpenAPI 4.0 |-- |X
+|MicroProfile Reactive Messaging 3.0 |-- |--
+|MicroProfile Rest Client 4.0|X |X
+|MicroProfile Streams Operators 3.0 |-- |--
+|MicroProfile Telemetry 2.0|--|X
+
 |=======================================================================
 
 Missing ActiveMQ Artemis and Jakarta Messaging?
@@ -126,7 +152,7 @@ content on administrative features, refer to the WildFly {wildflyVersion} link:A
 [[requirements]]
 == Requirements
 
-* Java SE 8 or later. We recommend that you use the latest available update
+* Java SE 11 or later. We recommend that you use the latest available update
 of the current long-term support Java release.
 
 
@@ -166,6 +192,52 @@ Simply extract your chosen download to the directory of your choice. You
 can install WildFly {wildflyVersion} on any operating system that supports the zip or
 tar formats. Refer to the Release Notes for additional information
 related to the release.
+
+[[installation_as_a_linux_service]]
+==== Installation as a Linux Service
+
+Once you have installed WildFly {wildflyVersion} from a Zip archive, you can create a Linux service so it can be started/stopped automatically when your system boots up or is shut down.
+
+The following steps describe the process to configure WildFly as a systemd service. WildFly is shipped with a default systemd unit file configuration for Standalone and Domain mode. These wildfly-[standalone,domain].service files are located at the `$WFLY_HOME/bin/systemd` directory and assume that by default WildFly was installed at `/opt/wildfly` directory and would be launched with the `wildfly:wildfly` user:group. These files can be adjusted by you to cover your needs, for example, you can change the user that runs the service, the location of the WildFly installation you want to launch, the locations of the logs, and so on.
+
+Alternatively, you can use the `generate_systemd_unit.sh` script to automatically generate a new systemd unit file
+using your current server installation as the WildFly home, or to specify a different user/group.
+
+Once you are fine with the current wildfly-[standalone,domain].service unit file, you can copy to the directory for systemd units of your Operating System, and enable the service to start WildFly automatically at boot time. You have to ensure that the user who runs the service has the necessary permissions to access the WildFly installation directory and to launch the server.
+
+As a quick guide, the following commands will show you how to generate a systemd unit file for your WildFly installation being `javauser:javagroup` the user:group that launch the server. All the following commands should be executed as the root user:
+
+First, create the user and group that will be used to launch the server:
+[source,shell,options="nowrap"]
+----
+groupadd -r javagroup
+useradd -r -g javagroup -d $WFLY_HOME -s /sbin/nologin javauser
+chown -R javauser:javagroup $WFLY_HOME
+----
+
+Secondly, generate the systemd unit file, in this example, we are generating the systemd unit file for a standalone server:
+[source,shell,options="nowrap"]
+----
+cd $WFLY_HOME/bin/systemd
+./generate_systemd_unit.sh standalone javauser javagroup
+----
+
+Thirdly, edit the `$WFLY_HOME/bin/systemd/wildfly-standalone.conf` file to configure the server environment, for example, to specify the JAVA_HOME environment variable, to add additional properties to the server launch command, and so on:
+[source,shell,options="nowrap"]
+----
+vim $WFLY_HOME/bin/systemd/wildfly-standalone.conf
+----
+
+Finally, copy the systemd unit file and the server configuration file to the expected location and enable the service:
+[source,shell,options="nowrap"]
+----
+cp $WFLY_HOME/bin/systemd/wildfly-standalone.service $(pkg-config systemd --variable=systemdsystemunitdir)
+cp $WFLY_HOME/bin/systemd/wildfly-standalone.conf /etc/sysconfig/
+systemctl enable wildfly-standalone
+systemctl start wildfly-standalone
+----
+
+If you want to remove the service, revert the above changes in an inverse order. For more information, consult the README file available in the `$WFLY_HOME/bin/systemd` directory.
 
 [[wildfly---a-quick-tour]]
 == WildFly - A Quick Tour
@@ -379,6 +451,8 @@ syntax from $JBOSS_HOME/bin:
 ./standalone.sh --server-config=standalone-full-ha.xml
 ----
 
+_See also:_ <<Admin_Guide#aliases, Configuration File Aliases>>
+
 Similarly to start an alternate configuration in _domain_ mode:
 
 [source,options="nowrap"]
@@ -405,22 +479,22 @@ to what's shown below.
  
   JAVA: java
  
-  JAVA_OPTS:  -server -Xms64m -Xmx512m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256m -Djava.net.preferIPv4Stack=true -Djboss.modules.system.pkgs=com.yourkit,org.jboss.byteman -Djava.awt.headless=true
+  JAVA_OPTS:  -server -Xms64m -Xmx512m -Djava.net.preferIPv4Stack=true -Djboss.modules.system.pkgs=com.yourkit,org.jboss.byteman -Djava.awt.headless=true
  
 =========================================================================
  
 11:46:11,161 INFO  [org.jboss.modules] (main) JBoss Modules version 1.5.1.Final
 11:46:11,331 INFO  [org.jboss.msc] (main) JBoss MSC version 1.2.6.Final
-11:46:11,391 INFO  [org.jboss.as] (MSC service thread 1-6) WFLYSRV0049: WildFly Full 10.0.0.Final (WildFly Core 2.0.10.Final) starting
+11:46:11,391 INFO  [org.jboss.as] (MSC service thread 1-6) WFLYSRV0049: WildFly 10.0.0.Final (WildFly Core 2.0.10.Final) starting
 <snip>
-11:46:14,300 INFO  [org.jboss.as] (Controller Boot Thread) WFLYSRV0025: WildFly Full 10.0.0.Final (WildFly Core 2.0.10.Final) started in 1909ms - Started 267 of 553 services (371 services are lazy, passive or on-demand)
+11:46:14,300 INFO  [org.jboss.as] (Controller Boot Thread) WFLYSRV0025: WildFly 10.0.0.Final (WildFly Core 2.0.10.Final) started in 1909ms - Started 267 of 553 services (371 services are lazy, passive or on-demand)
 ----
 
 As with previous WildFly releases, you can point your browser to
 *_http://localhost:8080_* (if using the default configured http port)
 which brings you to the Welcome Screen:
 
-image:wildfly.png[images/wildfly.png]
+image:images/wildfly.png[wildfly.png]
 
 From here you can access links to the WildFly community documentation
 set, stay up-to-date on the latest project information, have a
@@ -508,7 +582,7 @@ to identify one WildFly process to another, typically in a WildFly managed domai
 [source,options="nowrap"]
 ----
 Is this new user going to be used for one AS process to connect to another AS process? 
-e.g. for a slave host controller connecting to the master or for a Remoting connection for server to server Jakarta Enterprise Beans calls.
+e.g. for a secondary host controller connecting to the primary or for a Remoting connection for server to server Jakarta Enterprise Beans calls.
 yes/no?
 ----
 
@@ -674,6 +748,6 @@ Turn on debugging for a specific category with the CLI:
 In the example above the `org.jboss.as` log category was configured. Use a different value
 for the `logger` key to configure a different log category.
 
-By default the `server.log` is configured to include all levels in its
+By default, the `server.log` is configured to include all levels in its
 log output. In the above example we changed the console to also display
 debug messages.

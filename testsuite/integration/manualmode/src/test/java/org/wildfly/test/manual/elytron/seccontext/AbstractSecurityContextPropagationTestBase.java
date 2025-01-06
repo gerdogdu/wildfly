@@ -1,30 +1,19 @@
 /*
- * Copyright 2016 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.test.manual.elytron.seccontext;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static javax.servlet.http.HttpServletResponse.SC_OK;
-import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
+import static jakarta.servlet.http.HttpServletResponse.SC_OK;
+import static jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -512,7 +501,7 @@ public abstract class AbstractSecurityContextPropagationTestBase {
     protected static org.hamcrest.Matcher<java.lang.String> isEjbAuthenticationError() {
         // different behavior for stateless and stateful beans
         // is reported under https://issues.jboss.org/browse/JBEAP-12439
-        return anyOf(startsWith("javax.ejb.NoSuchEJBException: EJBCLIENT000079"),
+        return anyOf(startsWith("jakarta.ejb.NoSuchEJBException: EJBCLIENT000079"),
                 startsWith("javax.naming.CommunicationException: EJBCLIENT000062"), containsString("JBREM000308"),
                 containsString("javax.security.sasl.SaslException: Authentication failed"));
     }
@@ -522,7 +511,7 @@ public abstract class AbstractSecurityContextPropagationTestBase {
     }
 
     protected static org.hamcrest.Matcher<java.lang.String> isClassNotFoundException_Server2Exception() {
-        return allOf(startsWith("javax.ejb.EJBException"),
+        return allOf(startsWith("jakarta.ejb.EJBException"),
                 containsString("ClassNotFoundException: org.wildfly.test.manual.elytron.seccontext.Server2Exception"));
     }
 
@@ -531,7 +520,7 @@ public abstract class AbstractSecurityContextPropagationTestBase {
     }
 
     protected static org.hamcrest.Matcher<java.lang.String> isEjbAccessException() {
-        return startsWith("javax.ejb.EJBAccessException");
+        return startsWith("jakarta.ejb.EJBAccessException");
     }
 
     protected String createJwtToken(String userName) {

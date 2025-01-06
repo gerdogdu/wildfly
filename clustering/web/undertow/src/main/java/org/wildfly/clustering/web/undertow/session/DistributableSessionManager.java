@@ -1,27 +1,9 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.web.undertow.session;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.OptionalLong;
@@ -32,24 +14,21 @@ import java.util.concurrent.locks.StampedLock;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
-import org.wildfly.clustering.ee.Batch;
-import org.wildfly.clustering.ee.Batcher;
-import org.wildfly.clustering.web.IdentifierMarshaller;
-import org.wildfly.clustering.web.session.Session;
-import org.wildfly.clustering.web.session.SessionManager;
-import org.wildfly.clustering.web.session.oob.OOBSession;
-import org.wildfly.clustering.web.undertow.UndertowIdentifierSerializerProvider;
-import org.wildfly.clustering.web.undertow.logging.UndertowClusteringLogger;
-import org.wildfly.common.function.Functions;
-
 import io.undertow.UndertowMessages;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.session.SessionConfig;
 import io.undertow.server.session.SessionListener;
 import io.undertow.server.session.SessionListeners;
 import io.undertow.server.session.SessionManagerStatistics;
-import io.undertow.servlet.UndertowServletMessages;
 import io.undertow.util.AttachmentKey;
+
+import org.wildfly.clustering.cache.batch.Batch;
+import org.wildfly.clustering.session.IdentifierMarshaller;
+import org.wildfly.clustering.session.Session;
+import org.wildfly.clustering.session.SessionManager;
+import org.wildfly.clustering.web.undertow.UndertowIdentifierSerializerProvider;
+import org.wildfly.clustering.web.undertow.logging.UndertowClusteringLogger;
+import org.wildfly.common.function.Functions;
 
 /**
  * Adapts a distributable {@link SessionManager} to an Undertow {@link io.undertow.server.session.SessionManager}.
@@ -62,20 +41,19 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
     private final AttachmentKey<io.undertow.server.session.Session> key = AttachmentKey.create(io.undertow.server.session.Session.class);
     private final String deploymentName;
     private final SessionListeners listeners;
-    private final SessionManager<Map<String, Object>, Batch> manager;
+    private final SessionManager<Map<String, Object>> manager;
     private final RecordableSessionManagerStatistics statistics;
     private final StampedLock lifecycleLock = new StampedLock();
-    private final boolean allowOrphanSession;
 
-    // Guarded by this
-    private OptionalLong lifecycleStamp = OptionalLong.empty();
+    // Matches io.undertow.server.session.InMemorySessionManager
+    private volatile int defaultSessionTimeout = 30 * 60;
+    private volatile OptionalLong lifecycleStamp = OptionalLong.empty();
 
     public DistributableSessionManager(DistributableSessionManagerConfiguration config) {
         this.deploymentName = config.getDeploymentName();
         this.manager = config.getSessionManager();
         this.listeners = config.getSessionListeners();
         this.statistics = config.getStatistics();
-        this.allowOrphanSession = config.isOrphanSessionAllowed();
     }
 
     @Override
@@ -84,7 +62,7 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
     }
 
     @Override
-    public SessionManager<Map<String, Object>, Batch> getSessionManager() {
+    public SessionManager<Map<String, Object>> getSessionManager() {
         return this.manager;
     }
 
@@ -105,10 +83,9 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
 
     @Override
     public synchronized void stop() {
-        if (!this.lifecycleStamp.isPresent()) {
-            Duration stopTimeout = this.manager.getStopTimeout();
+        if (this.lifecycleStamp.isEmpty()) {
             try {
-                long stamp = this.lifecycleLock.tryWriteLock(stopTimeout.getSeconds(), TimeUnit.SECONDS);
+                long stamp = this.lifecycleLock.tryWriteLock(60, TimeUnit.SECONDS);
                 if (stamp != 0) {
                     this.lifecycleStamp = OptionalLong.of(stamp);
                 }
@@ -127,7 +104,7 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
         }
         AttachmentKey<io.undertow.server.session.Session> key = this.key;
         AtomicLong stampRef = new AtomicLong(stamp);
-        return new Consumer<HttpServerExchange>() {
+        return new Consumer<>() {
             @Override
             public void accept(HttpServerExchange exchange) {
                 try {
@@ -150,16 +127,11 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
         if (config == null) {
             throw UndertowMessages.MESSAGES.couldNotFindSessionCookieConfig();
         }
-        // Workaround for UNDERTOW-1902
         if (exchange.isResponseStarted()) { // Should match the condition in io.undertow.servlet.spec.HttpServletResponseImpl#isCommitted()
-            // The servlet specification mandates that an ISE be thrown here
-            if (this.allowOrphanSession) {
-                // Return a single use session to be garbage collected at the end of the request
-                io.undertow.server.session.Session session = new OrphanSession(this, this.manager.getIdentifierFactory().get());
-                session.setMaxInactiveInterval((int) this.manager.getDefaultMaxInactiveInterval().getSeconds());
-                return session;
-            }
-            throw UndertowServletMessages.MESSAGES.responseAlreadyCommited();
+            // Return single-use session to be garbage collected at the end of the request
+            io.undertow.server.session.Session session = new OrphanSession(this, this.manager.getIdentifierFactory().get());
+            session.setMaxInactiveInterval(this.defaultSessionTimeout);
+            return session;
         }
 
         String requestedId = config.findSessionId(exchange);
@@ -169,22 +141,20 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
         try {
             String id = (requestedId == null) ? this.manager.getIdentifierFactory().get() : requestedId;
 
-            Batcher<Batch> batcher = this.manager.getBatcher();
             // Batch will be closed by Session.close();
-            Batch batch = batcher.createBatch();
+            Batch batch = this.manager.getBatchFactory().get();
             try {
                 Session<Map<String, Object>> session = this.manager.createSession(id);
                 if (session == null) {
                     throw UndertowClusteringLogger.ROOT_LOGGER.sessionAlreadyExists(id);
                 }
-                if (requestedId == null) {
-                    config.setSessionId(exchange, id);
-                }
+                // Apply session ID encoding
+                config.setSessionId(exchange, id);
 
-                io.undertow.server.session.Session result = new DistributableSession(this, session, config, batcher.suspendBatch(), closeTask);
+                io.undertow.server.session.Session result = new DistributableSession(this, session, config, batch.suspend(), closeTask, this.statistics);
                 this.listeners.sessionCreated(result, exchange);
                 if (this.statistics != null) {
-                    this.statistics.record(result);
+                    this.statistics.record(session.getMetaData());
                 }
                 exchange.putAttachment(this.key, result);
                 close = false;
@@ -230,15 +200,16 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
         boolean close = true;
         Consumer<HttpServerExchange> closeTask = this.getSessionCloseTask();
         try {
-            Batcher<Batch> batcher = this.manager.getBatcher();
-            Batch batch = batcher.createBatch();
+            Batch batch = this.manager.getBatchFactory().get();
             try {
                 Session<Map<String, Object>> session = this.manager.findSession(id);
                 if (session == null) {
                     return null;
                 }
+                // Update session ID encoding
+                config.setSessionId(exchange, id);
 
-                io.undertow.server.session.Session result = new DistributableSession(this, session, config, batcher.suspendBatch(), closeTask);
+                io.undertow.server.session.Session result = new DistributableSession(this, session, config, batch.suspend(), closeTask, this.statistics);
                 if (exchange != null) {
                     exchange.putAttachment(this.key, result);
                 }
@@ -271,7 +242,7 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
 
     @Override
     public void setDefaultSessionTimeout(int timeout) {
-        this.manager.setDefaultMaxInactiveInterval(Duration.ofSeconds(timeout));
+        this.defaultSessionTimeout = timeout;
     }
 
     @Override
@@ -282,12 +253,12 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
 
     @Override
     public Set<String> getActiveSessions() {
-        return this.manager.getActiveSessions();
+        return this.manager.getStatistics().getActiveSessions();
     }
 
     @Override
     public Set<String> getAllSessions() {
-        return this.manager.getLocalSessions();
+        return this.manager.getStatistics().getSessions();
     }
 
     @Override
@@ -296,8 +267,8 @@ public class DistributableSessionManager implements UndertowSessionManager, Long
         if (!IDENTIFIER_MARSHALLER.validate(sessionId)) {
             return null;
         }
-        Session<Map<String, Object>> session = new OOBSession<>(this.manager, sessionId, LocalSessionContextFactory.INSTANCE.createLocalContext());
-        return session.isValid() ? new DistributableSession(this, session, new SimpleSessionConfig(sessionId), null, Functions.discardingConsumer()) : null;
+        Session<Map<String, Object>> session = this.manager.getDetachedSession(sessionId);
+        return session.isValid() ? new DistributableSession(this, session, new SimpleSessionConfig(sessionId), Batch.factory().get().suspend(), Functions.discardingConsumer(), null) : null;
     }
 
     @Override

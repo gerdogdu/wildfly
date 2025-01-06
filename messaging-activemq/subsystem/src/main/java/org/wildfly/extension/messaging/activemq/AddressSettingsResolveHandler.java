@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.messaging.activemq;
@@ -29,11 +12,13 @@ import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.AUTO_CREATE_JMS_QUEUES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.AUTO_CREATE_QUEUES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.AUTO_DELETE_ADDRESSES;
+import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.AUTO_DELETE_CREATED_QUEUES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.AUTO_DELETE_JMS_QUEUES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.AUTO_DELETE_QUEUES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.EXPIRY_DELAY;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.LAST_VALUE_QUEUE;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.MAX_DELIVERY_ATTEMPTS;
+import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.MAX_READ_PAGE_BYTES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.MAX_REDELIVERY_DELAY;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.MAX_SIZE_BYTES;
 import static org.wildfly.extension.messaging.activemq.AddressSettingDefinition.MESSAGE_COUNTER_HISTORY_DAY_LIMIT;
@@ -102,7 +87,7 @@ public class AddressSettingsResolveHandler extends AbstractRuntimeOnlyHandler {
         final ServiceName serviceName = MessagingServices.getActiveMQServiceName(address);
 
         ServiceController<?> service = context.getServiceRegistry(false).getService(serviceName);
-        ActiveMQServer server = ActiveMQServer.class.cast(service.getValue());
+        ActiveMQServer server = ActiveMQServer.class.cast(ActiveMQBroker.class.cast(service.getValue()).getDelegate());
 
         final String activeMQAddress = ACTIVEMQ_ADDRESS.resolveModelAttribute(context, operation).asString();
         AddressSettings settings = server.getAddressSettingsRepository().getMatch(activeMQAddress);
@@ -121,6 +106,7 @@ public class AddressSettingsResolveHandler extends AbstractRuntimeOnlyHandler {
         result.get(EXPIRY_DELAY.getName()).set(settings.getExpiryDelay());
         result.get(LAST_VALUE_QUEUE.getName()).set(settings.isDefaultLastValueQueue());
         result.get(MAX_DELIVERY_ATTEMPTS.getName()).set(settings.getMaxDeliveryAttempts());
+        result.get(MAX_READ_PAGE_BYTES.getName()).set(settings.getMaxReadPageBytes());
         result.get(MAX_REDELIVERY_DELAY.getName()).set(settings.getMaxRedeliveryDelay());
         result.get(MAX_SIZE_BYTES.getName()).set(settings.getMaxSizeBytes());
         result.get(MESSAGE_COUNTER_HISTORY_DAY_LIMIT.getName()).set(settings.getMessageCounterHistoryDayLimit());
@@ -139,6 +125,7 @@ public class AddressSettingsResolveHandler extends AbstractRuntimeOnlyHandler {
         result.get(AUTO_DELETE_ADDRESSES.getName()).set(settings.isAutoDeleteAddresses());
         result.get(AUTO_CREATE_QUEUES.getName()).set(settings.isAutoCreateQueues());
         result.get(AUTO_DELETE_QUEUES.getName()).set(settings.isAutoDeleteQueues());
+        result.get(AUTO_DELETE_CREATED_QUEUES.getName()).set(settings.isAutoDeleteCreatedQueues());
     }
 
     public static void registerOperationHandler(ManagementResourceRegistration registry, ResourceDescriptionResolver resolver) {

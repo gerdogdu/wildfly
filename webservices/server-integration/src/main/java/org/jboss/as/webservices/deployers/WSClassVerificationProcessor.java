@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.webservices.deployers;
@@ -29,7 +12,7 @@ import static org.jboss.as.webservices.util.WSAttachmentKeys.JAXWS_ENDPOINTS_KEY
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.jws.WebService;
+import jakarta.jws.WebService;
 
 import org.jboss.as.server.deployment.Attachments;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
@@ -79,7 +62,9 @@ public class WSClassVerificationProcessor implements DeploymentUnitProcessor {
             for (AbstractEndpoint ejbEndpoint : wsDeployment.getEjbEndpoints()) {
                 verifyEndpoint(ejbEndpoint, moduleClassLoader, deploymentReflectionIndex);
             }
-            verifyApacheCXFModuleDependencyRequirement(unit);
+            if (!hasCxfModuleDependency(unit)) {
+                checkCXFModuleDependency(unit);
+            }
         }
     }
 
@@ -93,7 +78,7 @@ public class WSClassVerificationProcessor implements DeploymentUnitProcessor {
             final WebService webServiceAnnotation = endpointClass.getAnnotation(WebService.class);
             if (webServiceAnnotation != null) {
                 verifyJwsEndpoint(endpointClass, webServiceAnnotation, moduleClassLoader, deploymentReflectionIndex);
-            } // otherwise it's probably a javax.xml.ws.Provider implementation
+            } // otherwise it's probably a jakarta.xml.ws.Provider implementation
         } catch (ClassNotFoundException e) {
             throw WSLogger.ROOT_LOGGER.endpointClassNotFound(pojoEndpoint.getClassName());
         }
@@ -116,68 +101,33 @@ public class WSClassVerificationProcessor implements DeploymentUnitProcessor {
             throw WSLogger.ROOT_LOGGER.declaredEndpointInterfaceClassNotFound(endpointInterfaceClassName, endpointClass);
         }
     }
-
-    private void verifyApacheCXFModuleDependencyRequirement(DeploymentUnit unit) {
-        if (!hasCxfModuleDependency(unit)) {
-            //notify user if he clearly forgot the CXF module dependency
-            final CompositeIndex index = unit.getAttachment(Attachments.COMPOSITE_ANNOTATION_INDEX);
-            final DotName[] dotNames = {WEB_SERVICE_ANNOTATION, WEB_SERVICE_PROVIDER_ANNOTATION};
-            for (final DotName dotName : dotNames) {
-                for (AnnotationInstance ai : index.getAnnotations(dotName)) {
-                    AnnotationTarget at = ai.target();
-                    if (at instanceof ClassInfo) {
-                        final ClassInfo clazz = (ClassInfo)ai.target();
-                        for (DotName dn : clazz.annotations().keySet()) {
-                            if (dn.toString().startsWith("org.apache.cxf")) {
-                                WSLogger.ROOT_LOGGER.missingModuleDependency(dn.toString(), clazz.name().toString(), "org.apache.cxf");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     static boolean hasCxfModuleDependency(DeploymentUnit unit) {
         final ModuleSpecification moduleSpec = unit.getAttachment(Attachments.MODULE_SPECIFICATION);
-        for (ModuleDependency dep : moduleSpec.getUserDependencies()) {
+        for (ModuleDependency dep : moduleSpec.getUserDependenciesSet()) {
             final String id = dep.getIdentifier().getName();
             if (cxfExportingModules.contains(id)) {
                 return true;
             }
         }
-        return hasExportedCxfModuleDependency(unit.getParent()) || hasSiblingCxfModuleDependency(unit);
-    }
-
-    private static boolean hasExportedCxfModuleDependency(DeploymentUnit unit) {
-        if (unit != null) {
-            final ModuleSpecification moduleSpec = unit.getAttachment(Attachments.MODULE_SPECIFICATION);
-            for (ModuleDependency dep : moduleSpec.getUserDependencies()) {
-                final String id = dep.getIdentifier().getName();
-                if (cxfExportingModules.contains(id) && dep.isExport()) {
-                    return true;
-                }
-            }
-        }
         return false;
     }
 
-    private static boolean hasSiblingCxfModuleDependency(DeploymentUnit unit) {
-        if (unit.getParent() == null) {
-            return false;
-        }
-        final ModuleSpecification rootModuleSpec = unit.getParent().getAttachment(Attachments.MODULE_SPECIFICATION);
-        // if ear-subdeployments-isolated is false, we can also look at siblings exported dependencies
-        if (!rootModuleSpec.isSubDeploymentModulesIsolated()) {
-            for (DeploymentUnit siblingUnit : unit.getParent().getAttachment(Attachments.SUB_DEPLOYMENTS)) {
-                // look only at JAR dependencies, WARs are always isolated
-                if (siblingUnit.getName().endsWith(".jar")
-                        && !siblingUnit.equals(unit)
-                        && hasExportedCxfModuleDependency(siblingUnit)) {
-                    return true;
+    private void checkCXFModuleDependency(DeploymentUnit unit) {
+        final CompositeIndex index = unit.getAttachment(Attachments.COMPOSITE_ANNOTATION_INDEX);
+        final DotName[] dotNames = {WEB_SERVICE_ANNOTATION, WEB_SERVICE_PROVIDER_ANNOTATION};
+        for (final DotName dotName : dotNames) {
+            for (AnnotationInstance ai : index.getAnnotations(dotName)) {
+                AnnotationTarget at = ai.target();
+                if (at instanceof ClassInfo) {
+                    final ClassInfo clazz = (ClassInfo)ai.target();
+                    for (DotName dn : clazz.annotationsMap().keySet()) {
+                        if (dn.toString().startsWith("org.apache.cxf")) {
+                            WSLogger.ROOT_LOGGER.checkModuleDependency(dn.toString(), clazz.name().toString(), "org.apache.cxf");
+                            return;
+                        }
+                    }
                 }
             }
         }
-        return false;
     }
 }

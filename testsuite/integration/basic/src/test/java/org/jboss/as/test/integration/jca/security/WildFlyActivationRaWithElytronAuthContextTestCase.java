@@ -1,19 +1,6 @@
 /*
- *
- * Copyright 2017 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.jca.security;
 
@@ -22,8 +9,8 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUC
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
-import javax.annotation.Resource;
-import javax.resource.cci.Connection;
+import jakarta.annotation.Resource;
+import jakarta.resource.cci.Connection;
 import javax.security.auth.PrivateCredentialPermission;
 
 import org.jboss.arquillian.container.test.api.Deployment;
@@ -143,7 +130,7 @@ public class WildFlyActivationRaWithElytronAuthContextTestCase {
                 .addAsManifestResource(WildFlyActivationRaWithElytronAuthContextTestCase.class.getPackage(), "ra.xml", "ra.xml")
                 .addAsManifestResource(new StringAsset("Dependencies: org.jboss.dmr, org.jboss.as.controller, org.jboss.as.controller-client\n"), "MANIFEST.MF");
         rar.addAsManifestResource(PermissionUtils.createPermissionsXmlAsset(
-                new PrivateCredentialPermission("javax.resource.spi.security.PasswordCredential org.wildfly.security.auth.principal.NamePrincipal \"sa\"", "read")), "permissions.xml");
+                new PrivateCredentialPermission("jakarta.resource.spi.security.PasswordCredential org.wildfly.security.auth.principal.NamePrincipal \"sa\"", "read")), "permissions.xml");
 
         return rar;
     }

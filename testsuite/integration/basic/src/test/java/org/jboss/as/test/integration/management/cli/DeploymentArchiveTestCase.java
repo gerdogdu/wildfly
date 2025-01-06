@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.management.cli;
 
@@ -36,7 +19,9 @@ import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.as.test.integration.common.HttpRequest;
 import org.jboss.as.test.integration.management.util.SimpleServlet;
+import org.jboss.as.test.module.util.TestModule;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
+import org.jboss.as.test.shared.util.AssumeTestGroupUtil;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.GenericArchive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
@@ -66,12 +51,14 @@ public class DeploymentArchiveTestCase extends AbstractCliTestBase {
     private static final String MODULE_XML_FILE = "module.xml";
 
     private static final String DEPLOY_SCR =
-            "deploy " + WEB_ARCHIVE_NAME + ".war\n" +
+            "deploy " + WEB_ARCHIVE_NAME + ".war";
+    private static final String MODULE_ADD_SCR =
             "module add --name=" + MODULE_NAME +
             " --resources=" + MODULE_ARCHIVE +
             " --module-xml=" + MODULE_XML_FILE;
     private static final String UNDEPLOY_SCR =
-            "undeploy " + WEB_ARCHIVE_NAME + ".war\n" +
+            "undeploy " + WEB_ARCHIVE_NAME + ".war";
+    private static final String MODULE_REMOVE_SCR =
             "module remove --name=" + MODULE_NAME;
 
     private static final String MODULE_XML =
@@ -96,7 +83,7 @@ public class DeploymentArchiveTestCase extends AbstractCliTestBase {
 
     @BeforeClass
     public static void before() throws Exception {
-        cliFile = createCliArchive();
+        cliFile = createCliArchive(!AssumeTestGroupUtil.isBootableJar());
         AbstractCliTestBase.initCLI();
     }
 
@@ -114,9 +101,17 @@ public class DeploymentArchiveTestCase extends AbstractCliTestBase {
 
     private void testDeploy() throws Exception {
 
+        File testModuleRoot = null;
         // check whether the module is not deployed
-        final File testModuleRoot = new File(getModulePath(), MODULE_NAME.replace('.', File.separatorChar));
-        assertFalse("Module is already deployed at " + testModuleRoot, testModuleRoot.exists());
+        if (!AssumeTestGroupUtil.isBootableJar()) {
+            // "module add/remove" operations doesn't make sense in bootablejar
+            // CLI isn't included in bootablejar and "module" is local command. It operates with module on its own
+            // MODULEPATH. It could be used with bootable jar with workaround:
+            //   $ JBOSS_HOME=<bootablejar_install_dir> jboss.cli.sh -c
+            // install-dir is by default folder with random suffix in /tmp
+            testModuleRoot = new File(TestModule.getModulesDirectory(false), MODULE_NAME.replace('.', File.separatorChar));
+            assertFalse("Module is already deployed at " + testModuleRoot, testModuleRoot.exists());
+        }
 
         // deploy to server
         cli.sendLine("deploy " + cliFile.getAbsolutePath());
@@ -126,7 +121,9 @@ public class DeploymentArchiveTestCase extends AbstractCliTestBase {
         assertTrue("Invalid response: " + response, response.indexOf("SimpleServlet") >=0);
 
         // check module deployment
-        assertTrue("Module deployment failed! Module dir does not exist: " + testModuleRoot, testModuleRoot.exists());
+        if (!AssumeTestGroupUtil.isBootableJar()) {
+            assertTrue("Module deployment failed! Module dir does not exist: " + testModuleRoot, testModuleRoot.exists());
+        }
     }
 
     private void testUndeploy() throws Exception {
@@ -138,52 +135,42 @@ public class DeploymentArchiveTestCase extends AbstractCliTestBase {
         assertTrue(checkUndeployed(getBaseURL(url) + WEB_ARCHIVE_NAME + "/SimpleServlet"));
 
         // check module undeployment
-        final File testModuleRoot = new File(getModulePath(), MODULE_NAME.replace('.', File.separatorChar));
-        assertFalse("Module undeployment failed.", testModuleRoot.exists());
+        if (!AssumeTestGroupUtil.isBootableJar()) {
+            final File testModuleRoot = new File(TestModule.getModulesDirectory(false), MODULE_NAME.replace('.', File.separatorChar));
+            assertFalse("Module undeployment failed.", testModuleRoot.exists());
+        }
     }
 
-    private static File createCliArchive() {
+    private static File createCliArchive(boolean includeModule) {
+        String deployScript = DEPLOY_SCR;
+        String undeployScript = UNDEPLOY_SCR;
+
+        if (includeModule) {
+            String modulesPath = TestModule.getModulesDirectory(true).getAbsolutePath();
+            String moduleRootDirArgument = " --module-root-dir=" + modulesPath;
+            deployScript = deployScript + "\n" + MODULE_ADD_SCR + moduleRootDirArgument;
+            undeployScript = undeployScript + "\n" + MODULE_REMOVE_SCR + moduleRootDirArgument;
+        }
+
         final WebArchive webArchive = ShrinkWrap.create(WebArchive.class, WEB_ARCHIVE_NAME + ".war");
         webArchive.addClass(SimpleServlet.class);
-
-        final JavaArchive moduleArchive = ShrinkWrap.create(JavaArchive.class, MODULE_ARCHIVE);
-        moduleArchive.addClass(DeploymentArchiveTestCase.class);
-
         final GenericArchive cliArchive = ShrinkWrap.create(GenericArchive.class, "deploymentarchive.cli");
-        cliArchive.add(new StringAsset(DEPLOY_SCR), "deploy.scr");
-        cliArchive.add(new StringAsset(UNDEPLOY_SCR), "undeploy.scr");
+        cliArchive.add(new StringAsset(deployScript), "deploy.scr");
+        cliArchive.add(new StringAsset(undeployScript), "undeploy.scr");
         cliArchive.add(webArchive, "/", ZipExporter.class);
-        cliArchive.add(moduleArchive, "/", ZipExporter.class);
+
         cliArchive.add(new StringAsset(MODULE_XML), "/", "module.xml");
+
+        if (includeModule) {
+            final JavaArchive moduleArchive = ShrinkWrap.create(JavaArchive.class, MODULE_ARCHIVE);
+            moduleArchive.addClass(DeploymentArchiveTestCase.class);
+            cliArchive.add(moduleArchive, "/", ZipExporter.class);
+        }
 
         final String tempDir = TestSuiteEnvironment.getTmpDir();
         final File file = new File(tempDir, "deploymentarchive.cli");
         cliArchive.as(ZipExporter.class).exportTo(file, true);
         return file;
-    }
-
-    private File getModulePath() {
-        String modulePath = TestSuiteEnvironment.getSystemProperty("module.path", null);
-        if (modulePath == null) {
-            String jbossHome = TestSuiteEnvironment.getSystemProperty("jboss.home", null);
-            if (jbossHome == null) {
-                throw new IllegalStateException(
-                        "Neither -Dmodule.path nor -Djboss.home were set");
-            }
-            modulePath = jbossHome + File.separatorChar + "modules";
-        } else {
-            modulePath = modulePath.split(File.pathSeparator)[0];
-        }
-        File moduleDir = new File(modulePath);
-        if (!moduleDir.exists()) {
-            throw new IllegalStateException(
-                    "Determined module path does not exist");
-        }
-        if (!moduleDir.isDirectory()) {
-            throw new IllegalStateException(
-                    "Determined module path is not a dir");
-        }
-        return moduleDir;
     }
 
 }

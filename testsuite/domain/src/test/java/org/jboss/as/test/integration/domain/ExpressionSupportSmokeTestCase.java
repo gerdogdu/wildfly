@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain;
@@ -57,6 +40,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -86,7 +70,7 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
 
     private static final Set<ModelType> COMPLEX_TYPES = Collections.unmodifiableSet(EnumSet.of(ModelType.LIST, ModelType.OBJECT, ModelType.PROPERTY));
 
-    private DomainLifecycleUtil domainMasterLifecycleUtil;
+    private DomainLifecycleUtil domainPrimaryLifecycleUtil;
 
     private int conflicts;
     private int noSimple;
@@ -105,7 +89,7 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
     private final boolean logHandling = Boolean.getBoolean("expression.logging");
 
     /**
-     * Launch a master HC in --admin-only. Iterate through all resources, converting any writable attribute that
+     * Launch a primary HC in --admin-only. Iterate through all resources, converting any writable attribute that
      * support expressions and has a value or a default value to an expression (if it isn't already one), using the
      * value/default value as the expression default (so setting a system property isn't required). Then reload out of
      * --admin-only and confirm that the host's servers start correctly. Finally, read the resources from the host
@@ -142,13 +126,13 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
         op.get(OP_ADDR).add(HOST, "primary");
         op.get(OP).set("reload");
         op.get("admin-only").set(false);
-        domainMasterLifecycleUtil.executeAwaitConnectionClosed(op);
+        domainPrimaryLifecycleUtil.executeAwaitConnectionClosed(op);
 
         // Try to reconnect to the hc
-        domainMasterLifecycleUtil.connect();
+        domainPrimaryLifecycleUtil.connect();
 
         // check that the servers are up
-        domainMasterLifecycleUtil.awaitServers(System.currentTimeMillis());
+        domainPrimaryLifecycleUtil.awaitServers(System.currentTimeMillis());
 
         validateExpectedValues(PathAddress.EMPTY_ADDRESS, expectedValues, "primary");
     }
@@ -165,9 +149,9 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
         hostProps = hostProps == null ? "" : hostProps;
         config.setHostCommandLineProperties(hostProps + "\n-Djboss.unsupported.fail-boot-on-runtime-failure=true");
 
-        domainMasterLifecycleUtil = new DomainLifecycleUtil(config);
-//        domainMasterLifecycleUtil.getConfiguration().addHostCommandLineProperty("-agentlib:jdwp=transport=dt_socket,address=8787,server=y,suspend=y");
-        domainMasterLifecycleUtil.start(); // Start
+        domainPrimaryLifecycleUtil = new DomainLifecycleUtil(config);
+//        domainPrimaryLifecycleUtil.getConfiguration().addHostCommandLineProperty("-agentlib:jdwp=transport=dt_socket,address=8787,server=y,suspend=y");
+        domainPrimaryLifecycleUtil.start(); // Start
 
         conflicts = noSimple = noSimpleCollection = noComplexList = noComplexProperty = noObject = noComplexProperty =
                 supportedUndefined = simple = simpleCollection = object = complexProperty = complexList = 0;
@@ -175,8 +159,8 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
 
     @After
     public void tearDown() {
-        if (domainMasterLifecycleUtil != null) {
-            domainMasterLifecycleUtil.stop();
+        if (domainPrimaryLifecycleUtil != null) {
+            domainPrimaryLifecycleUtil.stop();
         }
     }
 
@@ -185,21 +169,21 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
         ModelNode op = createOperation(ADD, spAddr);
         op.get(VALUE).set("test");
         op.get(BOOT_TIME).set(true);
-        executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
 
         PathAddress hostSpAddr = PathAddress.pathAddress(PathElement.pathElement(HOST, "primary"), PathElement.pathElement(SYSTEM_PROPERTY, "host-test"));
         op.get(OP_ADDR).set(hostSpAddr.toModelNode());
-        executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
 
         PathAddress pathAddr = PathAddress.pathAddress(PathElement.pathElement(PATH, "domain-path-test"));
         op = createOperation(ADD, pathAddr);
         op.get(RELATIVE_TO).set("jboss.home.dir");
         op.get(PATH).set("test");
-        executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
 
         PathAddress hostPathAddr = PathAddress.pathAddress(PathElement.pathElement(HOST, "primary"), PathElement.pathElement(PATH, "host-path-test"));
         op.get(OP_ADDR).set(hostPathAddr.toModelNode());
-        executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
     }
 
     private void setExpressions(PathAddress address, String hostName, Map<PathAddress, Map<String, ModelNode>> expectedValues) throws IOException, MgmtOperationException {
@@ -607,7 +591,7 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
                 if (valueType == ModelType.STRING) {
                     checkForUnconvertedExpression(address, attrName, item);
                 }
-                String valueString = timeunit ? fieldValue.asString().toLowerCase() : fieldValue.asString();
+                String valueString = timeunit ? fieldValue.asString().toLowerCase(Locale.ENGLISH) : fieldValue.asString();
                 String expression = "${exp.test:" + valueString + "}";
                 updatedItem.get(fieldName).set(expression);
                 itemToExpect.get(fieldName).set(new ModelNode().set(new ValueExpression(expression)));
@@ -625,7 +609,7 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
     private ModelNode readResourceDescription(PathAddress address) throws IOException, MgmtOperationException {
 
         ModelNode op = createOperation(READ_RESOURCE_DESCRIPTION_OPERATION, address);
-        return executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        return executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
     }
 
     private ModelNode readResource(PathAddress address, boolean defaults, boolean failIfMissing) throws IOException, MgmtOperationException {
@@ -633,7 +617,7 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
         try {
             ModelNode op = createOperation(READ_RESOURCE_OPERATION, address);
             op.get(INCLUDE_DEFAULTS).set(defaults);
-            return executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+            return executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
         } catch (MgmtOperationException e) {
             if (failIfMissing) {
                 throw e;
@@ -657,14 +641,14 @@ public class ExpressionSupportSmokeTestCase extends BuildConfigurationTestBase {
         ModelNode op = createOperation(WRITE_ATTRIBUTE_OPERATION, address);
         op.get(NAME).set(attrName);
         op.get(VALUE).set(value);
-        executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
     }
 
     private List<String> readChildrenNames(PathAddress address, String childType) throws IOException, MgmtOperationException {
 
         ModelNode op = createOperation(READ_CHILDREN_NAMES_OPERATION, address);
         op.get(CHILD_TYPE).set(childType);
-        ModelNode opResult = executeForResult(op, domainMasterLifecycleUtil.getDomainClient());
+        ModelNode opResult = executeForResult(op, domainPrimaryLifecycleUtil.getDomainClient());
         List<String> result = new ArrayList<String>();
         for (ModelNode child : opResult.asList()) {
             result.add(child.asString());

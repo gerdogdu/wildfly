@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.manualmode.ee.globaldirectory;
 
@@ -36,7 +19,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.PropertyPermission;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 import org.apache.commons.io.FileUtils;
 import org.hamcrest.MatcherAssert;
@@ -96,7 +79,7 @@ public class GlobalDirectoryTestCase extends GlobalDirectoryBase {
         WebArchive war = ShrinkWrap.create(WebArchive.class, DEPLOYMENT + ".war");
         war.addClass(GlobalDirectoryDeployment.class);
         war.addAsWebInfResource(new StringAsset("<?xml version=\"1.0\" encoding=\"UTF-8\"?><web-app><servlet-mapping>\n" +
-                "        <servlet-name>javax.ws.rs.core.Application</servlet-name>\n" +
+                "        <servlet-name>jakarta.ws.rs.core.Application</servlet-name>\n" +
                 "        <url-pattern>/*</url-pattern>\n" +
                 "    </servlet-mapping></web-app>"), "web.xml");
         return war;
@@ -108,7 +91,7 @@ public class GlobalDirectoryTestCase extends GlobalDirectoryBase {
         WebArchive war = ShrinkWrap.create(WebArchive.class, DEPLOYMENT2 + ".war");
         war.addClass(GlobalDirectoryDeployment2.class);
         war.addAsWebInfResource(new StringAsset("<?xml version=\"1.0\" encoding=\"UTF-8\"?><web-app><servlet-mapping>\n" +
-                "        <servlet-name>javax.ws.rs.core.Application</servlet-name>\n" +
+                "        <servlet-name>jakarta.ws.rs.core.Application</servlet-name>\n" +
                 "        <url-pattern>/*</url-pattern>\n" +
                 "    </servlet-mapping></web-app>"), "web.xml");
         war.addAsManifestResource(createPermissionsXmlAsset(new RuntimePermission("getClassLoader")), "permissions.xml");
@@ -121,7 +104,7 @@ public class GlobalDirectoryTestCase extends GlobalDirectoryBase {
         WebArchive war = ShrinkWrap.create(WebArchive.class, DEPLOYMENT3 + ".war");
         war.addClass(GlobalDirectoryDeployment3.class);
         war.addAsWebInfResource(new StringAsset("<?xml version=\"1.0\" encoding=\"UTF-8\"?><web-app><servlet-mapping>\n" +
-                "        <servlet-name>javax.ws.rs.core.Application</servlet-name>\n" +
+                "        <servlet-name>jakarta.ws.rs.core.Application</servlet-name>\n" +
                 "        <url-pattern>/*</url-pattern>\n" +
                 "    </servlet-mapping></web-app>"), "web.xml");
         war.addAsManifestResource(createPermissionsXmlAsset(new RuntimePermission("getProtectionDomain"), new PropertyPermission("user.dir", "read")), "permissions.xml");

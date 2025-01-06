@@ -1,59 +1,54 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.naming;
 
 import java.io.Serializable;
+import java.util.function.Supplier;
 
 import org.jboss.msc.value.Value;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
- * A JNDI injectable which simply uses an MSC {@link Value}
- * to fetch the injected value, and takes no action when the value is returned.
+ * A JNDI injectable which simply uses a value and takes no action when the value is returned.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  * @author Eduardo Martins
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public final class ValueManagedReferenceFactory implements ContextListAndJndiViewManagedReferenceFactory {
-    private final Value<?> value;
+    private final Supplier<?> value;
+
+    /**
+     * Construct a new instance.
+     *
+     * @param value the value to wrap
+     * @deprecated use {@link ValueManagedReferenceFactory#ValueManagedReferenceFactory(Object)} instead. This constructor will be removed in the future.
+     */
+    @Deprecated
+    public ValueManagedReferenceFactory(final Value<?> value) {
+        this.value = () -> value.getValue();
+    }
 
     /**
      * Construct a new instance.
      *
      * @param value the value to wrap
      */
-    public ValueManagedReferenceFactory(final Value<?> value) {
-        this.value = value;
+    public ValueManagedReferenceFactory(final Object value) {
+        this.value = () -> value;
     }
 
     @Override
     public ManagedReference getReference() {
-        return new ValueManagedReference(value.getValue());
+        return new ValueManagedReference(value.get());
     }
 
     @Override
     public String getInstanceClassName() {
-        final Object instance = value != null ? value.getValue() : null;
+        final Object instance = value != null ? value.get() : null;
         if(instance == null) {
             return ContextListManagedReferenceFactory.DEFAULT_INSTANCE_CLASS_NAME;
         }
@@ -62,7 +57,7 @@ public final class ValueManagedReferenceFactory implements ContextListAndJndiVie
 
     @Override
     public String getJndiViewInstanceValue() {
-        final Object instance = value != null ? value.getValue() : null;
+        final Object instance = value != null ? value.get() : null;
         if (instance == null) {
             return "null";
         }

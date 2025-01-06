@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow;
@@ -68,6 +51,7 @@ import org.jboss.msc.service.StopContext;
 import org.wildfly.extension.undertow.deployment.GateHandlerWrapper;
 import org.wildfly.extension.undertow.logging.UndertowLogger;
 import org.wildfly.security.manager.WildFlySecurityManager;
+import org.wildfly.service.descriptor.BinaryServiceDescriptor;
 
 /**
  * @author <a href="mailto:tomaz.cerar@redhat.com">Tomaz Cerar</a> (c) 2013 Red Hat Inc.
@@ -75,6 +59,10 @@ import org.wildfly.security.manager.WildFlySecurityManager;
  * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public class Host implements Service<Host>, FilterLocation {
+    // TODO Extract proper interface from this service implementation
+    // TODO Relocate ServiceDescriptor and interface to a separate SPI module.
+    public static final BinaryServiceDescriptor<Host> SERVICE_DESCRIPTOR = BinaryServiceDescriptor.of("org.wildfly.undertow.host", Host.class);
+
     private final Consumer<Host> serviceConsumer;
     private final Supplier<Server> server;
     private final Supplier<UndertowService> undertowService;

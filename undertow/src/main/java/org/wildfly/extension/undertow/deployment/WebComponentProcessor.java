@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow.deployment;
@@ -28,7 +11,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.servlet.AsyncListener;
+import jakarta.servlet.AsyncListener;
 
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.ComponentDescription;
@@ -67,7 +50,7 @@ import org.jboss.metadata.web.spec.TldMetaData;
  * For ManagedBean Servlets no action is necessary at this stage, as the servlet is already registered as a component.
  * For Jakarta Contexts and Dependency Injection and EE components a component definition is added to the deployment.
  * <p/>
- * For now we are just using managed bean components as servlets. We may need a custom component type in future.
+ * For now we are just using managed bean components as servlets. We may need a custom component type in the future.
  */
 public class WebComponentProcessor implements DeploymentUnitProcessor {
 
@@ -110,7 +93,7 @@ public class WebComponentProcessor implements DeploymentUnitProcessor {
             ComponentDescription description = componentByClass.get(clazz);
             if (description != null) {
                 //for now just make sure it has a single view
-                //this will generally be a managed bean, but it could also be an Jakarta Enterprise Beans
+                //this will generally be a managed bean, but it could also be a Jakarta Enterprise Beans bean
                 //TODO: make sure the component is a managed bean
                 if (!(description.getViews().size() == 1)) {
                     throw UndertowLogger.ROOT_LOGGER.wrongComponentType(clazz);

@@ -1,0 +1,47 @@
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<host xmlns="urn:jboss:domain:20.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="urn:jboss:domain:10.0 wildfly-config_10_0.xsd"
+      name="primary">
+
+    <management>
+        <security-realms>
+            <security-realm name="ManagementRealm">
+                <authentication>
+                    <local default-user="$local" skip-group-loading="true"/>
+                    <properties path="mgmt-users.properties" relative-to="jboss.domain.config.dir" />
+                </authentication>
+            </security-realm>
+        </security-realms>
+        <management-interfaces>
+            <native-interface security-realm="ManagementRealm">
+                <socket interface="management" port="9999"/>
+            </native-interface>
+        </management-interfaces>
+    </management>
+
+    <domain-controller>
+        <local/>
+    </domain-controller>
+
+    <interfaces>
+        <interface name="management">
+            <inet-address value="${jboss.test.host.primary.address}"/>
+        </interface>
+        <interface name="secure-management">
+            <inet-address value="${jboss.test.host.secondary.address}"/>
+        </interface>
+    </interfaces>
+    <jvms>
+        <jvm name="default">
+            <heap size="64m" max-size="128m"/>
+            <jvm-options>
+                <option value="-ea"/>
+            </jvm-options>
+        </jvm>
+    </jvms>
+</host>

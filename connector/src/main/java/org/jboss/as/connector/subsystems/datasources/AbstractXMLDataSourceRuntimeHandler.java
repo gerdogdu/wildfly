@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.connector.subsystems.datasources;
@@ -55,7 +38,7 @@ public abstract class AbstractXMLDataSourceRuntimeHandler<T> extends AbstractRun
     protected void executeRuntimeStep(OperationContext context, ModelNode operation) throws OperationFailedException {
         String opName = operation.require(ModelDescriptionConstants.OP).asString();
         PathAddress address = PathAddress.pathAddress(operation.require(ModelDescriptionConstants.OP_ADDR));
-        final T dataSource = getDataSourceConfig(address);
+        final T dataSource = getDataSourceConfig(context, address);
 
         if (ModelDescriptionConstants.READ_ATTRIBUTE_OPERATION.equals(opName)) {
             final String attributeName = operation.require(ModelDescriptionConstants.NAME).asString();
@@ -79,11 +62,15 @@ public abstract class AbstractXMLDataSourceRuntimeHandler<T> extends AbstractRun
         throw ConnectorLogger.ROOT_LOGGER.unknownOperation(opName);
     }
 
-    private T getDataSourceConfig(final PathAddress operationAddress) throws OperationFailedException {
+    private T getDataSourceConfig(final OperationContext context, final PathAddress operationAddress) throws OperationFailedException {
 
         final List<PathElement> relativeAddress = new ArrayList<PathElement>();
         for (int i = operationAddress.size() - 1; i >= 0; i--) {
             PathElement pe = operationAddress.getElement(i);
+            if (ModelDescriptionConstants.DEPLOYMENT.equals(pe.getKey())) {
+                String runtimeName = getRuntimeName(context, pe);
+                pe = PathElement.pathElement(pe.getKey(), runtimeName);
+            }
             relativeAddress.add(0, pe);
             if (ModelDescriptionConstants.DEPLOYMENT.equals(pe.getKey())) {
                 break;
@@ -105,6 +92,14 @@ public abstract class AbstractXMLDataSourceRuntimeHandler<T> extends AbstractRun
         return config;
     }
 
+    private static String getRuntimeName(final OperationContext context, final PathElement element) throws OperationFailedException {
+        final ModelNode deploymentModel = context.readResourceFromRoot(PathAddress.pathAddress(element), false).getModel();
+        if (!deploymentModel.hasDefined(ModelDescriptionConstants.RUNTIME_NAME)) {
+            String exceptionMessage = ConnectorLogger.ROOT_LOGGER.noDataSourceRegisteredForAddress(context.getCurrentAddress());
+            throw new OperationFailedException(exceptionMessage);
+        }
+        return deploymentModel.get(ModelDescriptionConstants.RUNTIME_NAME).asString();
+    }
 
     protected void setLongIfNotNull(final OperationContext context, final Long value) {
         if (value != null) {

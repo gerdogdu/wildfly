@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.clustering.infinispan.subsystem;
 
@@ -26,27 +9,28 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.jboss.as.clustering.controller.CommonRequirement;
-import org.jboss.as.clustering.controller.CommonUnaryRequirement;
+import org.jboss.as.clustering.controller.CommonServiceDescriptor;
 import org.jboss.as.clustering.infinispan.subsystem.remote.RemoteCacheContainerResourceDefinition;
 import org.jboss.as.clustering.jgroups.subsystem.JGroupsSubsystemInitialization;
 import org.jboss.as.controller.ModelVersion;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.services.path.PathManager;
 import org.jboss.as.model.test.FailedOperationTransformationConfig;
 import org.jboss.as.model.test.ModelFixer;
 import org.jboss.as.model.test.ModelTestControllerVersion;
 import org.jboss.as.model.test.ModelTestUtils;
+import org.jboss.as.network.OutboundSocketBinding;
 import org.jboss.as.server.ServerEnvironment;
 import org.jboss.as.subsystem.test.AdditionalInitialization;
 import org.jboss.as.subsystem.test.KernelServices;
 import org.jboss.as.subsystem.test.KernelServicesBuilder;
 import org.jboss.dmr.ModelNode;
+import org.jboss.dmr.Property;
 import org.jgroups.conf.ClassConfigurator;
 import org.junit.Assert;
 import org.junit.Test;
-import org.wildfly.clustering.jgroups.spi.JGroupsDefaultRequirement;
-import org.wildfly.clustering.jgroups.spi.JGroupsRequirement;
+import org.wildfly.clustering.jgroups.spi.ChannelFactory;
 
 /**
  * Test cases for transformers used in the Infinispan subsystem
@@ -67,10 +51,10 @@ public class InfinispanTransformersTestCase extends OperationTestCaseBase {
         return String.format(pattern, version.getMavenGavVersion());
     }
 
-    private static InfinispanModel getModelVersion(ModelTestControllerVersion controllerVersion) {
+    private static InfinispanSubsystemModel getModelVersion(ModelTestControllerVersion controllerVersion) {
         switch (controllerVersion) {
             case EAP_7_4_0:
-                return InfinispanModel.VERSION_14_0_0;
+                return InfinispanSubsystemModel.VERSION_14_0_0;
             default:
                 throw new IllegalArgumentException();
         }
@@ -80,11 +64,14 @@ public class InfinispanTransformersTestCase extends OperationTestCaseBase {
         switch (version) {
             case EAP_7_4_0:
                 return new String[] {
+                        "org.jboss.spec.javax.transaction:jboss-transaction-api_1.3_spec:2.0.0.Final",
+                        "org.jboss.spec.javax.resource:jboss-connector-api_1.7_spec:2.0.0.Final",
                         formatArtifact("org.jboss.eap:wildfly-clustering-infinispan-extension:%s", version),
                         "org.infinispan:infinispan-commons:11.0.9.Final-redhat-00001",
                         "org.infinispan:infinispan-core:11.0.9.Final-redhat-00001",
                         "org.infinispan:infinispan-cachestore-jdbc:11.0.9.Final-redhat-00001",
                         "org.infinispan:infinispan-client-hotrod:11.0.9.Final-redhat-00001",
+                        "org.jboss.spec.javax.resource:jboss-connector-api_1.7_spec:2.0.0.Final-redhat-00001",
                         // Following are needed for InfinispanSubsystemInitialization
                         formatArtifact("org.jboss.eap:wildfly-clustering-api:%s", version),
                         formatArtifact("org.jboss.eap:wildfly-clustering-common:%s", version),
@@ -107,15 +94,22 @@ public class InfinispanTransformersTestCase extends OperationTestCaseBase {
     @Override
     AdditionalInitialization createAdditionalInitialization() {
         return new InfinispanSubsystemInitialization()
-                .require(CommonRequirement.PATH_MANAGER)
-                .require(CommonUnaryRequirement.PATH, ServerEnvironment.SERVER_TEMP_DIR)
-                .require(CommonUnaryRequirement.OUTBOUND_SOCKET_BINDING, "hotrod-server-1", "hotrod-server-2", "jdg1", "jdg2", "jdg3", "jdg4", "jdg5", "jdg6")
-                .require(CommonUnaryRequirement.DATA_SOURCE, "ExampleDS")
-                .require(CommonUnaryRequirement.SSL_CONTEXT, "hotrod-elytron")
-                .require(JGroupsRequirement.CHANNEL_FACTORY, "maximal-channel")
-                .require(JGroupsDefaultRequirement.CHANNEL_FACTORY)
-                .require(CommonRequirement.LOCAL_TRANSACTION_PROVIDER)
-                .require(TransactionResourceDefinition.TransactionRequirement.XA_RESOURCE_RECOVERY_REGISTRY)
+                .require(PathManager.SERVICE_DESCRIPTOR)
+                .require(PathManager.PATH_SERVICE_DESCRIPTOR, ServerEnvironment.SERVER_TEMP_DIR)
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "hotrod-server-1")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "hotrod-server-2")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "jdg1")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "jdg2")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "jdg3")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "jdg4")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "jdg5")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "jdg6")
+                .require(CommonServiceDescriptor.DATA_SOURCE, "ExampleDS")
+                .require(CommonServiceDescriptor.SSL_CONTEXT, "hotrod-elytron")
+                .require(ChannelFactory.SERVICE_DESCRIPTOR, "maximal-channel")
+                .require(ChannelFactory.DEFAULT_SERVICE_DESCRIPTOR)
+                .require(TransactionResourceDefinition.LOCAL_TRANSACTION_PROVIDER)
+                .require(TransactionResourceDefinition.XA_RESOURCE_RECOVERY_REGISTRY)
                 ;
     }
 
@@ -151,11 +145,27 @@ public class InfinispanTransformersTestCase extends OperationTestCaseBase {
 
         // check that both versions of the legacy model are the same and valid
         checkSubsystemModelTransformation(services, version, createModelFixer(version), false);
+
+        // Validate transformed model
+        ModelNode legacyModel = services.readTransformedModel(version);
+        if (InfinispanSubsystemModel.VERSION_18_0_0.requiresTransformation(version)) {
+            ModelNode subsystemModel = legacyModel.get(InfinispanSubsystemResourceDefinition.PATH.getKeyValuePair());
+            // Verify module conversions to legacy module names
+            for (Property property : subsystemModel.get(CacheContainerResourceDefinition.WILDCARD_PATH.getKey()).asPropertyListOrEmpty()) {
+                List<ModelNode> modules = property.getValue().get(CacheContainerResourceDefinition.ListAttribute.MODULES.getName()).asListOrEmpty();
+                Assert.assertTrue(modules.stream().map(ModelNode::asString).noneMatch("org.wildfly.clustering.session.infinispan.embedded"::equals));
+            }
+            for (Property property : subsystemModel.get(RemoteCacheContainerResourceDefinition.WILDCARD_PATH.getKey()).asPropertyList()) {
+                List<ModelNode> modules = property.getValue().get(RemoteCacheContainerResourceDefinition.ListAttribute.MODULES.getName()).asListOrEmpty();
+                Assert.assertTrue(modules.stream().map(ModelNode::asString).noneMatch("org.wildfly.clustering.session.infinispan.remote"::equals));
+            }
+        }
     }
 
     private static ModelFixer createModelFixer(ModelVersion version) {
         return model -> {
-            if (InfinispanModel.VERSION_16_0_0.requiresTransformation(version)) {
+            if (InfinispanSubsystemModel.VERSION_16_0_0.requiresTransformation(version)) {
+                @SuppressWarnings("deprecation")
                 Map<String, List<PathElement>> containers = Map.ofEntries(Map.entry("minimal", List.of(DistributedCacheResourceDefinition.pathElement("dist"))),
                         Map.entry("maximal", List.of(DistributedCacheResourceDefinition.pathElement("dist"), LocalCacheResourceDefinition.pathElement("local"), ReplicatedCacheResourceDefinition.pathElement("cache-with-jdbc-store"), ScatteredCacheResourceDefinition.pathElement("scattered"))));
                 for (Map.Entry<String, List<PathElement>> entry : containers.entrySet()) {
@@ -232,12 +242,17 @@ public class InfinispanTransformersTestCase extends OperationTestCaseBase {
         PathAddress remoteContainerAddress = subsystemAddress.append(RemoteCacheContainerResourceDefinition.WILDCARD_PATH);
         List<String> rejectedRemoteContainerAttributes = new LinkedList<>();
 
-        if (InfinispanModel.VERSION_15_0_0.requiresTransformation(version)) {
+        if (InfinispanSubsystemModel.VERSION_16_0_0.requiresTransformation(version)) {
+            config.addFailedAttribute(containerAddress.append(ReplicatedCacheResourceDefinition.pathElement("repl"), PartitionHandlingResourceDefinition.PATH), new FailedOperationTransformationConfig.NewAttributesConfig(PartitionHandlingResourceDefinition.Attribute.MERGE_POLICY.getDefinition()));
+            config.addFailedAttribute(containerAddress.append(DistributedCacheResourceDefinition.pathElement("dist"), PartitionHandlingResourceDefinition.PATH), new FailedOperationTransformationConfig.NewAttributesConfig(PartitionHandlingResourceDefinition.Attribute.WHEN_SPLIT.getDefinition()));
+        }
+
+        if (InfinispanSubsystemModel.VERSION_15_0_0.requiresTransformation(version)) {
             config.addFailedAttribute(containerAddress, new FailedOperationTransformationConfig.NewAttributesConfig(CacheContainerResourceDefinition.Attribute.MARSHALLER.getDefinition()));
             rejectedRemoteContainerAttributes.add(RemoteCacheContainerResourceDefinition.Attribute.MARSHALLER.getName());
         }
 
-        if (InfinispanModel.VERSION_14_0_0.requiresTransformation(version)) {
+        if (InfinispanSubsystemModel.VERSION_14_0_0.requiresTransformation(version)) {
             rejectedRemoteContainerAttributes.add(RemoteCacheContainerResourceDefinition.ListAttribute.MODULES.getName());
         }
 

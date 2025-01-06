@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.clustering.jgroups.subsystem;
 
@@ -25,15 +8,11 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jboss.as.clustering.controller.FunctionExecutor;
-import org.jboss.as.clustering.controller.FunctionExecutorRegistry;
-import org.jboss.as.clustering.controller.UnaryCapabilityNameResolver;
 import org.jboss.as.clustering.jgroups.logging.JGroupsLogger;
 import org.jboss.as.controller.AbstractRuntimeOnlyHandler;
 import org.jboss.as.controller.OperationContext;
@@ -47,8 +26,11 @@ import org.jgroups.annotations.ManagedAttribute;
 import org.jgroups.annotations.Property;
 import org.jgroups.stack.Protocol;
 import org.jgroups.util.Util;
-import org.wildfly.clustering.jgroups.spi.JGroupsRequirement;
 import org.wildfly.common.function.ExceptionFunction;
+import org.wildfly.security.manager.WildFlySecurityManager;
+import org.wildfly.service.capture.FunctionExecutor;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.capture.FunctionExecutorRegistry;
 
 /**
  * A generic handler for protocol metrics based on reflection.
@@ -99,7 +81,7 @@ public class ProtocolMetricsHandler extends AbstractRuntimeOnlyHandler {
 
         @Override
         public Object read(final Object object) throws Exception {
-            PrivilegedExceptionAction<Object> action = new PrivilegedExceptionAction<Object>() {
+            PrivilegedExceptionAction<Object> action = new PrivilegedExceptionAction<>() {
                 @Override
                 public Object run() throws Exception {
                     AbstractAttribute.this.accessible.setAccessible(true);
@@ -111,7 +93,7 @@ public class ProtocolMetricsHandler extends AbstractRuntimeOnlyHandler {
                 }
             };
             try {
-                return AccessController.doPrivileged(action);
+                return WildFlySecurityManager.doUnchecked(action);
             } catch (PrivilegedActionException e) {
                 throw e.getException();
             }
@@ -237,8 +219,8 @@ public class ProtocolMetricsHandler extends AbstractRuntimeOnlyHandler {
 
         String name = operation.get(ModelDescriptionConstants.NAME).asString();
         String protocolName = context.getCurrentAddressValue();
-        ServiceName channelServiceName = JGroupsRequirement.CHANNEL.getServiceName(context, UnaryCapabilityNameResolver.PARENT);
-        ExceptionFunction<JChannel, ModelNode, Exception> function = new ExceptionFunction<JChannel, ModelNode, Exception>() {
+        ServiceName channelServiceName = ChannelResourceDefinition.CHANNEL_CAPABILITY.getCapabilityServiceName(context.getCurrentAddress().getParent());
+        ExceptionFunction<JChannel, ModelNode, Exception> function = new ExceptionFunction<>() {
             @Override
             public ModelNode apply(JChannel channel) throws Exception {
                 int index = protocolName.lastIndexOf('.');
@@ -259,7 +241,7 @@ public class ProtocolMetricsHandler extends AbstractRuntimeOnlyHandler {
                 return result;
             }
         };
-        FunctionExecutor<JChannel> executor = this.executors.get(channelServiceName);
+        FunctionExecutor<JChannel> executor = this.executors.getExecutor(ServiceDependency.on(channelServiceName));
         try {
             ModelNode value = (executor != null) ? executor.execute(function) : null;
             if (value != null) {

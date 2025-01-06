@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.faces.mojarra.util;
@@ -25,12 +8,12 @@ package org.wildfly.clustering.faces.mojarra.util;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.security.PrivilegedAction;
-import java.util.Iterator;
+import java.util.AbstractMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.infinispan.protostream.descriptors.WireType;
-import org.wildfly.clustering.marshalling.protostream.Any;
 import org.wildfly.clustering.marshalling.protostream.ProtoStreamReader;
 import org.wildfly.clustering.marshalling.protostream.ProtoStreamWriter;
 import org.wildfly.clustering.marshalling.protostream.util.AbstractMapMarshaller;
@@ -43,7 +26,7 @@ import com.sun.faces.util.LRUMap;
  */
 public class LRUMapMarshaller extends AbstractMapMarshaller<LRUMap<Object, Object>> {
 
-    private static final int MAX_CAPACITY_INDEX = VALUE_INDEX + 1;
+    private static final int MAX_CAPACITY_INDEX = ENTRY_INDEX + 1;
     private static final int DEFAULT_MAX_CAPACITY = 15;
     private static final Field MAX_CAPACITY_FIELD = WildFlySecurityManager.doUnchecked(new PrivilegedAction<Field>() {
         @Override
@@ -66,16 +49,12 @@ public class LRUMapMarshaller extends AbstractMapMarshaller<LRUMap<Object, Objec
     @Override
     public LRUMap<Object, Object> readFrom(ProtoStreamReader reader) throws IOException {
         int maxCapacity = DEFAULT_MAX_CAPACITY;
-        List<Object> keys = new LinkedList<>();
-        List<Object> values = new LinkedList<>();
+        List<Map.Entry<Object, Object>> entries = new LinkedList<>();
         while (!reader.isAtEnd()) {
             int tag = reader.readTag();
             switch (WireType.getTagFieldNumber(tag)) {
-                case KEY_INDEX:
-                    keys.add(reader.readObject(Any.class).get());
-                    break;
-                case VALUE_INDEX:
-                    values.add(reader.readObject(Any.class).get());
+                case ENTRY_INDEX:
+                    entries.add(reader.readObject(AbstractMap.SimpleEntry.class));
                     break;
                 case MAX_CAPACITY_INDEX:
                     maxCapacity = reader.readUInt32();
@@ -85,10 +64,8 @@ public class LRUMapMarshaller extends AbstractMapMarshaller<LRUMap<Object, Objec
             }
         }
         LRUMap<Object, Object> map = new LRUMap<>(maxCapacity);
-        Iterator<Object> keyIterator = keys.iterator();
-        Iterator<Object> valueIterator = values.iterator();
-        while (keyIterator.hasNext() || valueIterator.hasNext()) {
-            map.put(keyIterator.next(), valueIterator.next());
+        for (Map.Entry<Object, Object> entry : entries) {
+            map.put(entry.getKey(), entry.getValue());
         }
         return map;
     }

@@ -1,20 +1,10 @@
 /*
- * Copyright 2017 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.connector.metadata.common;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Objects;
 
 import org.jboss.as.connector.logging.ConnectorLogger;
@@ -36,16 +26,10 @@ public class CredentialImpl implements Credential {
 
     private static final long serialVersionUID = 7990943957924515091L;
 
-    private static CommonBundle bundle = (CommonBundle) Messages.getBundle(CommonBundle.class);
+    private static CommonBundle bundle = Messages.getBundle(MethodHandles.lookup(), CommonBundle.class);
     private final String userName;
     private final String password;
     private final String securityDomain;
-
-    /**
-     * Indicates if the Credential data belongs to Elytron or PicketBox.
-     */
-    private boolean elytronEnabled;
-
     private final ExceptionSupplier<CredentialSource, Exception> credentialSourceSupplier;
 
     /**
@@ -54,17 +38,14 @@ public class CredentialImpl implements Credential {
      * @param userName        user name
      * @param password        user password
      * @param securityContext specific information that helps implementation define which context this Credential belongs to
-     * @param elytronEnabled  is the authentication performed by Elytron. If {@code true},  {@param securityContext}, defined as
-     *                        securityDomain in super class, refers to an Elytron authentication context
      * @throws ValidateException ValidateException in case of validation error
      */
-    public CredentialImpl(final String userName, final String password, final String securityContext, final boolean elytronEnabled,
+    public CredentialImpl(final String userName, final String password, final String securityContext,
                           final ExceptionSupplier<CredentialSource, Exception> credentialSourceSupplier)
             throws ValidateException {
         this.userName = userName;
         this.password = password;
         this.securityDomain = securityContext;
-        this.elytronEnabled = elytronEnabled;
         this.credentialSourceSupplier = credentialSourceSupplier;
 
     }
@@ -100,25 +81,12 @@ public class CredentialImpl implements Credential {
 
     }
 
-
-
-    /**
-     * Indicates if Elytron is enabled. In this case, {@link #getSecurityDomain()}, refers to an Elytron authentication context
-     *
-     * @return {@code true} if is Elytron enabled
-     */
-    @Override
-    public final boolean isElytronEnabled() {
-        return elytronEnabled;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CredentialImpl that = (CredentialImpl) o;
-        return elytronEnabled == that.elytronEnabled &&
-                Objects.equals(userName, that.userName) &&
+        return Objects.equals(userName, that.userName) &&
                 Objects.equals(password, that.password) &&
                 Objects.equals(securityDomain, that.securityDomain) &&
                 Objects.equals(credentialSourceSupplier, that.credentialSourceSupplier);
@@ -126,7 +94,7 @@ public class CredentialImpl implements Credential {
 
     @Override
     public int hashCode() {
-        return Objects.hash(userName, password, securityDomain, elytronEnabled, credentialSourceSupplier);
+        return Objects.hash(userName, password, securityDomain, credentialSourceSupplier);
     }
 
     @Override
@@ -135,7 +103,6 @@ public class CredentialImpl implements Credential {
                 "userName='" + userName + '\'' +
                 ", password='" + password + '\'' +
                 ", securityDomain='" + securityDomain + '\'' +
-                ", elytronEnabled=" + elytronEnabled +
                 ", credentialSourceSupplier=" + credentialSourceSupplier +
                 '}';
     }

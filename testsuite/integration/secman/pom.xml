@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <project
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
         xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
@@ -12,7 +17,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
     </parent>
 
 
@@ -38,6 +43,16 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.wildfly.transaction</groupId>
+            <artifactId>wildfly-transaction-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss</groupId>
+            <artifactId>jboss-transaction-spi</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.jboss.metadata</groupId>
             <artifactId>jboss-metadata-common</artifactId>
             <scope>test</scope>
@@ -60,6 +75,34 @@
         <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-security-manager</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-testsuite-shared</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Jakarta Dependencies -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TODO confirm if this is needed -->
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-naming-client</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -88,38 +131,15 @@
                 </plugins>
             </build>
         </profile>
-
-        <!-- Test against EE 9 dist -->
+        <!-- SecurityManager can't work on SE 24+ so turn of test execution -->
         <profile>
-            <id>ee9.profile</id>
+            <id>secman.integration.unsupported.profile</id>
             <activation>
-                <property>
-                    <name>ts.ee9</name>
-                </property>
+                <jdk>[24,)</jdk>
             </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <executions>
-                            <!--Re-enable the default surefire execution. -->
-                            <execution>
-                                <id>default-test</id>
-                                <phase>test</phase>
-                                <configuration>
-                                    <systemPropertyVariables>
-                                        <server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir}</server.jvm.args>
-                                    </systemPropertyVariables>
-                                    <environmentVariables>
-                                        <JBOSS_HOME>${jboss.dist}</JBOSS_HOME>
-                                    </environmentVariables>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <surefire.default-test.phase>none</surefire.default-test.phase>
+            </properties>
         </profile>
     </profiles>
 

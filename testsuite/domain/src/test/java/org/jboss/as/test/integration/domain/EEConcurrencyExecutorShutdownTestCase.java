@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain;
@@ -45,7 +28,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.CON
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.DEPLOYMENT;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ENABLED;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.HOST;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.MASTER;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PRIMARY;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.NAME;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
@@ -65,7 +48,7 @@ import static org.junit.Assert.fail;
 /**
  * The test case schedules an instance of task ReSchedulingTask.
  * Each instance of ReSchedulingTask sleeps for 10 seconds and then re-schedules another instance of its own class.
- * After the CLI command /host=master/server-config=server-one:stop() is invoked the server should stop.
+ * After the CLI command /host=primary/server-config=server-one:stop() is invoked the server should stop.
  * Test for [ WFCORE-3868 ].
  *
  * @author Daniel Cihak
@@ -79,30 +62,30 @@ public class EEConcurrencyExecutorShutdownTestCase {
     public static final String FIRST_SERVER_NAME = "main-one";
 
     private static DomainTestSupport testSupport;
-    public static DomainLifecycleUtil domainMasterLifecycleUtil;
+    public static DomainLifecycleUtil domainPrimaryLifecycleUtil;
     private static File tmpDir;
 
-    private static DomainClient masterClient;
+    private static DomainClient primaryClient;
 
     @BeforeClass
     public static void setupDomain() {
         testSupport = createAndStartDefaultEESupport(EEConcurrencyExecutorShutdownTestCase.class.getSimpleName());
-        domainMasterLifecycleUtil = testSupport.getDomainMasterLifecycleUtil();
-        masterClient = domainMasterLifecycleUtil.getDomainClient();
+        domainPrimaryLifecycleUtil = testSupport.getDomainPrimaryLifecycleUtil();
+        primaryClient = domainPrimaryLifecycleUtil.getDomainClient();
     }
 
     private static DomainTestSupport createAndStartDefaultEESupport(final String testName) {
         try {
             final DomainTestSupport.Configuration configuration;
-            if (Boolean.getBoolean("wildfly.master.debug")) {
-                configuration = DomainTestSupport.Configuration.createDebugMaster(testName,
-                        "domain-configs/domain-standard-ee.xml", "host-configs/host-master.xml", null);
-            } else if (Boolean.getBoolean("wildfly.slave.debug")) {
-                configuration = DomainTestSupport.Configuration.createDebugSlave(testName,
-                        "domain-configs/domain-standard-ee.xml", "host-configs/host-master.xml", null);
+            if (Boolean.getBoolean("wildfly.primary.debug")) {
+                configuration = DomainTestSupport.Configuration.createDebugPrimary(testName,
+                        "domain-configs/domain-standard-ee.xml", "host-configs/host-primary.xml", null);
+            } else if (Boolean.getBoolean("wildfly.secondary.debug")) {
+                configuration = DomainTestSupport.Configuration.createDebugSecondary(testName,
+                        "domain-configs/domain-standard-ee.xml", "host-configs/host-primary.xml", null);
             } else {
                 configuration = DomainTestSupport.Configuration.create(testName,
-                        "domain-configs/domain-standard-ee.xml", "host-configs/host-master.xml", null);
+                        "domain-configs/domain-standard-ee.xml", "host-configs/host-primary.xml", null);
             }
             final DomainTestSupport testSupport = DomainTestSupport.create(configuration);
             testSupport.start();
@@ -124,8 +107,11 @@ public class EEConcurrencyExecutorShutdownTestCase {
     @AfterClass
     public static void tearDownDomain() {
         try {
-            testSupport.stop();
-            domainMasterLifecycleUtil = null;
+            if (testSupport != null) {
+                testSupport.close();
+                testSupport = null;
+            }
+            domainPrimaryLifecycleUtil = null;
         } finally {
             cleanFile(tmpDir);
         }
@@ -133,7 +119,7 @@ public class EEConcurrencyExecutorShutdownTestCase {
 
     /**
      * Tests if the server with running ConcurrencyExecutor can be stopped using cli command
-     * /host=master/server-config=server-one:stop(timeout=0)
+     * /host=primary/server-config=server-one:stop(timeout=0)
      *
      * @throws Exception
      */
@@ -143,7 +129,7 @@ public class EEConcurrencyExecutorShutdownTestCase {
         content.get("archive").set(true);
         content.get("path").set(new File(tmpDir, "archives/" + ARCHIVE_FILE_NAME).getAbsolutePath());
         ModelNode deploymentOpMain = createDeploymentOperation(content, MAIN_SERVER_GROUP_DEPLOYMENT_ADDRESS);
-        executeForResult(deploymentOpMain, masterClient);
+        executeForResult(deploymentOpMain, primaryClient);
 
         this.stopServer(FIRST_SERVER_NAME);
     }
@@ -170,11 +156,11 @@ public class EEConcurrencyExecutorShutdownTestCase {
      */
     private void stopServer(final String serverName) {
         ModelNode op = new ModelNode();
-        op.get(OP_ADDR).add(HOST, MASTER);
+        op.get(OP_ADDR).add(HOST, PRIMARY);
         op.get(OP_ADDR).add(SERVER_CONFIG, FIRST_SERVER_NAME);
         op.get(OP).set(STOP);
         op.get(TIMEOUT).set(0);
-        domainMasterLifecycleUtil.executeForResult(op);
+        domainPrimaryLifecycleUtil.executeForResult(op);
         try {
             waitUntilState(FIRST_SERVER_NAME, "STOPPED");
         } catch (TimeoutException e) {
@@ -200,11 +186,11 @@ public class EEConcurrencyExecutorShutdownTestCase {
 
             private String checkServerStatus() {
                 ModelNode op = new ModelNode();
-                op.get(OP_ADDR).add(HOST, MASTER);
+                op.get(OP_ADDR).add(HOST, PRIMARY);
                 op.get(OP_ADDR).add(SERVER_CONFIG, serverName);
                 op.get(OP).set(READ_ATTRIBUTE_OPERATION);
                 op.get(NAME).set(STATUS);
-                return domainMasterLifecycleUtil.executeForResult(op).asString();
+                return domainPrimaryLifecycleUtil.executeForResult(op).asString();
             }
         });
     }

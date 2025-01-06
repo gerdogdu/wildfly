@@ -1,26 +1,19 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jaxrs.deployment;
+
+import java.io.Closeable;
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.jboss.as.jaxrs.logging.JaxrsLogger;
 import org.jboss.as.server.deployment.Attachments;
@@ -38,24 +31,15 @@ import org.jboss.metadata.web.jboss.JBossServletMetaData;
 import org.jboss.metadata.web.jboss.JBossWebMetaData;
 import org.jboss.metadata.web.spec.ListenerMetaData;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
-import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.service.StartContext;
-import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 import org.jboss.vfs.VFS;
 import org.jboss.vfs.VFSUtils;
 import org.jboss.vfs.VirtualFile;
-
-import java.io.Closeable;
-import java.io.File;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Recognize Spring deployment and add the Jakarta RESTful Web Services integration to it
@@ -63,7 +47,7 @@ import java.util.List;
 public class JaxrsSpringProcessor implements DeploymentUnitProcessor {
 
     private static final String JAR_LOCATION = "resteasy-spring-jar";
-    private static final ModuleIdentifier MODULE = ModuleIdentifier.create("org.jboss.resteasy.resteasy-spring");
+    private static final String MODULE = "org.jboss.resteasy.resteasy-spring";
 
     public static final String SPRING_LISTENER = "org.jboss.resteasy.plugins.spring.SpringContextLoaderListener";
     public static final String SPRING_SERVLET = "org.springframework.web.servlet.DispatcherServlet";
@@ -97,33 +81,28 @@ public class JaxrsSpringProcessor implements DeploymentUnitProcessor {
             if (fileUrl == null) {
                 throw JaxrsLogger.JAXRS_LOGGER.noSpringIntegrationJar();
             }
-            File dir = new File(fileUrl.toURI());
-            File file = null;
-            for (String jar : dir.list()) {
-                if (jar.endsWith(".jar")) {
-                    file = new File(dir, jar);
-                    break;
-                }
-            }
-            if (file == null) {
-                throw JaxrsLogger.JAXRS_LOGGER.noSpringIntegrationJar();
+            final Path dir = Path.of(fileUrl.toURI());
+            File file;
+            try (Stream<Path> stream = Files.walk(dir)) {
+                file = stream.filter((f) -> f.getFileName().toString().endsWith(".jar"))
+                        .map(Path::toFile)
+                        .findFirst().orElseThrow(JaxrsLogger.JAXRS_LOGGER::noSpringIntegrationJar);
             }
             VirtualFile vf = VFS.getChild(file.toURI());
             final Closeable mountHandle = VFS.mountZip(file, vf, TempFileProviderService.provider());
-            Service<Closeable> mountHandleService = new Service<Closeable>() {
-                public void start(StartContext startContext) throws StartException {
+            final ServiceBuilder<?> builder = serviceTarget.addService();
+            final Consumer<Closeable> consumer = builder.provides(ServiceName.JBOSS.append(SERVICE_NAME));
+            builder.setInstance(new org.jboss.msc.Service() {
+                @Override
+                public void start(final StartContext context) {
+                    consumer.accept(mountHandle);
                 }
 
-                public void stop(StopContext stopContext) {
+                @Override
+                public void stop(final StopContext context) {
                     VFSUtils.safeClose(mountHandle);
                 }
-
-                public Closeable getValue() throws IllegalStateException, IllegalArgumentException {
-                    return mountHandle;
-                }
-            };
-            ServiceBuilder<Closeable> builder = serviceTarget.addService(ServiceName.JBOSS.append(SERVICE_NAME),
-                    mountHandleService);
+            });
             builder.setInitialMode(ServiceController.Mode.ACTIVE).install();
             resourceRoot = vf;
 
@@ -139,7 +118,7 @@ public class JaxrsSpringProcessor implements DeploymentUnitProcessor {
             return;
         }
 
-        final List<DeploymentUnit> deploymentUnits = new ArrayList<DeploymentUnit>();
+        final List<DeploymentUnit> deploymentUnits = new ArrayList<>();
         deploymentUnits.add(deploymentUnit);
         deploymentUnits.addAll(deploymentUnit.getAttachmentList(Attachments.SUB_DEPLOYMENTS));
 
@@ -194,7 +173,7 @@ public class JaxrsSpringProcessor implements DeploymentUnitProcessor {
             }
             if (found) {
                 try {
-                    MountHandle mh = new MountHandle(null); // actual close is done by the MSC service above
+                    MountHandle mh = MountHandle.create(null); // actual close is done by the MSC service above
                     ResourceRoot resourceRoot = new ResourceRoot(getResteasySpringVirtualFile(), mh);
                     ModuleRootMarker.mark(resourceRoot);
                     deploymentUnit.addToAttachmentList(Attachments.RESOURCE_ROOTS, resourceRoot);

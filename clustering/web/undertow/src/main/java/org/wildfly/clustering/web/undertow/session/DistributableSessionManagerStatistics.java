@@ -1,46 +1,28 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.web.undertow.session;
 
+import java.util.OptionalInt;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.wildfly.clustering.web.session.ActiveSessionStatistics;
-import org.wildfly.clustering.web.session.InactiveSessionStatistics;
-
-import io.undertow.server.session.Session;
+import org.wildfly.clustering.session.ImmutableSessionMetaData;
+import org.wildfly.clustering.session.SessionStatistics;
 
 /**
  * @author Paul Ferraro
  */
 public class DistributableSessionManagerStatistics implements RecordableSessionManagerStatistics {
 
-    private final InactiveSessionStatistics inactiveSessionStatistics;
-    private final ActiveSessionStatistics activeSessionStatistics;
-    private final Integer maxActiveSessions;
+    private final RecordableInactiveSessionStatistics inactiveSessionStatistics;
+    private final SessionStatistics activeSessionStatistics;
+    private final OptionalInt maxActiveSessions;
     private volatile long startTime = System.currentTimeMillis();
     private final AtomicLong createdSessionCount = new AtomicLong();
 
-    public DistributableSessionManagerStatistics(ActiveSessionStatistics activeSessionStatistics, InactiveSessionStatistics inactiveSessionStatistics, Integer maxActiveSessions) {
+    public DistributableSessionManagerStatistics(SessionStatistics activeSessionStatistics, RecordableInactiveSessionStatistics inactiveSessionStatistics, OptionalInt maxActiveSessions) {
         this.activeSessionStatistics = activeSessionStatistics;
         this.inactiveSessionStatistics = inactiveSessionStatistics;
         this.maxActiveSessions = maxActiveSessions;
@@ -48,7 +30,12 @@ public class DistributableSessionManagerStatistics implements RecordableSessionM
     }
 
     @Override
-    public void record(Session object) {
+    public Recordable<ImmutableSessionMetaData> getInactiveSessionRecorder() {
+        return this.inactiveSessionStatistics;
+    }
+
+    @Override
+    public void record(ImmutableSessionMetaData metaData) {
         this.createdSessionCount.incrementAndGet();
     }
 
@@ -56,6 +43,7 @@ public class DistributableSessionManagerStatistics implements RecordableSessionM
     public void reset() {
         this.createdSessionCount.set(0L);
         this.startTime = System.currentTimeMillis();
+        this.inactiveSessionStatistics.reset();
     }
 
     @Override
@@ -65,7 +53,7 @@ public class DistributableSessionManagerStatistics implements RecordableSessionM
 
     @Override
     public long getMaxActiveSessions() {
-        return (this.maxActiveSessions != null) ? this.maxActiveSessions.longValue() : -1L;
+        return this.maxActiveSessions.orElse(-1);
     }
 
     @Override

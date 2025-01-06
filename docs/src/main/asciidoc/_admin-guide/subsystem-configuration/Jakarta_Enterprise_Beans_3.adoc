@@ -1,11 +1,19 @@
 [[EJB3]]
-= EJB3 subsystem configuration guide
+= Jakarta Enterprise Beans Subsystem
 
-This page lists the options that are available for configuring the EJB
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+The `ejb3` subsystem provides support for Jakarta Enterprise Beans. This page lists the options that are available for configuring the `ejb3`
 subsystem.
 
 A complete example of the config is shown below, with a full explanation
-of each
+of each item.
 
 [source,xml,options="nowrap"]
 ----
@@ -24,12 +32,12 @@ of each
   <entity-bean>
     <bean-instance-pool-ref pool-name="entity-strict-max-pool"/>
   </entity-bean>
-  <pools>
+    <pools>
     <bean-instance-pools>
       <strict-max-pool name="slsb-strict-max-pool" max-pool-size="20" instance-acquisition-timeout="5" instance-acquisition-timeout-unit="MINUTES"/>
       <strict-max-pool name="mdb-strict-max-pool" max-pool-size="20" instance-acquisition-timeout="5" instance-acquisition-timeout-unit="MINUTES"/>
       <strict-max-pool name="entity-strict-max-pool" max-pool-size="100" instance-acquisition-timeout="5" instance-acquisition-timeout-unit="MINUTES"/>
-  </bean-instance-pools>
+    </bean-instance-pools>
   </pools>
   <caches>
     <simple-cache name="simple"/>
@@ -87,12 +95,12 @@ This element is used to configure Stateful Session Beans.
 amount of time in milliseconds a stateful session bean can remain idle
 before it is eligible for removal by the container.
 It can be overridden via `ejb-jar.xml` deployment descriptor or via
-`javax.ejb.StatefulTimeout` annotation.
+`jakarta.ejb.StatefulTimeout` annotation.
 
 * `default-access-timeout` This attribute specifies the default time
 concurrent invocations on the same bean instance will wait to acquire
 the instance lock. It can be overridden via the deployment descriptor or
-via the `javax.ejb.AccessTimeout` annotation.
+via the `jakarta.ejb.AccessTimeout` annotation.
 
 * `cache-ref` This attribute is used to set the default cache for
 beans which require a passivating cache. It can be overridden by `jboss-ejb3.xml`, or via
@@ -109,7 +117,7 @@ This element is used to configure Singleton Session Beans.
 * `default-access-timeout` This attribute specifies the default time
 concurrent invocations will wait to acquire the instance lock. It can be
 overridden via the deployment descriptor or via the
-`javax.ejb.AccessTimeout` annotation.
+`jakarta.ejb.AccessTimeout` annotation.
 
 [[mdb]]
 == <mdb>
@@ -147,6 +155,21 @@ instance pools themselves are configured in the `<pools>` element.
 
 [[pools]]
 == <pools>
+
+[[bean-instance-pools]]
+=== <bean-instance-pools>
+
+This element is used to configure pools used by stateless session, message driven beans and entity beans.
+
+[[strict-max-pool]]
+==== <strict-max-pool>
+
+Each pool is configured using `strict-max-pool` element.
+
+* `name` Name of the pool.
+* `max-pool-size` Configured maximum number of bean instances that the pool can hold at a given point in time.
+* `instance-acquisition-timeout` The maximum amount of time to wait for a bean instance to be available from the pool.
+* `instance-acquisition-timeout-unit` The instance acquisition timeout unit
 
 [[caches]]
 == <caches>
@@ -338,7 +361,7 @@ In order to use server interceptors you have to create a module that implements
 them and place it into _${WILDFLY_HOME}/modules_ directory.
 
 Interceptor implementations are POJO classes which use
-_javax.interceptor.AroundInvoke_ and _javax.interceptor.AroundTimeout_ to
+_jakarta.interceptor.AroundInvoke_ and _jakarta.interceptor.AroundTimeout_ to
 mark interceptor methods.
 
 Sample configuration:
@@ -355,9 +378,9 @@ Sample interceptor implementation:
 ----
 package org.foo;
 
-import javax.annotation.PostConstruct;
-import javax.interceptor.AroundInvoke;
-import javax.interceptor.InvocationContext;
+import jakarta.annotation.PostConstruct;
+import jakarta.interceptor.AroundInvoke;
+import jakarta.interceptor.InvocationContext;
 
 public class FooInterceptor {
 
@@ -417,4 +440,4 @@ public class FooInterceptor implements EJBClientInterceptor {
 }
 ----
 
-NOTE: References in this document to Enterprise JavaBeans(EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
+NOTE: References in this document to Enterprise JavaBeans (EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.

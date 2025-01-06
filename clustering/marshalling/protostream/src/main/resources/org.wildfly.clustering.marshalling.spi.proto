@@ -1,8 +1,0 @@
-package org.wildfly.clustering.marshalling.spi;
-
-/**
- * @TypeId(128)
- */
-message ByteBufferMarshalledValue {
-	optional	bytes	buffer	= 1;
-}

@@ -1,25 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-  ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2010, Red Hat, Inc., and individual contributors
-  ~ as indicated by the @author tags. See the copyright.txt file in the
-  ~ distribution for a full listing of individual contributors.
-  ~
-  ~ This is free software; you can redistribute it and/or modify it
-  ~ under the terms of the GNU Lesser General Public License as
-  ~ published by the Free Software Foundation; either version 2.1 of
-  ~ the License, or (at your option) any later version.
-  ~
-  ~ This software is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  ~ Lesser General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU Lesser General Public
-  ~ License along with this software; if not, write to the Free
-  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -34,7 +17,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -44,12 +27,12 @@
     <packaging>pom</packaging>
 
     <properties>
-        <mp.galleon.common.resources.directory>${basedir}/../../microprofile/galleon-common/src/main/resources</mp.galleon.common.resources.directory>
-        <oidc.galleon.common.resources.directory>${basedir}/../../elytron-oidc-client/galleon-common/src/main/resources</oidc.galleon.common.resources.directory>
+        <ee.galleon.shared.resources.directory>${basedir}/../../ee-feature-pack/galleon-shared/src/main/resources</ee.galleon.shared.resources.directory>
         <license.directory>${project.build.directory}/resources/content/docs/licenses</license.directory>
-        <feature-pack.license.directory>${basedir}/../../microprofile/galleon-common/src/main/resources/license</feature-pack.license.directory>
-        <oidc.feature-pack.license.directory>${basedir}/../../elytron-oidc-client/galleon-common/src/main/resources/license</oidc.feature-pack.license.directory>
-        <content.resources.directory>${basedir}/../galleon-content/src/main/resources</content.resources.directory>
+        <galleon.unpacked.resources.directory>${project.build.directory}/unpacked-dependency-galleon-resources</galleon.unpacked.resources.directory>
+        <galleon.shared.resources.directory>${basedir}/../galleon-shared/src/main/resources</galleon.shared.resources.directory>
+        <galleon.shared.generated.resources.directory>${basedir}/../galleon-shared/target/index</galleon.shared.generated.resources.directory>
+        <galleon.local.resources.directory>${basedir}/../galleon-local/src/main/resources</galleon.local.resources.directory>
     </properties>
 
     <build>
@@ -71,10 +54,107 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack-galleon-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.wildfly</groupId>
+                                    <artifactId>mvc-krazo-galleon-shared</artifactId>
+                                    <type>zip</type>
+                                </artifactItem>
+                            </artifactItems>
+                            <!-- The feature pack build seems to ignore such things anyway, but to be
+                                 robust exclude artifact metadata content -->
+                            <excludes>**/pom.xml,META-INF,META-INF/**</excludes>
+                            <outputDirectory>${galleon.unpacked.resources.directory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>copy-mp-galleon-feature-pack-resources</id>
+                        <id>copy-ee-galleon-shared-feature-pack-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <escapeString>\</escapeString>
+                            <outputDirectory>${basedir}/target/resources/packages/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <targetPath>${basedir}/target/resources/packages/docs.licenses</targetPath>
+                                    <directory>${ee.galleon.shared.resources.directory}/packages/docs.licenses</directory>
+                                </resource>
+                                <resource>
+                                    <targetPath>${basedir}/target/resources/packages/docs.licenses.merge</targetPath>
+                                    <directory>${ee.galleon.shared.resources.directory}/packages/docs.licenses.merge</directory>
+                                </resource>
+                            </resources>
+                            <overwrite>true</overwrite>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-galleon.shared-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/resources</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${galleon.shared.resources.directory}</directory>
+                                </resource>
+                            </resources>
+                            <overwrite>true</overwrite>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-galleon-shared-feature-pack-generated-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Just copy here rather than trying to get from the shared zip, since nothing else is using the zip -->
+                            <outputDirectory>${basedir}/target/resources/packages/unstable-api-annotation-index.wildfly-galleon-pack/pm/wildfly</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${galleon.shared.generated.resources.directory}</directory>
+                                </resource>
+                            </resources>
+                            <overwrite>true</overwrite>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-galleon-local-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/target/resources</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${galleon.local.resources.directory}</directory>
+                                </resource>
+                            </resources>
+                            <overwrite>true</overwrite>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-unpacked-galleon-resources</id>
                         <phase>process-resources</phase>
                         <goals>
                             <goal>copy-resources</goal>
@@ -84,63 +164,7 @@
                             <escapeString>\</escapeString>
                             <resources>
                                 <resource>
-                                    <directory>${mp.galleon.common.resources.directory}</directory>
-                                    <excludes>
-                                        <exclude>modules/**/module.xml</exclude>
-                                        <exclude>license/*.xml</exclude>
-                                    </excludes>
-                                </resource>
-                                <resource>
-                                    <directory>${mp.galleon.common.resources.directory}</directory>
-                                    <includes>
-                                        <include>modules/**/module.xml</include>
-                                        <include>license/*.xml</include>
-                                    </includes>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                            <overwrite>true</overwrite>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-oidc-galleon-feature-pack-resources</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${basedir}/target/resources</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${oidc.galleon.common.resources.directory}</directory>
-                                    <excludes>
-                                        <exclude>modules/**/module.xml</exclude>
-                                        <exclude>license/*.xml</exclude>
-                                    </excludes>
-                                </resource>
-                                <resource>
-                                    <directory>${oidc.galleon.common.resources.directory}</directory>
-                                    <includes>
-                                        <include>modules/**/module.xml</include>
-                                        <include>license/*.xml</include>
-                                    </includes>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                            <overwrite>true</overwrite>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-resources</id>
-                        <phase>process-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${basedir}/target/resources</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${content.resources.directory}</directory>
+                                    <directory>${basedir}/target/unpacked-dependency-galleon-resources</directory>
                                 </resource>
                             </resources>
                             <overwrite>true</overwrite>
@@ -160,11 +184,15 @@
                         </goals>
                         <phase>process-resources</phase>
                         <configuration>
+                            <generateVersionProperty>true</generateVersionProperty>
                             <sortByGroupIdAndArtifactId>true</sortByGroupIdAndArtifactId>
-                            <licensesConfigFile>${feature-pack.license.directory}/microprofile-feature-pack-licenses.xml</licensesConfigFile>
-                            <licensesConfigFile>${oidc.feature-pack.license.directory}/elytron-oidc-feature-pack-licenses.xml</licensesConfigFile>
-                            <licensesOutputFile>${license.directory}/microprofile-feature-pack-licenses.xml</licensesOutputFile>
-                            <excludedArtifacts>wildfly-ee-galleon-pack|wildfly-feature-pack-galleon-content</excludedArtifacts>
+                            <licensesConfigFiles>
+                                <licensesConfigFile>${galleon.unpacked.resources.directory}/license/wildfly-mvc-krazo-licenses.xml</licensesConfigFile>
+                                <licensesConfigFile>${galleon.shared.resources.directory}/license/licenses.xml</licensesConfigFile>
+                            </licensesConfigFiles>
+                            <licensesOutputFile>${license.directory}/wildfly-feature-pack-licenses.xml</licensesOutputFile>
+                            <excludedGroups>org.wildfly.galleon-plugins</excludedGroups>
+                            <excludedArtifacts>microprofile-reactive-messaging-api|wildfly-standard-expansion-bom|wildfly-standard-ee-bom|wildfly-feature-pack-galleon-shared|wildfly-common-expansion-dependency-management|wildfly-common-ee-dependency-management|wildfly-ee-galleon-pack|wildfly-feature-pack-galleon-shared|wildfly-feature-pack-galleon-local</excludedArtifacts>
                         </configuration>
                     </execution>
                 </executions>
@@ -180,11 +208,15 @@
                         </goals>
                         <phase>prepare-package</phase>
                         <configuration>
+                            <!-- Any dependency to a package that has a stability level
+                                 lower than the minimum stability level will break the build.
+                                 Note that package dependencies that are only valid for
+                                 a minimum stability level are ignored. -->
+                            <forbid-lower-stability-level-package-reference>true</forbid-lower-stability-level-package-reference>
                             <release-name>${full.dist.product.release.name}</release-name>
                             <fork-embedded>${galleon.fork.embedded}</fork-embedded>
-                            <task-properties>
-                                <product.release.version>${full.dist.product.release.version}</product.release.version>
-                            </task-properties>
+                            <generate-channel-manifest>true</generate-channel-manifest>
+                            <deploy-channel-manifest>false</deploy-channel-manifest>
                         </configuration>
                     </execution>
                 </executions>
@@ -218,24 +250,21 @@
 
         <dependency>
             <groupId>${full.maven.groupId}</groupId>
-            <artifactId>wildfly-mp-feature-pack-galleon-common</artifactId>
-            <version>${full.maven.version}</version>
+            <artifactId>wildfly-feature-pack-galleon-local</artifactId>
             <type>pom</type>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>${full.maven.groupId}</groupId>
-            <artifactId>wildfly-oidc-feature-pack-galleon-common</artifactId>
-            <version>${full.maven.version}</version>
+            <artifactId>wildfly-feature-pack-galleon-shared</artifactId>
             <type>pom</type>
             <scope>provided</scope>
         </dependency>
 
-         <dependency>
-            <groupId>${full.maven.groupId}</groupId>
-            <artifactId>wildfly-feature-pack-galleon-content</artifactId>
-            <version>${full.maven.version}</version>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>mvc-krazo-galleon-shared</artifactId>
             <type>pom</type>
             <scope>provided</scope>
         </dependency>
@@ -298,14 +327,11 @@
                                     <rules>
                                         <banTransitiveDependencies>
                                             <excludes>
-                                                <!-- Ignore jdk jars because they are system scope -->
-                                                <exclude>com.sun:tools</exclude>
-                                                <exclude>sun.jdk:jconsole</exclude>
                                                 <!-- Ignore the shared resource poms as those we want their
                                                      transitives. Those poms ban transitives at their level -->
-                                                <exclude>${full.maven.groupId}:wildfly-mp-feature-pack-galleon-common</exclude>
-                                                <exclude>${full.maven.groupId}:wildfly-oidc-feature-pack-galleon-common</exclude>
-                                                <exclude>${full.maven.groupId}:wildfly-feature-pack-galleon-content</exclude>
+                                                <exclude>${full.maven.groupId}:wildfly-feature-pack-galleon-shared</exclude>
+                                                <exclude>${full.maven.groupId}:wildfly-feature-pack-galleon-local</exclude>
+                                                <exclude>org.wildfly:mvc-krazo-galleon-shared</exclude>
                                             </excludes>
                                         </banTransitiveDependencies>
                                     </rules>

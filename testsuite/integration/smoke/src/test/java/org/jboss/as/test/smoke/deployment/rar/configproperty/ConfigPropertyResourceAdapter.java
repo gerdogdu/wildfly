@@ -1,32 +1,15 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.smoke.deployment.rar.configproperty;
 
-import javax.resource.ResourceException;
-import javax.resource.spi.ActivationSpec;
-import javax.resource.spi.BootstrapContext;
-import javax.resource.spi.ResourceAdapter;
-import javax.resource.spi.ResourceAdapterInternalException;
-import javax.resource.spi.endpoint.MessageEndpointFactory;
+import jakarta.resource.ResourceException;
+import jakarta.resource.spi.ActivationSpec;
+import jakarta.resource.spi.BootstrapContext;
+import jakarta.resource.spi.ResourceAdapter;
+import jakarta.resource.spi.ResourceAdapterInternalException;
+import jakarta.resource.spi.endpoint.MessageEndpointFactory;
 import javax.transaction.xa.XAResource;
 
 /**
@@ -69,7 +52,7 @@ public class ConfigPropertyResourceAdapter implements ResourceAdapter {
      *
      * @param endpointFactory A message endpoint factory instance.
      * @param spec            An activation spec JavaBean instance.
-     * @throws javax.resource.ResourceException generic exception
+     * @throws jakarta.resource.ResourceException generic exception
      */
     public void endpointActivation(MessageEndpointFactory endpointFactory,
                                    ActivationSpec spec) throws ResourceException {
@@ -89,7 +72,7 @@ public class ConfigPropertyResourceAdapter implements ResourceAdapter {
      * This is called when a resource adapter instance is bootstrapped.
      *
      * @param ctx A bootstrap context containing references
-     * @throws javax.resource.spi.ResourceAdapterInternalException indicates bootstrap failure.
+     * @throws jakarta.resource.spi.ResourceAdapterInternalException indicates bootstrap failure.
      */
     public void start(BootstrapContext ctx)
             throws ResourceAdapterInternalException {
@@ -107,7 +90,7 @@ public class ConfigPropertyResourceAdapter implements ResourceAdapter {
      *
      * @param specs An array of ActivationSpec JavaBeans
      * @return An array of XAResource objects
-     * @throws javax.resource.ResourceException generic exception
+     * @throws jakarta.resource.ResourceException generic exception
      */
     public XAResource[] getXAResources(ActivationSpec[] specs)
             throws ResourceException {

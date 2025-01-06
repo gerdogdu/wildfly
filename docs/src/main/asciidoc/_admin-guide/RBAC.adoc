@@ -1,6 +1,14 @@
 [[RBAC]]
 = Authorizing management actions with Role Based Access Control
-ifdef::env-github[:imagesdir: ../images/]
+
+ifdef::env-github[]
+:imagesdir: ../
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 WildFly introduces a Role Based Access Control scheme that allows
 different administrative users to have different sets of permissions to
@@ -197,7 +205,7 @@ to take effect.
 
 In a managed domain, the access control configuration is part of the
 domain wide configuration, so the resource address is the same as above,
-but the CLI is connected to the master Domain Controller:
+but the CLI is connected to the Domain Controller:
 
 [source,options="nowrap"]
 ----
@@ -210,7 +218,7 @@ but the CLI is connected to the master Domain Controller:
         "process-state" => "reload-required"
     },
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {
             "outcome" => "success",
             "response-headers" => {
@@ -227,12 +235,12 @@ but the CLI is connected to the master Domain Controller:
         }}
     }}}}
 }
-[domain@localhost:9990 access=authorization] reload --host=master
+[domain@localhost:9990 access=authorization] reload --host=primary
 ----
 
 As with a standalone server, a reload or restart is required for the
 change to take effect. In this case, all hosts and servers in the domain
-will need to be reloaded or restarted, starting with the master Domain
+will need to be reloaded or restarted, starting with the Domain
 Controller, so be sure to plan well before making this change.
 
 [[mapping-users-and-groups-to-roles]]
@@ -253,7 +261,7 @@ admin console.
 Navigate to the "Administration" tab and the "Users" subtab. From there
 individual user mappings can be added, removed, or edited.
 
-image:usermapping.png[images/usermapping.png,width=450]
+image:images/usermapping.png[alt=usermapping.png,width=450]
 
 The CLI can also be used to map individuals users to roles.
 
@@ -267,7 +275,7 @@ role.
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -282,7 +290,7 @@ Once this is done, map a user to the role:
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -320,7 +328,7 @@ console.
 Navigate to the "Administration" tab and the "Groups" subtab. From there
 group mappings can be added, removed, or edited.
 
-image:groupmapping.png[images/groupmapping.png,width=450]
+image:images/groupmapping.png[alt=groupmapping.png,width=450]
 
 The CLI can also be used to map groups to roles. The only difference to
 individual user mapping is the value of the `type` attribute should be
@@ -332,7 +340,7 @@ individual user mapping is the value of the `type` attribute should be
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -357,7 +365,7 @@ In the web based admin console, navigate to the "Administration" tab,
 "Roles" subtab, highlight the relevant role, click the "Edit" button and
 click on the "Include All" checkbox:
 
-image:includeall.png[images/includeall.png,width=450]
+image:images/includeall.png[alt=includeall.png,width=450]
 
 The same change can be made using the CLI:
 
@@ -367,7 +375,7 @@ The same change can be made using the CLI:
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -384,7 +392,7 @@ where the `include-all` attribute is set to true for a role.
 In the admin console, excludes are done in the same screens as includes.
 In the add dialog, simply change the "Type" pulldown to "Exclude".
 
-image:excludemapping.png[images/excludemapping.png,width=450]
+image:images/excludemapping.png[alt=excludemapping.png,width=450]
 
 In the CLI, excludes are identical to includes, except the resource
 address has `exclude` instead of `include` as the key for the last
@@ -396,7 +404,7 @@ address element:
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -488,7 +496,7 @@ But you can also use the CLI to create a server-group scoped role.
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -530,11 +538,11 @@ But you can also use the CLI to create a host scoped role.
 
 [source,options="nowrap"]
 ----
-[domain@localhost:9990 /] /core-service=management/access=authorization/host-scoped-role=MasterOperators:add(base-role=Operator,hosts=[master]}
+[domain@localhost:9990 /] /core-service=management/access=authorization/host-scoped-role=DCOperators:add(base-role=Operator,hosts=[primary]}
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -551,14 +559,14 @@ Both server-group and host scoped roles can be added, removed or edited
 via the admin console. Select "Scoped Roles" from the "Administration"
 tab, "Roles" subtab:
 
-image:scopedroles.png[images/scopedroles.png,width=450]
+image:images/scopedroles.png[alt=scopedroles.png,width=450]
 
 When adding a new scoped role, use the dialogue's "Type" pull down to
 choose between a host scoped role and a server-group scoped role. Then
 place the names of the relevant hosts or server groups in the "Scope"
 text are.
 
-image:addscopedrole.png[images/addscopedrole.png,width=450]
+image:images/addscopedrole.png[alt=addscopedrole.png,width=450]
 
 [[configuring-constraints]]
 == Configuring constraints
@@ -644,7 +652,7 @@ setting:
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -661,14 +669,14 @@ classification applies:
 {
     "outcome" => "success",
     "result" => {
-        "/host=master" => {
-            "address" => "/host=master",
+        "/host=primary" => {
+            "address" => "/host=primary",
             "attributes" => [],
             "entire-resource" => false,
             "operations" => ["resolve-internet-address"]
         },
-        "/host=master/core-service=host-environment" => {
-            "address" => "/host=master/core-service=host-environment",
+        "/host=primary/core-service=host-environment" => {
+            "address" => "/host=primary/core-service=host-environment",
             "attributes" => [
                 "host-controller-port",
                 "host-controller-address",
@@ -678,8 +686,8 @@ classification applies:
             "entire-resource" => false,
             "operations" => []
         },
-        "/host=master/core-service=management/management-interface=http-interface" => {
-            "address" => "/host=master/core-service=management/management-interface=http-interface",
+        "/host=primary/core-service=management/management-interface=http-interface" => {
+            "address" => "/host=primary/core-service=management/management-interface=http-interface",
             "attributes" => [
                 "port",
                 "secure-interface",
@@ -689,8 +697,8 @@ classification applies:
             "entire-resource" => false,
             "operations" => []
         },
-        "/host=master/core-service=management/management-interface=native-interface" => {
-            "address" => "/host=master/core-service=management/management-interface=native-interface",
+        "/host=primary/core-service=management/management-interface=native-interface" => {
+            "address" => "/host=primary/core-service=management/management-interface=native-interface",
             "attributes" => [
                 "port",
                 "interface"
@@ -698,14 +706,14 @@ classification applies:
             "entire-resource" => false,
             "operations" => []
         },
-        "/host=master/interface=*" => {
-            "address" => "/host=master/interface=*",
+        "/host=primary/interface=*" => {
+            "address" => "/host=primary/interface=*",
             "attributes" => [],
             "entire-resource" => true,
             "operations" => ["resolve-internet-address"]
         },
-        "/host=master/server-config=*/interface=*" => {
-            "address" => "/host=master/server-config=*/interface=*",
+        "/host=primary/server-config=*/interface=*" => {
+            "address" => "/host=primary/server-config=*/interface=*",
             "attributes" => [],
             "entire-resource" => true,
             "operations" => []
@@ -831,7 +839,7 @@ expressions to be security sensitive, you can change that setting:
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -912,7 +920,7 @@ Deployer role, set the `configured-application` attribute to true.
 {
     "outcome" => "success",
     "result" => undefined,
-    "server-groups" => {"main-server-group" => {"host" => {"master" => {
+    "server-groups" => {"main-server-group" => {"host" => {"primary" => {
         "server-one" => {"response" => {"outcome" => "success"}},
         "server-two" => {"response" => {"outcome" => "success"}}
     }}}}
@@ -995,13 +1003,13 @@ actually does:
 
 [source,options="nowrap"]
 ----
-[domain@localhost:9990 /] /profile=default/subsystem=security/security-domain=other:read-resource
+[domain@localhost:9990 /] /profile=default/subsystem=elytron/security-domain=ManagementDomain:read-resource
 {
     "outcome" => "failed",
     "failure-description" => "WFLYCTL0216: Management resource '[
     (\"profile\" => \"default\"),
-    (\"subsystem\" => \"security\"),
-    (\"security-domain\" => \"other\")
+    (\"subsystem\" => \"elytron\"),
+    (\"security-domain\" => \"ManagementDomain\")
 ]' not found",
     "rolled-back" => true
 }
@@ -1015,25 +1023,25 @@ which they are allowed to see and some of which they are not. If this
 happens, the request will not fail, but inaccessible data will be elided
 and a response header will be included advising on what was not
 included. Here we show the effect of a Monitor trying to recursively
-read the security subsystem configuration:
+read the elytron subsystem configuration:
 
 [source,options="nowrap"]
 ----
-[domain@localhost:9990 /] /profile=default/subsystem=security:read-resource(recursive=true)
+[domain@localhost:9990 /] /profile=default/subsystem=elytron:read-resource(recursive=true)
 {
     "outcome" => "success",
     "result" => {
-        "deep-copy-subject-mode" => undefined,
+        "security-properties" => undefined,
         "security-domain" => undefined,
         "vault" => undefined
     },
     "response-headers" => {"access-control" => [{
         "absolute-address" => [
             ("profile" => "default"),
-            ("subsystem" => "security")
+            ("subsystem" => "elytron")
         ],
         "relative-address" => [],
-        "filtered-attributes" => ["deep-copy-subject-mode"],
+        "filtered-attributes" => ["security-properties"],
         "filtered-children-types" => ["security-domain"]
     }]}
 }
@@ -1134,7 +1142,7 @@ Users can learn in which roles they are operating. In the admin console,
 click on your name in the top right corner; the roles you are in will be
 shown.
 
-image:callersroles.png[images/callersroles.png,width=450]
+image:images/callersroles.png[alt=callersroles.png,width=450]
 
 CLI users should use the `whoami` operation with the `verbose` attribute
 set:
@@ -1214,11 +1222,11 @@ Admin console users can change the role in which they operate by
 clicking on their name in the top right corner and clicking on the "Run
 as..." link.
 
-image:callersroles.png[images/callersroles.png,width=450]
+image:images/callersroles.png[alt=callersroles.png,width=450]
 
 Then select the role in which you wish to operate:
 
-image:runasrole.png[images/runasrole.png,width=450]
+image:images/runasrole.png[alt=runasrole.png,width=450]
 
 The console will need to be restarted in order for the change to take
 effect.

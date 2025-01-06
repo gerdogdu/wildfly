@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2021, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.weld.services.bootstrap;
 
@@ -28,17 +11,18 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
-import javax.enterprise.inject.spi.InjectionPoint;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.PersistenceContext;
-import javax.persistence.PersistenceUnit;
-import javax.transaction.TransactionManager;
-import javax.transaction.TransactionSynchronizationRegistry;
-
+import jakarta.enterprise.inject.spi.InjectionPoint;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceProperty;
+import jakarta.persistence.PersistenceUnit;
+import jakarta.transaction.TransactionManager;
+import jakarta.transaction.TransactionSynchronizationRegistry;
 import org.jboss.as.jpa.container.PersistenceUnitSearch;
 import org.jboss.as.jpa.container.TransactionScopedEntityManager;
 import org.jboss.as.jpa.processor.JpaAttachments;
@@ -89,7 +73,7 @@ public class WeldJpaInjectionServices implements JpaInjectionServices {
                 public EntityManager call() throws Exception {
                     return new TransactionScopedEntityManager(
                             scopedPuName,
-                            new HashMap<>(),
+                            getProperties(context),
                             persistenceUnitService.getEntityManagerFactory(),
                             context.synchronization(),
                             deploymentUnit.getAttachment(JpaAttachments.TRANSACTION_SYNCHRONIZATION_REGISTRY),
@@ -140,6 +124,15 @@ public class WeldJpaInjectionServices implements JpaInjectionServices {
         return scopedPu.getScopedPersistenceUnitName();
     }
 
+    private static Map getProperties(PersistenceContext context) {
+        HashMap map = new HashMap();
+        for (PersistenceProperty property : context.properties()) {
+            map.put(property.name(), property.value());
+        }
+        return map;
+    }
+
+
     private static class EntityManagerResourceReferenceFactory implements ResourceReferenceFactory<EntityManager> {
         private final String scopedPuName;
         private final EntityManagerFactory entityManagerFactory;
@@ -157,9 +150,10 @@ public class WeldJpaInjectionServices implements JpaInjectionServices {
 
         @Override
         public ResourceReference<EntityManager> createResource() {
-            final TransactionScopedEntityManager result = new TransactionScopedEntityManager(scopedPuName, new HashMap<>(), entityManagerFactory, context.synchronization(), transactionSynchronizationRegistry, transactionManager);
+            final TransactionScopedEntityManager result = new TransactionScopedEntityManager(scopedPuName, getProperties(context), entityManagerFactory, context.synchronization(), transactionSynchronizationRegistry, transactionManager);
             return new SimpleResourceReference<EntityManager>(result);
         }
+
     }
 
     private static class LazyFactory<T> implements ResourceReferenceFactory<T> {

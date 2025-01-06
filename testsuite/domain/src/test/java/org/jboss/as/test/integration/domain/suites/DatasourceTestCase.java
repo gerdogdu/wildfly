@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain.suites;
@@ -48,20 +31,20 @@ import org.junit.Test;
 public class DatasourceTestCase {
 
     private static DomainTestSupport testSupport;
-    private static DomainLifecycleUtil domainMasterLifecycleUtil;
-    private static DomainLifecycleUtil domainSlaveLifecycleUtil;
+    private static DomainLifecycleUtil domainPrimaryLifecycleUtil;
+    private static DomainLifecycleUtil domainSecondaryLifecycleUtil;
 
     private static final ModelNode ROOT_ADDRESS = new ModelNode().setEmptyList();
-    private static final ModelNode MASTER_ROOT_ADDRESS = new ModelNode().add(HOST, "master");
-    private static final ModelNode SLAVE_ROOT_ADDRESS = new ModelNode().add(HOST, "slave");
-    private static final ModelNode MAIN_RUNNING_SERVER_ADDRESS = new ModelNode().add(HOST, "master").add(SERVER, "main-one");
-    private static final ModelNode MAIN_RUNNING_SERVER_DS_ADDRESS = new ModelNode().add(HOST, "master")
+    private static final ModelNode PRIMARY_ROOT_ADDRESS = new ModelNode().add(HOST, "primary");
+    private static final ModelNode SECONDARY_ROOT_ADDRESS = new ModelNode().add(HOST, "secondary");
+    private static final ModelNode MAIN_RUNNING_SERVER_ADDRESS = new ModelNode().add(HOST, "primary").add(SERVER, "main-one");
+    private static final ModelNode MAIN_RUNNING_SERVER_DS_ADDRESS = new ModelNode().add(HOST, "primary")
             .add(SERVER, "main-one").add(SUBSYSTEM, "datasources").add("data-source", "ExampleDS");
 
     static {
         ROOT_ADDRESS.protect();
-        MASTER_ROOT_ADDRESS.protect();
-        SLAVE_ROOT_ADDRESS.protect();
+        PRIMARY_ROOT_ADDRESS.protect();
+        SECONDARY_ROOT_ADDRESS.protect();
         MAIN_RUNNING_SERVER_ADDRESS.protect();
         MAIN_RUNNING_SERVER_DS_ADDRESS.protect();
     }
@@ -69,32 +52,32 @@ public class DatasourceTestCase {
     @BeforeClass
     public static void setupDomain() throws Exception {
         testSupport = DomainTestSuite.createSupport(DatasourceTestCase.class.getSimpleName());
-        domainMasterLifecycleUtil = testSupport.getDomainMasterLifecycleUtil();
-        domainSlaveLifecycleUtil = testSupport.getDomainSlaveLifecycleUtil();
+        domainPrimaryLifecycleUtil = testSupport.getDomainPrimaryLifecycleUtil();
+        domainSecondaryLifecycleUtil = testSupport.getDomainSecondaryLifecycleUtil();
     }
 
     @AfterClass
     public static void tearDownDomain() throws Exception {
         testSupport = null;
-        domainMasterLifecycleUtil = null;
-        domainSlaveLifecycleUtil = null;
+        domainPrimaryLifecycleUtil = null;
+        domainSecondaryLifecycleUtil = null;
         DomainTestSuite.stopSupport();
     }
 
-    private DomainClient masterClient;
-    private DomainClient slaveClient;
+    private DomainClient primaryClient;
+    private DomainClient secondaryClient;
 
     @Before
     public void setup() throws Exception {
-        masterClient = domainMasterLifecycleUtil.getDomainClient();
-        slaveClient = domainSlaveLifecycleUtil.getDomainClient();
+        primaryClient = domainPrimaryLifecycleUtil.getDomainClient();
+        secondaryClient = domainSecondaryLifecycleUtil.getDomainClient();
     }
 
     @Test
     public void testDatasourceConnection() throws IOException {
 
         // AS7-6062 -- validate that  ExampleDS works on a domain server
-        ModelNode response = masterClient.execute(getEmptyOperation("test-connection-in-pool", MAIN_RUNNING_SERVER_DS_ADDRESS));
+        ModelNode response = primaryClient.execute(getEmptyOperation("test-connection-in-pool", MAIN_RUNNING_SERVER_DS_ADDRESS));
         validateResponse(response);
     }
 

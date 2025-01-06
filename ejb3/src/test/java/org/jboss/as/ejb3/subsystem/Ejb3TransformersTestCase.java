@@ -1,3 +1,8 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.ejb3.subsystem;
 
 import static org.jboss.as.controller.capability.RuntimeCapability.buildDynamicCapabilityName;
@@ -7,7 +12,6 @@ import java.util.List;
 
 import org.jboss.as.controller.ModelVersion;
 import org.jboss.as.controller.PathAddress;
-import org.jboss.as.controller.PathElement;
 import org.jboss.as.model.test.FailedOperationTransformationConfig;
 import org.jboss.as.model.test.ModelFixer;
 import org.jboss.as.model.test.ModelTestControllerVersion;
@@ -32,7 +36,7 @@ import org.junit.Assert;
  * @author Richard Achmatowicz (c) 2015 Red Hat Inc.
  * @author Richard Achmatowicz (c) 2020 Red Hat Inc.
  *
- * NOTE: References in this file to Enterprise JavaBeans(EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
+ * NOTE: References in this file to Enterprise JavaBeans (EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
  */
 public class Ejb3TransformersTestCase extends AbstractSubsystemBaseTest {
 
@@ -145,11 +149,13 @@ public class Ejb3TransformersTestCase extends AbstractSubsystemBaseTest {
         PathAddress subsystemAddress = PathAddress.pathAddress(EJB3Extension.SUBSYSTEM_PATH);
 
         // need to include all changes from current to 9.0.0
-        if (EJB3Model.VERSION_9_0_0.matches(version)) {
+        if (EJB3Model.VERSION_9_0_0.requiresTransformation(version)) {
             // reject the resource /subsystem=ejb3/simple-cache
-            config.addFailedAttribute(subsystemAddress.append(PathElement.pathElement(EJB3SubsystemModel.SIMPLE_CACHE, "simple-cache")), FailedOperationTransformationConfig.REJECTED_RESOURCE);
+            config.addFailedAttribute(subsystemAddress.append(EJB3SubsystemModel.SIMPLE_CACHE_PATH), FailedOperationTransformationConfig.REJECTED_RESOURCE);
             // reject the resource /subsystem=ejb3/distributable-cache
-            config.addFailedAttribute(subsystemAddress.append(PathElement.pathElement(EJB3SubsystemModel.DISTRIBUTABLE_CACHE, "distributable-cache")), FailedOperationTransformationConfig.REJECTED_RESOURCE);
+            config.addFailedAttribute(subsystemAddress.append(EJB3SubsystemModel.DISTRIBUTABLE_CACHE_PATH), FailedOperationTransformationConfig.REJECTED_RESOURCE);
+            // Reject when default-data-store is undefined
+            config.addFailedAttribute(subsystemAddress.append(EJB3SubsystemModel.TIMER_SERVICE_PATH), FailedOperationTransformationConfig.REJECTED_RESOURCE);
         }
         return config;
     }

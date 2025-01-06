@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.messaging.security;
@@ -31,18 +14,18 @@ import static org.junit.Assert.fail;
 
 import java.io.Serializable;
 
-import javax.annotation.Resource;
-import javax.ejb.Stateless;
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSConnectionFactoryDefinition;
-import javax.jms.JMSConnectionFactoryDefinitions;
-import javax.jms.JMSConsumer;
-import javax.jms.JMSContext;
-import javax.jms.JMSDestinationDefinition;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.ObjectMessage;
-import javax.jms.Queue;
+import jakarta.annotation.Resource;
+import jakarta.ejb.Stateless;
+import jakarta.jms.ConnectionFactory;
+import jakarta.jms.JMSConnectionFactoryDefinition;
+import jakarta.jms.JMSConnectionFactoryDefinitions;
+import jakarta.jms.JMSConsumer;
+import jakarta.jms.JMSContext;
+import jakarta.jms.JMSDestinationDefinition;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
+import jakarta.jms.ObjectMessage;
+import jakarta.jms.Queue;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -52,20 +35,20 @@ import javax.naming.NamingException;
  */
 @JMSDestinationDefinition(
         name="java:comp/env/myQueue",
-        interfaceName="javax.jms.Queue"
+        interfaceName="jakarta.jms.Queue"
 )
 @JMSConnectionFactoryDefinitions(
         value = {
                 @JMSConnectionFactoryDefinition(
                         name = "java:comp/env/myBlockListCF",
-                        interfaceName = "javax.jms.QueueConnectionFactory",
+                        interfaceName = "jakarta.jms.QueueConnectionFactory",
                         properties = {
                                 "connectors=${org.jboss.messaging.default-connector:in-vm}",
                                 "deserialization-black-list=java.util.UUID"
                         }),
                 @JMSConnectionFactoryDefinition(
                         name = "java:comp/env/myAllowListCF",
-                        interfaceName = "javax.jms.QueueConnectionFactory",
+                        interfaceName = "jakarta.jms.QueueConnectionFactory",
                         properties = {
                                 "connectors=${org.jboss.messaging.default-connector:in-vm}",
                                 "deserialization-white-list=java.util.UUID"

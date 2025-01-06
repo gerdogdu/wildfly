@@ -1,23 +1,6 @@
 <!--
-  ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2018, Red Hat, Inc., and individual contributors
-  ~ as indicated by the @author tags. See the copyright.txt file in the
-  ~ distribution for a full listing of individual contributors.
-  ~
-  ~ This is free software; you can redistribute it and/or modify it
-  ~ under the terms of the GNU Lesser General Public License as
-  ~ published by the Free Software Foundation; either version 2.1 of
-  ~ the License, or (at your option) any later version.
-  ~
-  ~ This software is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  ~ Lesser General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU Lesser General Public
-  ~ License along with this software; if not, write to the Free
-  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 
 <domain xmlns="urn:jboss:domain:20.0">
@@ -613,13 +596,17 @@
                     <http-connector name="http-connector-throughput" socket-binding="http" endpoint="http-acceptor-throughput">
                         <param name="batch-delay" value="50"/>
                     </http-connector>
-                    <in-vm-connector name="in-vm" server-id="0"/>
+                    <in-vm-connector name="in-vm" server-id="0">
+                        <param name="buffer-pooling" value="false"/>
+                    </in-vm-connector>
                     <http-acceptor name="http-acceptor" http-listener="default"/>
                     <http-acceptor name="http-acceptor-throughput" http-listener="default">
                         <param name="batch-delay" value="50"/>
                         <param name="direct-deliver" value="false"/>
                     </http-acceptor>
-                    <in-vm-acceptor name="in-vm" server-id="0"/>
+                    <in-vm-acceptor name="in-vm" server-id="0">
+                        <param name="buffer-pooling" value="false"/>
+                    </in-vm-acceptor>
                     <jms-queue name="ExpiryQueue" entries="java:/jms/queue/ExpiryQueue"/>
                     <jms-queue name="DLQ" entries="java:/jms/queue/DLQ"/>
                     <jms-queue name="testQueue" entries="queue/test"/>
@@ -828,7 +815,7 @@
     <server-groups>
         <server-group name="main-server-group" profile="default">
             <jvm name="default">
-                <heap size="64m" max-size="100m"/>
+                <heap size="64m" max-size="256m"/>
                 <environment-variables>
                     <variable name="DOMAIN_TEST_MAIN_GROUP" value="main_group"/>
                 </environment-variables>
@@ -838,7 +825,7 @@
 
         <server-group name="other-server-group" profile="other">
             <jvm name="default">
-                <heap size="64m" max-size="100m"/>
+                <heap size="64m" max-size="256m"/>
             </jvm>
             <socket-binding-group ref="other-sockets"/>
         </server-group>
@@ -861,7 +848,7 @@
         <server-group name="reload-test-group" profile="minimal">
             <socket-binding-group ref="reload-sockets"/>
             <jvm name="default">
-                <heap size="64m" max-size="64m"/>
+                <heap size="64m" max-size="100m"/>
             </jvm>
         </server-group>
     </server-groups>

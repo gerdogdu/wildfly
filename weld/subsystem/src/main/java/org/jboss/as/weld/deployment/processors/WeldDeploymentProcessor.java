@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.weld.deployment.processors;
 
@@ -36,10 +19,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import javax.enterprise.inject.spi.Extension;
+import jakarta.enterprise.inject.spi.Extension;
 
 import org.jboss.as.controller.capability.CapabilityServiceSupport;
-import org.jboss.as.ee.concurrent.ConcurrentContextSetupAction;
 import org.jboss.as.ee.naming.JavaNamespaceSetup;
 import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.naming.deployment.JndiNamingDependencyProcessor;
@@ -76,7 +58,6 @@ import org.jboss.as.weld.util.ServiceLoaders;
 import org.jboss.as.weld.util.Utils;
 import org.jboss.metadata.ear.spec.EarMetaData;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
@@ -87,10 +68,11 @@ import org.jboss.weld.bootstrap.spi.Metadata;
 import org.jboss.weld.config.ConfigurationKey;
 import org.jboss.weld.configuration.spi.ExternalConfiguration;
 import org.jboss.weld.configuration.spi.helpers.ExternalConfigurationBuilder;
+import org.jboss.weld.lite.extension.translator.LiteExtensionTranslator;
 import org.jboss.weld.manager.api.ExecutorServices;
 import org.jboss.weld.security.spi.SecurityServices;
 import org.jboss.weld.transaction.spi.TransactionServices;
-import org.wildfly.common.iteration.CompositeIterable;
+import org.jboss.as.ee.component.ConcurrencyAttachments;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
@@ -141,21 +123,21 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
         final Module module = deploymentUnit.getAttachment(Attachments.MODULE);
         final ModuleSpecification moduleSpecification = deploymentUnit.getAttachment(Attachments.MODULE_SPECIFICATION);
 
-        final Set<BeanDeploymentArchiveImpl> beanDeploymentArchives = new HashSet<BeanDeploymentArchiveImpl>();
-        final Map<ModuleIdentifier, BeanDeploymentModule> bdmsByIdentifier = new HashMap<ModuleIdentifier, BeanDeploymentModule>();
-        final Map<ModuleIdentifier, ModuleSpecification> moduleSpecByIdentifier = new HashMap<ModuleIdentifier, ModuleSpecification>();
-        final Map<ModuleIdentifier, EEModuleDescriptor> eeModuleDescriptors = new HashMap<>();
+        final Set<BeanDeploymentArchiveImpl> beanDeploymentArchives = new HashSet<>();
+        final Map<String, BeanDeploymentModule> bdmsByIdentifier = new HashMap<>();
+        final Map<String, ModuleSpecification> moduleSpecByIdentifier = new HashMap<>();
+        final Map<String, EEModuleDescriptor> eeModuleDescriptors = new HashMap<>();
 
         // the root module only has access to itself. For most deployments this will be the only module
         // for ear deployments this represents the ear/lib directory.
         // war and jar deployment visibility will depend on the dependencies that
         // exist in the application, and mirror inter module dependencies
         final BeanDeploymentModule rootBeanDeploymentModule = deploymentUnit.getAttachment(WeldAttachments.BEAN_DEPLOYMENT_MODULE);
-        putIfValueNotNull(eeModuleDescriptors, module.getIdentifier(), rootBeanDeploymentModule.getModuleDescriptor());
+        putIfValueNotNull(eeModuleDescriptors, module.getName(), rootBeanDeploymentModule.getModuleDescriptor());
 
-        bdmsByIdentifier.put(module.getIdentifier(), rootBeanDeploymentModule);
+        bdmsByIdentifier.put(module.getName(), rootBeanDeploymentModule);
 
-        moduleSpecByIdentifier.put(module.getIdentifier(), moduleSpecification);
+        moduleSpecByIdentifier.put(module.getName(), moduleSpecification);
 
         beanDeploymentArchives.addAll(rootBeanDeploymentModule.getBeanDeploymentArchives());
         final List<DeploymentUnit> subDeployments = deploymentUnit.getAttachmentList(Attachments.SUB_DEPLOYMENTS);
@@ -164,8 +146,13 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
 
         final ServiceLoader<DeploymentUnitDependenciesProvider> dependenciesProviders = ServiceLoader.load(DeploymentUnitDependenciesProvider.class,
                 WildFlySecurityManager.getClassLoaderPrivileged(WeldDeploymentProcessor.class));
-        final ServiceLoader<ModuleServicesProvider> moduleServicesProviders = ServiceLoader.load(ModuleServicesProvider.class,
-                WildFlySecurityManager.getClassLoaderPrivileged(WeldDeploymentProcessor.class));
+        List<ClassLoader> loaders = new ArrayList<>(subDeployments.size() + 2);
+        loaders.add(WildFlySecurityManager.getClassLoaderPrivileged(WeldDeploymentProcessor.class));
+        loaders.add(module.getClassLoader());
+        for (DeploymentUnit subDeployment : subDeployments) {
+            loaders.add(subDeployment.getAttachment(Attachments.MODULE).getClassLoader());
+        }
+        Iterable<ModuleServicesProvider> moduleServicesProviders = ServiceLoader.load(ModuleServicesProvider.class, new CompositeClassLoader(loaders));
 
         getDependencies(deploymentUnit, dependencies, dependenciesProviders);
 
@@ -184,27 +171,26 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
             }
             // add the modules bdas to the global set of bdas
             beanDeploymentArchives.addAll(bdm.getBeanDeploymentArchives());
-            bdmsByIdentifier.put(subDeploymentModule.getIdentifier(), bdm);
-            moduleSpecByIdentifier.put(subDeploymentModule.getIdentifier(), subDeploymentModuleSpec);
-            putIfValueNotNull(eeModuleDescriptors, subDeploymentModule.getIdentifier(), bdm.getModuleDescriptor());
+            bdmsByIdentifier.put(subDeploymentModule.getName(), bdm);
+            moduleSpecByIdentifier.put(subDeploymentModule.getName(), subDeploymentModuleSpec);
+            putIfValueNotNull(eeModuleDescriptors, subDeploymentModule.getName(), bdm.getModuleDescriptor());
 
             //we have to do this here as the aggregate components are not available in earlier phases
             final ResourceRoot subDeploymentRoot = subDeployment.getAttachment(Attachments.DEPLOYMENT_ROOT);
 
-            Iterable<ModuleServicesProvider> providers = new CompositeIterable<>(moduleServicesProviders, subDeploymentModule.loadService(ModuleServicesProvider.class));
             // Add module services to bean deployment module
-            for (Entry<Class<? extends Service>, Service> entry : ServiceLoaders.loadModuleServices(providers, deploymentUnit, subDeployment, subDeploymentModule, subDeploymentRoot).entrySet()) {
+            for (Entry<Class<? extends Service>, Service> entry : ServiceLoaders.loadModuleServices(moduleServicesProviders, deploymentUnit, subDeployment, subDeploymentModule, subDeploymentRoot).entrySet()) {
                 bdm.addService(entry.getKey(), Reflections.cast(entry.getValue()));
             }
         }
 
-        for (Map.Entry<ModuleIdentifier, BeanDeploymentModule> entry : bdmsByIdentifier.entrySet()) {
+        for (Map.Entry<String, BeanDeploymentModule> entry : bdmsByIdentifier.entrySet()) {
             final ModuleSpecification bdmSpec = moduleSpecByIdentifier.get(entry.getKey());
             final BeanDeploymentModule bdm = entry.getValue();
             if (bdm == rootBeanDeploymentModule) {
                 continue; // the root module only has access to itself
             }
-            for (ModuleDependency dependency : bdmSpec.getSystemDependencies()) {
+            for (ModuleDependency dependency : bdmSpec.getSystemDependenciesSet()) {
                 BeanDeploymentModule other = bdmsByIdentifier.get(dependency.getIdentifier());
                 if (other != null && other != bdm) {
                     bdm.addBeanDeploymentModule(other);
@@ -212,8 +198,7 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
             }
         }
 
-        Iterable<ModuleServicesProvider> providers = new CompositeIterable<>(moduleServicesProviders, module.loadService(ModuleServicesProvider.class));
-        Map<Class<? extends Service>, Service> rootModuleServices = ServiceLoaders.loadModuleServices(providers, deploymentUnit, deploymentUnit,
+        Map<Class<? extends Service>, Service> rootModuleServices = ServiceLoaders.loadModuleServices(moduleServicesProviders, deploymentUnit, deploymentUnit,
                 module, deploymentRoot);
 
         // Add root module services to root bean deployment module
@@ -228,8 +213,11 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
                 additional.getServices().add(entry.getKey(), Reflections.cast(entry.getValue()));
             }
         }
-
-        final Collection<Metadata<Extension>> extensions = WeldPortableExtensions.getPortableExtensions(deploymentUnit).getExtensions();
+        WeldPortableExtensions portableExtensions = WeldPortableExtensions.getPortableExtensions(deploymentUnit);
+        // register LiteExtensionTranslator as the last extension so that we have all info on registered BCEs
+        // NOTE: I chose to register it under the dep. unit of the top level deployment, using its CL, not sure if this is correct
+        portableExtensions.registerLiteExtensionTranslatorIfNeeded(classes -> new LiteExtensionTranslator(classes, module.getClassLoader()), deploymentUnit);
+        final Collection<Metadata<Extension>> extensions = portableExtensions.getExtensions();
 
         final WeldDeployment deployment = new WeldDeployment(beanDeploymentArchives, extensions, module, subDeploymentLoaders, deploymentUnit, rootBeanDeploymentModule, eeModuleDescriptors);
 
@@ -249,6 +237,9 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
                 WildFlySecurityManager.getClassLoaderPrivileged(WeldDeploymentProcessor.class));
         for (BootstrapDependencyInstaller installer : installers) {
             ServiceName serviceName = installer.install(serviceTarget, deploymentUnit, jtsEnabled);
+            if (serviceName == null) {
+                continue;
+            }
             // Add dependency for recognized services
             if (ServiceNames.WELD_SECURITY_SERVICES_SERVICE_NAME.getSimpleName().equals(serviceName.getSimpleName())) {
                 securityServicesSupplier = weldBootstrapServiceBuilder.requires(serviceName);
@@ -336,7 +327,7 @@ public class WeldDeploymentProcessor implements DeploymentUnitProcessor {
         if (naming != null) {
             setupActions.add(naming);
         }
-        final ConcurrentContextSetupAction concurrentContext = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.CONCURRENT_CONTEXT_SETUP_ACTION);
+        final SetupAction concurrentContext = deploymentUnit.getAttachment(ConcurrencyAttachments.CONCURRENT_CONTEXT_SETUP_ACTION);
         if (concurrentContext != null) {
             setupActions.add(concurrentContext);
         }

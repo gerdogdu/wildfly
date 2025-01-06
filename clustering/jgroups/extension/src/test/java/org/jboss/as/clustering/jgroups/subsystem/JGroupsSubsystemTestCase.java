@@ -1,36 +1,21 @@
 /*
-* JBoss, Home of Professional Open Source.
-* Copyright 2011, Red Hat Middleware LLC, and individual contributors
-* as indicated by the @author tags. See the copyright.txt file in the
-* distribution for a full listing of individual contributors.
-*
-* This is free software; you can redistribute it and/or modify it
-* under the terms of the GNU Lesser General Public License as
-* published by the Free Software Foundation; either version 2.1 of
-* the License, or (at your option) any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-* Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public
-* License along with this software; if not, write to the Free
-* Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-* 02110-1301 USA, or see the FSF site: http://www.fsf.org.
-*/
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.jboss.as.clustering.jgroups.subsystem;
 
 import java.util.EnumSet;
 
 import javax.xml.stream.XMLStreamException;
 
-import org.jboss.as.clustering.controller.CommonUnaryRequirement;
+import org.jboss.as.clustering.controller.CommonServiceDescriptor;
 import org.jboss.as.clustering.subsystem.AdditionalInitialization;
-import org.jboss.as.clustering.subsystem.ClusteringSubsystemTest;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.model.test.ModelTestUtils;
+import org.jboss.as.network.OutboundSocketBinding;
+import org.jboss.as.network.SocketBinding;
+import org.jboss.as.subsystem.test.AbstractSubsystemSchemaTest;
 import org.jboss.as.subsystem.test.KernelServices;
 import org.jboss.as.subsystem.test.KernelServicesBuilder;
 import org.jboss.dmr.ModelNode;
@@ -49,15 +34,23 @@ import org.junit.runners.Parameterized.Parameters;
  * @author Richard Achmatowicz (c) 2013 Red Hat Inc.
  */
 @RunWith(value = Parameterized.class)
-public class JGroupsSubsystemTestCase extends ClusteringSubsystemTest<JGroupsSchema> {
+public class JGroupsSubsystemTestCase extends AbstractSubsystemSchemaTest<JGroupsSubsystemSchema> {
 
     @Parameters
-    public static Iterable<JGroupsSchema> parameters() {
-        return EnumSet.allOf(JGroupsSchema.class);
+    public static Iterable<JGroupsSubsystemSchema> parameters() {
+        return EnumSet.allOf(JGroupsSubsystemSchema.class);
     }
 
-    public JGroupsSubsystemTestCase(JGroupsSchema schema) {
-        super(JGroupsExtension.SUBSYSTEM_NAME, new JGroupsExtension(), schema, "subsystem-jgroups-%d_%d.xml", "schema/jboss-as-jgroups_%d_%d.xsd");
+    private final JGroupsSubsystemSchema schema;
+
+    public JGroupsSubsystemTestCase(JGroupsSubsystemSchema schema) {
+        super(JGroupsExtension.SUBSYSTEM_NAME, new JGroupsExtension(), schema, JGroupsSubsystemSchema.CURRENT);
+        this.schema = schema;
+    }
+
+    @Override
+    protected String getSubsystemXsdPathPattern() {
+        return "schema/jboss-as-%s_%d_%d.xsd";
     }
 
     private KernelServices buildKernelServices() throws Exception {
@@ -79,11 +72,18 @@ public class JGroupsSubsystemTestCase extends ClusteringSubsystemTest<JGroupsSch
     @Override
     protected org.jboss.as.subsystem.test.AdditionalInitialization createAdditionalInitialization() {
         return new AdditionalInitialization()
-                .require(CommonUnaryRequirement.SOCKET_BINDING, "jgroups-tcp", "jgroups-udp", "some-binding", "jgroups-diagnostics", "jgroups-mping", "jgroups-tcp-fd", "jgroups-client-fd")
-                .require(CommonUnaryRequirement.OUTBOUND_SOCKET_BINDING, "node1", "node2")
-                .require(CommonUnaryRequirement.KEY_STORE, "my-key-store")
-                .require(CommonUnaryRequirement.CREDENTIAL_STORE, "my-credential-store")
-                .require(CommonUnaryRequirement.DATA_SOURCE, "ExampleDS")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-tcp")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-udp")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "some-binding")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-diagnostics")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-mping")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-tcp-fd")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-client-fd")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "node1")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "node2")
+                .require(CommonServiceDescriptor.KEY_STORE, "my-key-store")
+                .require(CommonServiceDescriptor.CREDENTIAL_STORE, "my-credential-store")
+                .require(CommonServiceDescriptor.DATA_SOURCE, "ExampleDS")
                 ;
     }
 
@@ -95,6 +95,7 @@ public class JGroupsSubsystemTestCase extends ClusteringSubsystemTest<JGroupsSch
      */
     @Test
     public void testIndexedAdds() throws Exception {
+        if (!this.schema.since(JGroupsSubsystemSchema.VERSION_3_0)) return;
 
         final KernelServices services = this.buildKernelServices();
 

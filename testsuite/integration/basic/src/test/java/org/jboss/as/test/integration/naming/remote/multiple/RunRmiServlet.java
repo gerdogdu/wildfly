@@ -1,3 +1,8 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.naming.remote.multiple;
 
 import java.io.IOException;
@@ -9,11 +14,11 @@ import java.util.Properties;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.jboss.as.network.NetworkUtils;
 
@@ -38,7 +43,7 @@ public class RunRmiServlet extends HttpServlet {
             // format possible IPv6 address
             address = NetworkUtils.formatPossibleIpv6Address(address);
             env.put(Context.PROVIDER_URL, "remote+http://" + address + ":8080");
-            env.put(Context.INITIAL_CONTEXT_FACTORY, "org.jboss.naming.remote.client.InitialContextFactory");
+            env.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
             Context ctx = new InitialContext(env);
             try {
                 return (MyObject) ctx.lookup("loc/stub");

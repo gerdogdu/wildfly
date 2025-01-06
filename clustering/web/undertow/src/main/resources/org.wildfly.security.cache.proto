@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package org.wildfly.security.cache;
+
+// IDs: 250-254
+
+/**
+ * @TypeId(250)
+ */
+message CachedIdentity {
+	string	mechanism	 = 1;
+	string	nonProgrammaticName	 = 2;
+	string	programmaticName	 = 3;
+	repeated	string	role	 = 4;
+}

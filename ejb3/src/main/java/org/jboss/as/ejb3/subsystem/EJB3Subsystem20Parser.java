@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
@@ -32,6 +15,7 @@ import javax.xml.stream.XMLStreamException;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADDRESS;
@@ -147,7 +131,7 @@ public class EJB3Subsystem20Parser extends EJB3Subsystem14Parser {
         timerServiceAdd.get(OP_ADDR).set(address);
 
         final int attCount = reader.getAttributeCount();
-        final EnumSet<EJB3SubsystemXMLAttribute> required = EnumSet.of(EJB3SubsystemXMLAttribute.THREAD_POOL_NAME, EJB3SubsystemXMLAttribute.DEFAULT_DATA_STORE);
+        final Set<EJB3SubsystemXMLAttribute> required = EnumSet.of(EJB3SubsystemXMLAttribute.THREAD_POOL_NAME, EJB3SubsystemXMLAttribute.DEFAULT_DATA_STORE);
         for (int i = 0; i < attCount; i++) {
             requireNoNamespaceAttribute(reader, i);
             final String value = reader.getAttributeValue(i);
@@ -180,7 +164,7 @@ public class EJB3Subsystem20Parser extends EJB3Subsystem14Parser {
         }
     }
 
-    private void parseDataStores(final XMLExtendedStreamReader reader, final List<ModelNode> operations) throws XMLStreamException {
+    protected void parseDataStores(final XMLExtendedStreamReader reader, final List<ModelNode> operations) throws XMLStreamException {
         while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
             switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
                 case FILE_DATA_STORE: {
@@ -220,13 +204,13 @@ public class EJB3Subsystem20Parser extends EJB3Subsystem14Parser {
                     if (dataStorePath != null) {
                         throw unexpectedAttribute(reader, i);
                     }
-                    dataStorePath = FileDataStoreResourceDefinition.PATH.parse(value, reader).asString();
+                    dataStorePath = parse(FileDataStoreResourceDefinition.PATH, value, reader).asString();
                     break;
                 case RELATIVE_TO:
                     if (dataStorePathRelativeTo != null) {
                         throw unexpectedAttribute(reader, i);
                     }
-                    dataStorePathRelativeTo = FileDataStoreResourceDefinition.RELATIVE_TO.parse(value, reader).asString();
+                    dataStorePathRelativeTo = parse(FileDataStoreResourceDefinition.RELATIVE_TO, value, reader).asString();
                     break;
                 default:
                     throw unexpectedAttribute(reader, i);

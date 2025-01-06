@@ -1,0 +1,17 @@
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<subsystem xmlns="urn:jboss:domain:naming:2.0">
+    <bindings>
+        <simple name="java:global/a" value="${simple.value:100}" type="${simple.type:int}"/>
+        <object-factory name="java:global/b" module="${object.module:org.jboss.as.naming}"
+                        class="${object.name:org.jboss.as.naming.ManagedReferenceObjectFactory}">
+            <environment>
+                <property name="${prop.key:key}" value="${prop.value:value}"/>
+            </environment>
+        </object-factory>
+        <lookup name="java:global/c" lookup="${lookup.name:java:global/b}"/>
+    </bindings>
+    <remote-naming/>
+</subsystem>

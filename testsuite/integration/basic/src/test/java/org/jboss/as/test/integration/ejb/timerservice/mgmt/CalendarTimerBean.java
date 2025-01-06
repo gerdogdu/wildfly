@@ -1,14 +1,19 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ejb.timerservice.mgmt;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import javax.ejb.Remote;
-import javax.ejb.ScheduleExpression;
-import javax.ejb.Stateless;
-import javax.ejb.Timer;
-import javax.ejb.TimerConfig;
+import jakarta.ejb.Remote;
+import jakarta.ejb.ScheduleExpression;
+import jakarta.ejb.Stateless;
+import jakarta.ejb.Timer;
+import jakarta.ejb.TimerConfig;
 
 /**
  * @author: baranowb

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.deployment.classloading.ear;
 
@@ -48,7 +31,7 @@ public class EarManifestDependencyPropagatedTestCase {
         JavaArchive ejbJar = ShrinkWrap.create(JavaArchive.class,"ejbmodule.jar");
         ejbJar.addClasses(EarManifestDependencyPropagatedTestCase.class);
         ejbJar.addAsManifestResource(emptyEjbJar(), "ejb-jar.xml");
-        ejbJar.addAsManifestResource(new StringAsset("Dependencies: org.jboss.jandex\n"),"MANIFEST.MF");
+        ejbJar.addAsManifestResource(new StringAsset("Dependencies: io.smallrye.jandex\n"),"MANIFEST.MF");
         ear.addAsModule(ejbJar);
 
         JavaArchive earLib = ShrinkWrap.create(JavaArchive.class, "libjar.jar");
@@ -88,10 +71,10 @@ public class EarManifestDependencyPropagatedTestCase {
     private static StringAsset emptyEjbJar() {
         return new StringAsset(
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-                "<ejb-jar xmlns=\"http://java.sun.com/xml/ns/javaee\" \n" +
+                "<ejb-jar xmlns=\"https://jakarta.ee/xml/ns/jakartaee\" \n" +
                 "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" \n" +
-                "         xsi:schemaLocation=\"http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/ejb-jar_3_0.xsd\"\n" +
-                "         version=\"3.0\">\n" +
+                "         xsi:schemaLocation=\"https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/ejb-jar_4_0.xsd\"\n" +
+                "         version=\"4.0\">\n" +
                 "   \n" +
                 "</ejb-jar>");
     }

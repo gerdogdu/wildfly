@@ -1,28 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.iiop.openjdk;
 
-import static org.wildfly.iiop.openjdk.Capabilities.IIOP_CAPABILITY;
 import static org.wildfly.iiop.openjdk.Capabilities.LEGACY_SECURITY;
 
 import java.util.ArrayList;
@@ -31,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.jboss.as.controller.AttributeDefinition;
+import org.jboss.as.controller.ModelVersion;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PersistentResourceDefinition;
@@ -51,13 +34,14 @@ import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.Resource;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
+import org.omg.CORBA.ORB;
 
 /**
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
  */
 class IIOPRootDefinition extends PersistentResourceDefinition {
 
-    static final RuntimeCapability<Void> IIOP_CAPABILITY = RuntimeCapability.Builder.of(Capabilities.IIOP_CAPABILITY, false).build();
+    static final RuntimeCapability<Void> IIOP_CAPABILITY = RuntimeCapability.Builder.of(Capabilities.IIOP_CAPABILITY, false, ORB.class).build();
 
     static final ModelNode NONE = new ModelNode("none");
 
@@ -165,6 +149,7 @@ class IIOPRootDefinition extends PersistentResourceDefinition {
             .addAccessConstraint(IIOP_SECURITY_DEF)
             .setAlternatives(Constants.SERVER_SSL_CONTEXT, Constants.CLIENT_SSL_CONTEXT)
             .setCapabilityReference(Capabilities.LEGACY_SECURITY_DOMAIN_CAPABILITY, IIOP_CAPABILITY)
+            .setDeprecated(ModelVersion.create(3))
             .build();
 
     public static final AttributeDefinition SERVER_SSL_CONTEXT = new SimpleAttributeDefinitionBuilder(
@@ -364,6 +349,7 @@ class IIOPRootDefinition extends PersistentResourceDefinition {
             .setFlags(AttributeAccess.Flag.RESTART_ALL_SERVICES)
             .setAccessConstraints(SensitiveTargetAccessConstraintDefinition.SECURITY_REALM_REF)
             .setAllowExpression(true)
+            .setDeprecated(ModelVersion.create(3))
             .build();
 
     protected static final AttributeDefinition REQUIRED = new SimpleAttributeDefinitionBuilder(
@@ -437,10 +423,8 @@ class IIOPRootDefinition extends PersistentResourceDefinition {
         ALL_ATTRIBUTES.addAll(IOR_ATTRIBUTES);
     }
 
-    public static final IIOPRootDefinition INSTANCE = new IIOPRootDefinition();
-
-    private IIOPRootDefinition() {
-        super(new SimpleResourceDefinition.Parameters(IIOPExtension.PATH_SUBSYSTEM, IIOPExtension.getResourceDescriptionResolver())
+    IIOPRootDefinition() {
+        super(new SimpleResourceDefinition.Parameters(IIOPExtension.PATH_SUBSYSTEM, IIOPExtension.SUBSYSTEM_RESOLVER)
                 .setAddHandler(new IIOPSubsystemAdd(ALL_ATTRIBUTES))
                 .setRemoveHandler(new ReloadRequiredRemoveStepHandler() {
 
@@ -450,7 +434,7 @@ class IIOPRootDefinition extends PersistentResourceDefinition {
                         super.recordCapabilitiesAndRequirements(context, operation, resource);
                         ModelNode model = resource.getModel();
                         String security = IIOPRootDefinition.SECURITY.resolveModelAttribute(context, model).asStringOrNull();
-                        if (SecurityAllowedValues.IDENTITY.toString().equals(security)) {
+                        if (SecurityAllowedValues.IDENTITY.toString().equals(security) || SecurityAllowedValues.CLIENT.toString().equals(security)) {
                             context.deregisterCapabilityRequirement(LEGACY_SECURITY, Capabilities.IIOP_CAPABILITY, Constants.ORB_INIT_SECURITY);
                         }
                     }
@@ -469,6 +453,7 @@ class IIOPRootDefinition extends PersistentResourceDefinition {
                     ModelNode newValue, ModelNode oldValue) {
 
                 if (attributeDefinition != SECURITY) {
+                    super.recordCapabilitiesAndRequirements(context, attributeDefinition, newValue, oldValue);
                     return;
                 }
 
@@ -476,8 +461,10 @@ class IIOPRootDefinition extends PersistentResourceDefinition {
                 boolean newIsLegacy;
                 try {
                     // For historic reasons this attribute supports expressions so resolution is required.
-                    oldIsLegacy = SecurityAllowedValues.IDENTITY.toString().equals(IIOPRootDefinition.SECURITY.resolveValue(context, oldValue).asStringOrNull());
-                    newIsLegacy = SecurityAllowedValues.IDENTITY.toString().equals(IIOPRootDefinition.SECURITY.resolveValue(context, newValue).asStringOrNull());
+                    oldIsLegacy = SecurityAllowedValues.IDENTITY.toString().equals(IIOPRootDefinition.SECURITY.resolveValue(context, oldValue).asStringOrNull())
+                            || SecurityAllowedValues.CLIENT.toString().equals(IIOPRootDefinition.SECURITY.resolveValue(context, oldValue).asStringOrNull());
+                    newIsLegacy = SecurityAllowedValues.IDENTITY.toString().equals(IIOPRootDefinition.SECURITY.resolveValue(context, newValue).asStringOrNull())
+                            || SecurityAllowedValues.CLIENT.toString().equals(IIOPRootDefinition.SECURITY.resolveValue(context, newValue).asStringOrNull());
                 } catch (OperationFailedException e) {
                     throw new RuntimeException(e);
                 }

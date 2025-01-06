@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ejb.management.deployments;
@@ -38,8 +21,8 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.List;
-import javax.ejb.ConcurrencyManagementType;
-import javax.ejb.TransactionManagementType;
+import jakarta.ejb.ConcurrencyManagementType;
+import jakarta.ejb.TransactionManagementType;
 
 import org.jboss.as.arquillian.api.ContainerResource;
 import org.jboss.as.arquillian.container.ManagementClient;
@@ -51,7 +34,6 @@ import org.jboss.as.test.shared.TimeoutUtil;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 import org.jboss.dmr.Property;
-import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.Test;
@@ -110,12 +92,13 @@ public class EjbJarRuntimeResourceTestBase {
     @ContainerResource
     private ManagementClient managementClient;
 
-    public static Archive<?> getEJBJar() {
+    public static JavaArchive getEJBJar() {
         JavaArchive jar = ShrinkWrap.create(JavaArchive.class, JAR_NAME);
-        jar.addPackage(EjbJarRuntimeResourcesTestCase.class.getPackage());
+        jar.addClasses(AbstractManagedBean.class, BusinessInterface.class, ManagedSingletonBean.class,
+                ManagedStatefulBean.class, ManagedStatefulBean2.class, ManagedStatelessBean.class,
+                NoTimerSingletonBean.class, NoTimerStatelessBean.class, WaitTimeSingletonBean.class);
         jar.addClass(TimeoutUtil.class);
         jar.addAsManifestResource(EjbJarRuntimeResourcesTestCase.class.getPackage(), "jboss-ejb3.xml", "jboss-ejb3.xml");
-        jar.addAsManifestResource(EjbJarRuntimeResourcesTestCase.class.getPackage(), "ejb-jar.xml", "ejb-jar.xml");
         return jar;
     }
 
@@ -123,16 +106,6 @@ public class EjbJarRuntimeResourceTestBase {
 
     protected EjbJarRuntimeResourceTestBase(final PathAddress baseAddress) {
         this.baseAddress = baseAddress;
-    }
-
-    @Test
-    public void testMDB() throws Exception {
-        testComponent(MESSAGE_DRIVEN, ManagedMDB.class.getSimpleName(), true);
-    }
-
-    @Test
-    public void testNoTimerMDB() throws Exception {
-        testComponent(MESSAGE_DRIVEN, NoTimerMDB.class.getSimpleName(), false);
     }
 
     @Test
@@ -168,7 +141,7 @@ public class EjbJarRuntimeResourceTestBase {
     }
     */
 
-    private void testComponent(String type, String name, boolean expectTimer) throws Exception {
+    protected void testComponent(String type, String name, boolean expectTimer) throws Exception {
 
         ModelNode address = getComponentAddress(type, name).toModelNode();
         address.protect();
@@ -261,10 +234,10 @@ public class EjbJarRuntimeResourceTestBase {
 
         // MDB specific resources
         if (MESSAGE_DRIVEN.equals(type)) {
-            assertEquals("javax.jms.MessageListener", resource.get(MESSAGING_TYPE).asString());
+            assertEquals("jakarta.jms.MessageListener", resource.get(MESSAGING_TYPE).asString());
 
             if (componentClassName.equals("org.jboss.as.test.integration.ejb.management.deployments.NoTimerMDB")) {
-                assertEquals("javax.jms.Queue", resource.get(MESSAGE_DESTINATION_TYPE).asString());
+                assertEquals("jakarta.jms.Queue", resource.get(MESSAGE_DESTINATION_TYPE).asString());
                 assertEquals("queue/NoTimerMDB-queue", resource.get(MESSAGE_DESTINATION_LINK).asString());
             }
 
@@ -277,7 +250,7 @@ public class EjbJarRuntimeResourceTestBase {
                 final String pValue = p.getValue().asString();
                 switch (pName) {
                     case "destinationType":
-                        assertEquals("javax.jms.Queue", pValue);
+                        assertEquals("jakarta.jms.Queue", pValue);
                         break;
                     case "destination":
                         assertTrue(pValue.startsWith("java:/queue/"));
@@ -413,7 +386,7 @@ public class EjbJarRuntimeResourceTestBase {
             }
         }
         if (expectTimer) {
-            assertTrue(resource.get(TIMEOUT_METHOD).asString().contains("timeout(javax.ejb.Timer)"));
+            assertTrue(resource.get(TIMEOUT_METHOD).asString().contains("timeout(jakarta.ejb.Timer)"));
         }
     }
 

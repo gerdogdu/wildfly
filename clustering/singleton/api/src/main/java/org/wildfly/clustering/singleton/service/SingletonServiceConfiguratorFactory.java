@@ -1,34 +1,23 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.singleton.service;
 
 import org.jboss.msc.service.ServiceName;
+import org.wildfly.service.descriptor.BinaryServiceDescriptor;
+import org.wildfly.service.descriptor.UnaryServiceDescriptor;
 
 /**
  * Extension of {@link SingletonPolicy} for customizing singleton service behavior.
  * @author Paul Ferraro
+ * @deprecated Superseded by {@link SingletonServiceTargetFactory}.
  */
+@Deprecated(forRemoval = true)
 public interface SingletonServiceConfiguratorFactory extends SingletonPolicy {
+    UnaryServiceDescriptor<SingletonServiceConfiguratorFactory> DEFAULT_SERVICE_DESCRIPTOR = UnaryServiceDescriptor.of("org.wildfly.clustering.cache.default-singleton-service-configurator-factory", SingletonServiceConfiguratorFactory.class);
+    BinaryServiceDescriptor<SingletonServiceConfiguratorFactory> SERVICE_DESCRIPTOR = BinaryServiceDescriptor.of("org.wildfly.clustering.cache.singleton-service-configurator-factory", DEFAULT_SERVICE_DESCRIPTOR);
 
     @Override
     SingletonServiceConfigurator createSingletonServiceConfigurator(ServiceName name);

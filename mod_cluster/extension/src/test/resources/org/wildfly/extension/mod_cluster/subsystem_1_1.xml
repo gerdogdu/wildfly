@@ -1,0 +1,50 @@
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:modcluster:1.1">
+    <mod-cluster-config advertise="true"
+                        advertise-security-key="mysecuritykey"
+                        auto-enable-contexts="true"
+                        connector="http"
+                        excluded-contexts="a,b,c"
+                        load-balancing-group="mydomain"
+                        proxy-list="example.com:6666"
+                        socket-timeout="20"
+                        stop-context-timeout="10">
+        <dynamic-load-provider decay="2"
+                               history="10">
+            <load-metric capacity="1000"
+                         type="sessions"
+                         weight="2"/>
+            <load-metric capacity="512"
+                         type="send-traffic"
+                         weight="3"/>
+            <load-metric capacity="1024"
+                         type="receive-traffic"/>
+            <load-metric capacity="1000"
+                         type="requests"/>
+            <load-metric type="mem"
+                         capacity="1"/>
+            <load-metric type="cpu"
+                         capacity="1"/>
+            <load-metric type="heap"
+                         capacity="1"/>
+            <load-metric type="busyness"
+                         capacity="1">
+                <property name="name"
+                          value="value"/>
+            </load-metric>
+            <custom-load-metric class="org.jboss.modcluster.SomeFakeLoadMetricClass"
+                                weight="5"/>
+        </dynamic-load-provider>
+        <ssl ca-certificate-file="/home/rhusar/client-keystore.jks"
+             ca-revocation-url="/home/rhusar/revocations"
+             certificate-key-file="/home/rhusar/client-keystore.jks"
+             cipher-suite="SSL_DHE_DSS_WITH_3DES_EDE_CBC_SHA,SSL_RSA_WITH_RC4_128_MD5,SSL_RSA_WITH_RC4_128_SHA,SSL_RSA_WITH_3DES_EDE_CBC_SHA"
+             key-alias="mykeyalias"
+             password="mypassword"
+             protocol="TLS"/>
+    </mod-cluster-config>
+</subsystem>

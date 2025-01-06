@@ -1,28 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.manualmode.ejb.client.outbound.connection;
 
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 import java.io.File;
 import java.io.FilePermission;
@@ -52,7 +35,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Tests that an Jakarta Enterprise Beans client context containing a reference to a remote outbound connection, has the ability to
+ * Tests that a Jakarta Enterprise Beans client context containing a reference to a remote outbound connection, has the ability to
  * reconnect a failed connection
  *
  * @author Jaikiran Pai
@@ -128,7 +111,7 @@ public class RemoteOutboundConnectionReconnectTestCase {
         this.container.start(JBOSSAS_WITH_REMOTE_OUTBOUND_CONNECTION_NON_CLUSTERED);
         boolean defaultContainerStarted = false;
         try {
-            // deploy a deployment which contains jboss-ejb-client.xml that contains an Jakarta Enterprise Beans receiver pointing
+            // deploy a deployment which contains jboss-ejb-client.xml that contains a Jakarta Enterprise Beans bean receiver pointing
             // to a server which hasn't yet started. Should succeed without throwing deployment error
             this.deployer.deploy(DEPLOYMENT_WITH_JBOSS_EJB_CLIENT_XML);
             // To make sure deployment succeeded and invocations are possible, call an independent bean

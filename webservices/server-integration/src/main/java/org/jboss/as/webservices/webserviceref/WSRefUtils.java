@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.webservices.webserviceref;
@@ -36,10 +19,10 @@ import java.util.List;
 import java.util.Set;
 
 import javax.xml.namespace.QName;
-import javax.xml.ws.Service;
-import javax.xml.ws.WebServiceRef;
-import javax.xml.ws.WebServiceRefs;
-import javax.xml.ws.soap.MTOM;
+import jakarta.xml.ws.Service;
+import jakarta.xml.ws.WebServiceRef;
+import jakarta.xml.ws.WebServiceRefs;
+import jakarta.xml.ws.soap.MTOM;
 
 import org.jboss.as.webservices.logging.WSLogger;
 import org.jboss.metadata.javaee.jboss.JBossPortComponentRef;
@@ -220,7 +203,7 @@ final class WSRefUtils {
     }
 
     private static void processAddressingAnnotation(final AnnotatedElement anElement, final UnifiedServiceRefMetaData serviceRefUMDM) {
-         final javax.xml.ws.soap.Addressing addressingAnnotation = getAnnotation(anElement, javax.xml.ws.soap.Addressing.class);
+         final jakarta.xml.ws.soap.Addressing addressingAnnotation = getAnnotation(anElement, jakarta.xml.ws.soap.Addressing.class);
 
          if (addressingAnnotation != null) {
              serviceRefUMDM.setAddressingMedadata(new AddressingMetadata(true,
@@ -239,7 +222,7 @@ final class WSRefUtils {
       }
 
       private static void processRespectBindingAnnotation(final AnnotatedElement anElement, final UnifiedServiceRefMetaData serviceRefUMDM) {
-         final javax.xml.ws.RespectBinding respectBindingAnnotation = getAnnotation(anElement, javax.xml.ws.RespectBinding.class);
+         final jakarta.xml.ws.RespectBinding respectBindingAnnotation = getAnnotation(anElement, jakarta.xml.ws.RespectBinding.class);
 
          if (respectBindingAnnotation != null) {
             serviceRefUMDM.setRespectBindingMetadata(new RespectBindingMetadata(true, respectBindingAnnotation.enabled()));
@@ -274,7 +257,7 @@ final class WSRefUtils {
       }
 
       private static void processHandlerChainAnnotation(final AnnotatedElement anElement, final UnifiedServiceRefMetaData serviceRefUMDM) {
-         final javax.jws.HandlerChain handlerChainAnnotation = getAnnotation(anElement, javax.jws.HandlerChain.class);
+         final jakarta.jws.HandlerChain handlerChainAnnotation = getAnnotation(anElement, jakarta.jws.HandlerChain.class);
 
          if (handlerChainAnnotation != null) {
             // Set the handlerChain from @HandlerChain on the annotated element

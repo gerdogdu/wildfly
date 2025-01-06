@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.connector.subsystems.resourceadapters;
 
@@ -66,6 +49,8 @@ public class Constants {
 
     private static final Boolean ELYTRON_MANAGED_SECURITY = Boolean.FALSE;
 
+    private static final ModelVersion ELYTRON_BY_DEFAULT_VERSION = ModelVersion.create(6, 1, 0);
+
     public static final String RESOURCEADAPTER_NAME = "resource-adapter";
 
     public static final String WORKMANAGER_NAME = "workmanager";
@@ -84,15 +69,11 @@ public class Constants {
 
     static final String POOL_NAME_NAME = "pool-name";
 
-    private static final String USE_JAVA_CONTEXT_NAME = "use-java-context";
-
     private static final String ENABLED_NAME = "enabled";
 
     private static final String CONNECTABLE_NAME = "connectable";
 
     private static final String TRACKING_NAME = "tracking";
-
-    private static final String JNDINAME_NAME = "jndi-name";
 
     private static final String ALLOCATION_RETRY_NAME = "allocation-retry";
 
@@ -218,12 +199,6 @@ public class Constants {
             .setRestartAllServices()
             .build();
 
-    static SimpleAttributeDefinition JNDINAME = new SimpleAttributeDefinitionBuilder(JNDINAME_NAME, ModelType.STRING, true)
-            .setXmlName(ConnectionDefinition.Attribute.JNDI_NAME.getLocalName())
-            .setAllowExpression(true)
-            .setRestartAllServices()
-            .build();
-
     public static final SimpleAttributeDefinition CONFIG_PROPERTIES = new SimpleAttributeDefinitionBuilder(CONFIG_PROPERTIES_NAME, ModelType.STRING, true)
             .setXmlName(ConnectionDefinition.Tag.CONFIG_PROPERTY.getLocalName())
             .setAllowExpression(true)
@@ -311,6 +286,7 @@ public class Constants {
             .setAllowExpression(true)
             .setRequired(false)
             .setDefaultValue(ModelNode.FALSE)
+            .setXmlName(ResourceAdapterParser.Attribute.ENABLED.getLocalName())
             .setRestartAllServices()
             .build();
 
@@ -327,6 +303,7 @@ public class Constants {
             .setDefaultValue(new ModelNode("other"))
             .setXmlName(WorkManagerSecurity.Tag.DOMAIN.getLocalName())
             .setAlternatives(WM_ELYTRON_SECURITY_DOMAIN_NAME)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
@@ -395,13 +372,6 @@ public class Constants {
             .setAllowExpression(true)
             .build();
 
-    static SimpleAttributeDefinition USE_JAVA_CONTEXT = new SimpleAttributeDefinitionBuilder(USE_JAVA_CONTEXT_NAME, ModelType.BOOLEAN, true)
-            .setXmlName(DataSource.Attribute.USE_JAVA_CONTEXT.getLocalName())
-            .setAllowExpression(true)
-            .setDefaultValue(new ModelNode(Defaults.USE_JAVA_CONTEXT))
-            .setRestartAllServices()
-            .build();
-
     static SimpleAttributeDefinition ENABLED = new SimpleAttributeDefinitionBuilder(ENABLED_NAME, ModelType.BOOLEAN, true)
             .setXmlName(DataSource.Attribute.ENABLED.getLocalName())
             .setDefaultValue(new ModelNode(Defaults.ENABLED))
@@ -429,6 +399,7 @@ public class Constants {
                     AUTHENTICATION_CONTEXT_AND_APPLICATION_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SECURITY_DOMAIN_REF)
             .addAccessConstraint(ResourceAdaptersExtension.RA_SECURITY_DEF)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
     static final SimpleAttributeDefinition SECURITY_DOMAIN_AND_APPLICATION = new SimpleAttributeDefinitionBuilder(SECURITY_DOMAIN_AND_APPLICATION_NAME, ModelType.STRING, true)
@@ -438,6 +409,7 @@ public class Constants {
                     AUTHENTICATION_CONTEXT_AND_APPLICATION_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SECURITY_DOMAIN_REF)
             .addAccessConstraint(ResourceAdaptersExtension.RA_SECURITY_DEF)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
@@ -447,12 +419,12 @@ public class Constants {
             .setDefaultValue(new ModelNode(ELYTRON_MANAGED_SECURITY))
             .addAccessConstraint(ResourceAdaptersExtension.RA_SECURITY_DEF)
             .setNullSignificant(false)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
     static SimpleAttributeDefinition AUTHENTICATION_CONTEXT = new SimpleAttributeDefinitionBuilder(AUTHENTICATION_CONTEXT_NAME, ModelType.STRING, true)
             .setXmlName(Security.Tag.AUTHENTICATION_CONTEXT.getLocalName())
             .setAllowExpression(false)
-            .setRequires(ELYTRON_ENABLED_NAME)
             .setAlternatives(SECURITY_DOMAIN_NAME, SECURITY_DOMAIN_AND_APPLICATION_NAME, APPLICATION_NAME,
                     AUTHENTICATION_CONTEXT_AND_APPLICATION_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.AUTHENTICATION_CLIENT_REF)
@@ -462,7 +434,6 @@ public class Constants {
     static final SimpleAttributeDefinition AUTHENTICATION_CONTEXT_AND_APPLICATION = new SimpleAttributeDefinitionBuilder(AUTHENTICATION_CONTEXT_AND_APPLICATION_NAME, ModelType.STRING, true)
             .setXmlName(Security.Tag.AUTHENTICATION_CONTEXT_AND_APPLICATION.getLocalName())
             .setAllowExpression(false)
-            .setRequires(ELYTRON_ENABLED_NAME)
             .setAlternatives(SECURITY_DOMAIN_NAME, SECURITY_DOMAIN_AND_APPLICATION_NAME, APPLICATION_NAME,
                     AUTHENTICATION_CONTEXT_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.AUTHENTICATION_CLIENT_REF)
@@ -578,7 +549,7 @@ public class Constants {
             .build();
 
     static SimpleAttributeDefinition RECOVERY_USERNAME = new SimpleAttributeDefinitionBuilder(RECOVERY_USERNAME_NAME, ModelType.STRING, true)
-            .setXmlName(Credential.Tag.USER_NAME.getLocalName())
+            .setXmlName(Credential.Attribute.USER_NAME.getLocalName())
             .setDefaultValue(new ModelNode())
             .setAllowExpression(true)
             .setMeasurementUnit(MeasurementUnit.NONE)
@@ -588,7 +559,7 @@ public class Constants {
             .build();
 
     static SimpleAttributeDefinition RECOVERY_PASSWORD = new SimpleAttributeDefinitionBuilder(RECOVERY_PASSWORD_NAME, ModelType.STRING, true)
-            .setXmlName(Credential.Tag.PASSWORD.getLocalName())
+            .setXmlName(Credential.Attribute.PASSWORD.getLocalName())
             .setDefaultValue(new ModelNode())
             .setAllowExpression(true)
             .setMeasurementUnit(MeasurementUnit.NONE)
@@ -615,6 +586,7 @@ public class Constants {
             .setAlternatives(RECOVERY_AUTHENTICATION_CONTEXT_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SECURITY_DOMAIN_REF)
             .addAccessConstraint(ResourceAdaptersExtension.RA_SECURITY_DEF)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
@@ -625,13 +597,13 @@ public class Constants {
             .setDefaultValue(new ModelNode(ELYTRON_MANAGED_SECURITY))
             .addAccessConstraint(ResourceAdaptersExtension.RA_SECURITY_DEF)
             .setNullSignificant(false)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
     static SimpleAttributeDefinition RECOVERY_AUTHENTICATION_CONTEXT = new SimpleAttributeDefinitionBuilder(RECOVERY_AUTHENTICATION_CONTEXT_NAME, ModelType.STRING, true)
             .setXmlName(Credential.Tag.AUTHENTICATION_CONTEXT.getLocalName())
             .setAllowExpression(false)
-            .setRequires(RECOVERY_ELYTRON_ENABLED_NAME)
             .setAlternatives(RECOVERY_SECURITY_DOMAIN_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.AUTHENTICATION_CLIENT_REF)
             .addAccessConstraint(ResourceAdaptersExtension.RA_SECURITY_DEF)

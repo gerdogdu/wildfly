@@ -1,33 +1,21 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.jgroups.spi;
 
-import java.nio.ByteBuffer;
+import org.jgroups.Message;
+import org.wildfly.service.descriptor.NullaryServiceDescriptor;
+import org.wildfly.service.descriptor.UnaryServiceDescriptor;
 
 /**
  * Factory for creating JGroups channels.
  * @author Paul Ferraro
  */
 public interface ChannelFactory extends org.wildfly.clustering.jgroups.ChannelFactory {
+
+    NullaryServiceDescriptor<ChannelFactory> DEFAULT_SERVICE_DESCRIPTOR = NullaryServiceDescriptor.of("org.wildfly.clustering.jgroups.default-channel-factory", ChannelFactory.class);
+    UnaryServiceDescriptor<ChannelFactory> SERVICE_DESCRIPTOR = UnaryServiceDescriptor.of("org.wildfly.clustering.jgroups.channel-factory", DEFAULT_SERVICE_DESCRIPTOR);
 
     /**
      * Returns the protocol stack configuration of this channel factory.
@@ -41,5 +29,5 @@ public interface ChannelFactory extends org.wildfly.clustering.jgroups.ChannelFa
      * @param response a message response
      * @return true, if the response indicates a missing fork stack or channel.
      */
-    boolean isUnknownForkResponse(ByteBuffer response);
+    boolean isUnknownForkResponse(Message response);
 }

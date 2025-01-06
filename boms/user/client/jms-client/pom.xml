@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.wildfly.bom.builder</groupId>
+        <artifactId>wildfly-client</artifactId>
+        <!--
+        Maintain separation between the artifact id and the version to help prevent
+        merge conflicts between commits changing the GA and those changing the V.
+        -->
+        <version>35.0.0.Final-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>wildfly-jms-client-bom-builder</artifactId>
+
+    <packaging>pom</packaging>
+
+    <name>WildFly BOM Builders: Client JMS Builder</name>
+
+    <description>
+        This artifact builds a bill of materials (BOM) for JMS client usage.
+    </description>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.wildfly</groupId>
+                <artifactId>wildfly-standard-ee-bom</artifactId>
+                <version>${ee.maven.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-ee-galleon-pack</artifactId>
+            <version>${ee.maven.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.channels</groupId>
+            <artifactId>wildfly-ee</artifactId>
+            <version>${ee.maven.version}</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-bom-builder-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-bom</id>
+                        <goals>
+                            <goal>build-bom</goal>
+                        </goals>
+                        <configuration>
+                            <parent>
+                                <groupId>org.jboss</groupId>
+                                <artifactId>jboss-parent</artifactId>
+                                <relativePath/>
+                            </parent>
+                            <bomGroupId>${bomGroupId}</bomGroupId>
+                            <bomArtifactId>${bomArtifactIdPrefix}-jms-client-bom</bomArtifactId>
+                            <bomVersion>${project.version}</bomVersion>
+                            <bomName>${full.dist.product.release.name} BOMs: JMS Client</bomName>
+                            <bomDescription>This artifact provides a bill of materials (BOM) for JMS client usage.</bomDescription>
+                            <bomWithDependencies>true</bomWithDependencies>
+                            <licenses>true</licenses>
+                            <inheritExclusions>UNMANAGED</inheritExclusions>
+                            <channels>
+                                <channel>
+                                    <manifest>
+                                        <groupId>org.wildfly.channels</groupId>
+                                        <artifactId>wildfly-ee</artifactId>
+                                        <version>${version.boms.channel.ee}</version>
+                                    </manifest>
+                                </channel>
+                            </channels>
+                            <includeDependencies>
+                                <!-- artemis jakarta jms client, the main artifact -->
+                                <!-- replaces org.apache.activemq:artemis-jms-client -->
+                                <dependency>
+                                    <groupId>org.apache.activemq</groupId>
+                                    <artifactId>artemis-jakarta-client</artifactId>
+                                </dependency>
+                                <!-- required to allow Artemis client to connect to HornetQ servers -->
+                                <dependency>
+                                    <groupId>org.apache.activemq</groupId>
+                                    <artifactId>artemis-hqclient-protocol</artifactId>
+                                </dependency>
+                                <!-- Required by the artemis-core-client, replaces geronimo's json spec artifact -->
+                                <dependency>
+                                    <groupId>org.glassfish</groupId>
+                                    <artifactId>jakarta.json</artifactId>
+                                </dependency>
+                                <!-- Required by jakarta.json -->                                
+                                <dependency>
+                                    <groupId>jakarta.json</groupId>
+                                    <artifactId>jakarta.json-api</artifactId>
+                                </dependency>                                
+                                <!-- Required by the artemis-jms-client -->
+                                <!-- replaces org.jboss.spec.javax.jms:jboss-jms-api_2.0_spec  -->
+                                <dependency>
+                                    <groupId>jakarta.jms</groupId>
+                                    <artifactId>jakarta.jms-api</artifactId>
+                                </dependency>
+                                <!-- TODO review -->
+                                <dependency>
+                                    <groupId>org.slf4j</groupId>
+                                    <artifactId>jcl-over-slf4j</artifactId>
+                                </dependency>
+                                <!-- client for usage through jndi -->
+                                <dependency>
+                                    <groupId>org.wildfly</groupId>
+                                    <artifactId>wildfly-naming-client</artifactId>
+                                </dependency>
+                                <!-- provides the jms client properties -->
+                                <dependency>
+                                    <groupId>org.wildfly</groupId>
+                                    <artifactId>wildfly-client-properties</artifactId>
+                                </dependency>
+                            </includeDependencies>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

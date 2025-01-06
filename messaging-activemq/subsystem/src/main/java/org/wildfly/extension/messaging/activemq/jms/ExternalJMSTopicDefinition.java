@@ -1,17 +1,6 @@
 /*
- * Copyright 2018 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.extension.messaging.activemq.jms;
 
@@ -40,14 +29,17 @@ public class ExternalJMSTopicDefinition extends PersistentResourceDefinition {
         CommonAttributes.DESTINATION_ENTRIES, External.ENABLE_AMQ1_PREFIX
     };
 
-    private final boolean registerRuntimeOnly;
+    private final boolean deployed;
 
-    public ExternalJMSTopicDefinition(final boolean registerRuntimeOnly) {
+    /**
+     * @param deployed: indicates if this resource describe a JMS topic created via a deployment.
+     */
+    public ExternalJMSTopicDefinition(final boolean deployed) {
         super(MessagingExtension.EXTERNAL_JMS_TOPIC_PATH,
                 MessagingExtension.getResourceDescriptionResolver(CommonAttributes.EXTERNAL_JMS_TOPIC),
                 ExternalJMSTopicAdd.INSTANCE,
                 ExternalJMSTopicRemove.INSTANCE);
-        this.registerRuntimeOnly = registerRuntimeOnly;
+        this.deployed = deployed;
     }
 
     @Override
@@ -57,7 +49,7 @@ public class ExternalJMSTopicDefinition extends PersistentResourceDefinition {
 
     @Override
     public void registerAttributes(ManagementResourceRegistration registry) {
-        if (registerRuntimeOnly) {
+        if (deployed) {
             registry.registerReadOnlyAttribute(CommonAttributes.DESTINATION_ENTRIES, null);
             // Should this be read only as entries ?
             registry.registerReadOnlyAttribute(External.ENABLE_AMQ1_PREFIX, null);

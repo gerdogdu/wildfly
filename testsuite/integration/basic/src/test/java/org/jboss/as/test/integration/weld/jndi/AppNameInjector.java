@@ -1,7 +1,12 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.weld.jndi;
 
-import javax.annotation.Resource;
-import javax.enterprise.context.ApplicationScoped;
+import jakarta.annotation.Resource;
+import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * @author Stuart Douglas

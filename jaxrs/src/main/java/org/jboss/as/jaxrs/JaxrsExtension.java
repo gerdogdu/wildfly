@@ -1,41 +1,19 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jaxrs;
 
-import static org.jboss.as.jaxrs.logging.JaxrsLogger.JAXRS_LOGGER;
-
-import org.jboss.as.controller.AttributeDefinition;
-import org.jboss.as.controller.Extension;
-import org.jboss.as.controller.ExtensionContext;
 import org.jboss.as.controller.ModelVersion;
 import org.jboss.as.controller.PathElement;
-import org.jboss.as.controller.SubsystemRegistration;
+import org.jboss.as.controller.SubsystemModel;
 import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
 import org.jboss.as.controller.descriptions.StandardResourceDescriptionResolver;
-import org.jboss.as.controller.operations.common.GenericSubsystemDescribeHandler;
-import org.jboss.as.controller.parsing.ExtensionParsingContext;
-import org.jboss.as.controller.registry.ManagementResourceRegistration;
+import org.wildfly.subsystem.SubsystemConfiguration;
+import org.wildfly.subsystem.SubsystemExtension;
+import org.wildfly.subsystem.SubsystemPersistence;
 
 /**
  * Domain extension used to initialize the jaxrs subsystem.
@@ -43,11 +21,9 @@ import org.jboss.as.controller.registry.ManagementResourceRegistration;
  * @author Stuart Douglas
  * @author Emanuel Muckenhuber
  */
-public class JaxrsExtension implements Extension {
+public class JaxrsExtension extends SubsystemExtension<JaxrsSubsystemSchema> {
 
     public static final String SUBSYSTEM_NAME = "jaxrs";
-
-    private static final ModelVersion CURRENT_MODEL_VERSION = ModelVersion.create(3, 0, 0);
 
     private static final String RESOURCE_NAME = JaxrsExtension.class.getPackage().getName() + ".LocalDescriptions";
     static PathElement SUBSYSTEM_PATH = PathElement.pathElement(ModelDescriptionConstants.SUBSYSTEM, SUBSYSTEM_NAME);
@@ -60,33 +36,31 @@ public class JaxrsExtension implements Extension {
         return new StandardResourceDescriptionResolver(prefix.toString(), RESOURCE_NAME, JaxrsExtension.class.getClassLoader(), true, false);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void initialize(final ExtensionContext context) {
-        JAXRS_LOGGER.debug("Activating Jakarta RESTful Web Services Extension");
-        final SubsystemRegistration subsystem = context.registerSubsystem(SUBSYSTEM_NAME, CURRENT_MODEL_VERSION);
-        final ManagementResourceRegistration registration = subsystem.registerSubsystemModel(JaxrsSubsystemDefinition.INSTANCE);
-        registration.registerOperationHandler(GenericSubsystemDescribeHandler.DEFINITION, GenericSubsystemDescribeHandler.INSTANCE);
-        registerAttributes(registration);
-        ManagementResourceRegistration jaxrsResReg = subsystem.registerDeploymentModel(JaxrsDeploymentDefinition.INSTANCE);
-        jaxrsResReg.registerSubModel(DeploymentRestResourcesDefintion.INSTANCE);
-        subsystem.registerXMLElementWriter(JaxrsSubsystemParser_2_0::new);
+    public JaxrsExtension() {
+        super(SubsystemConfiguration.of(SUBSYSTEM_NAME, JaxrsSubsystemModel.CURRENT, JaxrsSubsystemRegistrar::new),
+                SubsystemPersistence.of(JaxrsSubsystemSchema.CURRENT));
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void initializeParsers(final ExtensionParsingContext context) {
-        context.setSubsystemXmlMapping(SUBSYSTEM_NAME, "urn:jboss:domain:jaxrs:1.0", JaxrsSubsystemParser_1_0::new);
-        context.setSubsystemXmlMapping(SUBSYSTEM_NAME, "urn:jboss:domain:jaxrs:2.0", JaxrsSubsystemParser_2_0::new);
-    }
+    enum JaxrsSubsystemModel implements SubsystemModel {
+        VERSION_4_0_0(ModelVersion.create(4, 0, 0)),
+        VERSION_5_0_0(ModelVersion.create(5, 0, 0)),
+        ;
 
-    private static void registerAttributes(ManagementResourceRegistration registration) {
-       for (AttributeDefinition definition : JaxrsAttribute.ATTRIBUTES) {
-          registration.registerReadWriteAttribute(definition, null, new JaxrsParamHandler(definition));
-       }
+        static final JaxrsSubsystemModel CURRENT = VERSION_5_0_0;
+        private final ModelVersion version;
+
+        JaxrsSubsystemModel(final ModelVersion version) {
+            this.version = version;
+        }
+
+        @Override
+        public ModelVersion getVersion() {
+            return version;
+        }
+
+        @Override
+        public boolean requiresTransformation(final ModelVersion version) {
+            return SubsystemModel.super.requiresTransformation(version);
+        }
     }
 }

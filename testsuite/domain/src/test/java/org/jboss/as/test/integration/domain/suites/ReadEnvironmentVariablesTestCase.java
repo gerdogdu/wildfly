@@ -1,24 +1,7 @@
 /*
-* JBoss, Home of Professional Open Source.
-* Copyright 2012, Red Hat Middleware LLC, and individual contributors
-* as indicated by the @author tags. See the copyright.txt file in the
-* distribution for a full listing of individual contributors.
-*
-* This is free software; you can redistribute it and/or modify it
-* under the terms of the GNU Lesser General Public License as
-* published by the Free Software Foundation; either version 2.1 of
-* the License, or (at your option) any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-* Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public
-* License along with this software; if not, write to the Free
-* Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-* 02110-1301 USA, or see the FSF site: http://www.fsf.org.
-*/
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.jboss.as.test.integration.domain.suites;
 
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.HOST;
@@ -30,7 +13,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SER
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
 import static org.jboss.as.test.integration.domain.management.util.DomainTestSupport.validateResponse;
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -38,9 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.http.impl.client.HttpClients;
-import org.jboss.as.test.integration.domain.util.EENamespaceTransformer;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
-import org.jboss.shrinkwrap.impl.base.exporter.zip.ZipExporterImpl;
+import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.junit.Assert;
 
 import org.apache.http.HttpResponse;
@@ -68,28 +50,28 @@ import org.xnio.IoUtils;
  */
 public class ReadEnvironmentVariablesTestCase {
     private static DomainTestSupport testSupport;
-    private static DomainLifecycleUtil domainMasterLifecycleUtil;
-    private static DomainLifecycleUtil domainSlaveLifecycleUtil;
+    private static DomainLifecycleUtil domainPrimaryLifecycleUtil;
+    private static DomainLifecycleUtil domainSecondaryLifecycleUtil;
 
     @BeforeClass
     public static void setupDomain() throws Exception {
         testSupport = DomainTestSuite.createSupport(ReadEnvironmentVariablesTestCase.class.getSimpleName());
 
-        domainMasterLifecycleUtil = testSupport.getDomainMasterLifecycleUtil();
-        domainSlaveLifecycleUtil = testSupport.getDomainSlaveLifecycleUtil();
+        domainPrimaryLifecycleUtil = testSupport.getDomainPrimaryLifecycleUtil();
+        domainSecondaryLifecycleUtil = testSupport.getDomainSecondaryLifecycleUtil();
     }
 
     @AfterClass
     public static void tearDownDomain() throws Exception {
         DomainTestSuite.stopSupport();
         testSupport = null;
-        domainMasterLifecycleUtil = null;
-        domainSlaveLifecycleUtil = null;
+        domainPrimaryLifecycleUtil = null;
+        domainSecondaryLifecycleUtil = null;
     }
 
     @Test
     public void testReadEnvironmentVariablesForServers() throws Exception {
-        DomainClient client = domainMasterLifecycleUtil.createDomainClient();
+        DomainClient client = domainPrimaryLifecycleUtil.createDomainClient();
         DomainDeploymentManager manager = client.getDeploymentManager();
 
         try {
@@ -99,7 +81,7 @@ public class ReadEnvironmentVariablesTestCase {
             archive.addAsResource(new StringAsset("Manifest-Version: 1.0\nDependencies: org.jboss.dmr \n"),"META-INF/MANIFEST.MF");
             archive.addAsManifestResource(createPermissionsXmlAsset(new RuntimePermission("getenv.*")), "permissions.xml");
 
-            final InputStream contents = EENamespaceTransformer.jakartaTransform(new ZipExporterImpl(archive).exportAsInputStream() ,archiveName);
+            final InputStream contents = archive.as(ZipExporter.class).exportAsInputStream();
             try {
                 DeploymentPlan plan = manager.newDeploymentPlan()
                                           .add("env-test.war", contents)
@@ -113,17 +95,17 @@ public class ReadEnvironmentVariablesTestCase {
                 IoUtils.safeClose(contents);
             }
 
-            Map<String, String> env = getEnvironmentVariables(client, "master", "main-one", "standard-sockets");
+            Map<String, String> env = getEnvironmentVariables(client, "primary", "main-one", "standard-sockets");
             checkEnvironmentVariable(env, "DOMAIN_TEST_MAIN_GROUP", "main_group");
             checkEnvironmentVariable(env, "DOMAIN_TEST_SERVER", "server");
             checkEnvironmentVariable(env, "DOMAIN_TEST_JVM", "jvm");
 
-            env = getEnvironmentVariables(client, "slave", "main-three", "standard-sockets");
+            env = getEnvironmentVariables(client, "secondary", "main-three", "standard-sockets");
             checkEnvironmentVariable(env, "DOMAIN_TEST_MAIN_GROUP", "main_group");
             Assert.assertFalse(env.containsKey("DOMAIN_TEST_SERVER"));
             Assert.assertFalse(env.containsKey("DOMAIN_TEST_JVM"));
 
-            env = getEnvironmentVariables(client, "slave", "other-two", "other-sockets");
+            env = getEnvironmentVariables(client, "secondary", "other-two", "other-sockets");
             Assert.assertFalse(env.containsKey("DOMAIN_TEST_MAIN_GROUP"));
             Assert.assertFalse(env.containsKey("DOMAIN_TEST_SERVER"));
             Assert.assertFalse(env.containsKey("DOMAIN_TEST_JVM"));

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.connector.subsystems.jca;
 
@@ -57,7 +40,7 @@ import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceTarget;
 import org.wildfly.clustering.server.dispatcher.CommandDispatcherFactory;
-import org.wildfly.clustering.server.service.ClusteringDefaultRequirement;
+import org.wildfly.clustering.server.service.ClusteringServiceDescriptor;
 
 /**
  * @author <a href="jesper.pedersen@jboss.org">Jesper Pedersen</a>
@@ -145,7 +128,7 @@ public class DistributedWorkManagerAdd extends AbstractAddStepHandler {
         DistributedWorkManagerService wmService = new DistributedWorkManagerService(namedDistributedWorkManager);
         ServiceBuilder<NamedDistributedWorkManager> builder = serviceTarget
                 .addService(ConnectorServices.WORKMANAGER_SERVICE.append(name), wmService);
-        builder.addDependency(ClusteringDefaultRequirement.COMMAND_DISPATCHER_FACTORY.getServiceName(context), CommandDispatcherFactory.class, wmService.getCommandDispatcherFactoryInjector());
+        builder.addDependency(context.getCapabilityServiceName(ClusteringServiceDescriptor.DEFAULT_COMMAND_DISPATCHER_FACTORY), CommandDispatcherFactory.class, wmService.getCommandDispatcherFactoryInjector());
 
         if (resource.hasChild(PathElement.pathElement(Element.LONG_RUNNING_THREADS.getLocalName()))) {
             builder.addDependency(ThreadsServices.EXECUTOR.append(WORKMANAGER_LONG_RUNNING).append(name), Executor.class, wmService.getExecutorLongInjector());

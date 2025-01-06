@@ -1,10 +1,15 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ejb.stateful.passivation;
 
 import java.io.Serializable;
 
-import javax.ejb.PostActivate;
-import javax.ejb.PrePassivate;
-import javax.interceptor.InvocationContext;
+import jakarta.ejb.PostActivate;
+import jakarta.ejb.PrePassivate;
+import jakarta.interceptor.InvocationContext;
 
 /**
  * @author Stuart Douglas

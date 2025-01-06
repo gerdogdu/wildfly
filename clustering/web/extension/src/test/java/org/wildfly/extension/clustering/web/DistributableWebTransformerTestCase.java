@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2020, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.web;
@@ -41,10 +24,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.wildfly.clustering.infinispan.client.service.InfinispanClientRequirement;
-import org.wildfly.clustering.infinispan.service.InfinispanCacheRequirement;
-import org.wildfly.clustering.infinispan.service.InfinispanDefaultCacheRequirement;
-import org.wildfly.clustering.infinispan.service.InfinispanRequirement;
+import org.wildfly.clustering.infinispan.client.service.HotRodServiceDescriptor;
+import org.wildfly.clustering.infinispan.service.InfinispanServiceDescriptor;
 
 /**
  * Transformer tests for distributable-web subsystem.
@@ -55,7 +36,7 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
 
     @Parameters
     public static Iterable<ModelTestControllerVersion> parameters() {
-        return EnumSet.of(ModelTestControllerVersion.EAP_7_4_0);
+        return EnumSet.of(ModelTestControllerVersion.EAP_7_4_0, ModelTestControllerVersion.EAP_8_0_0);
     }
 
     private final ModelTestControllerVersion controller;
@@ -67,14 +48,12 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
         this.controller = controller;
         this.version = this.getModelVersion().getVersion();
         this.additionalInitialization = new AdditionalInitialization()
-                .require(InfinispanRequirement.CONTAINER.resolve("foo"))
-                .require(InfinispanDefaultCacheRequirement.CACHE.resolve("foo"))
-                .require(InfinispanDefaultCacheRequirement.CONFIGURATION.resolve("foo"))
-                .require(InfinispanCacheRequirement.CACHE.resolve("foo", "bar"))
-                .require(InfinispanCacheRequirement.CONFIGURATION.resolve("foo", "bar"))
-                .require(InfinispanClientRequirement.REMOTE_CONTAINER.resolve("foo"))
-                .require(InfinispanCacheRequirement.CACHE.resolve("foo", "routing"))
-                .require(InfinispanCacheRequirement.CONFIGURATION.resolve("foo", "routing"))
+                .require(InfinispanServiceDescriptor.CACHE_CONTAINER, "foo")
+                .require(InfinispanServiceDescriptor.DEFAULT_CACHE_CONFIGURATION, "foo")
+                .require(InfinispanServiceDescriptor.CACHE_CONFIGURATION, "foo", "bar")
+                .require(InfinispanServiceDescriptor.CACHE, "foo", "routing")
+                .require(InfinispanServiceDescriptor.CACHE_CONFIGURATION, "foo", "routing")
+                .require(HotRodServiceDescriptor.REMOTE_CACHE_CONTAINER, "foo")
                 ;
     }
 
@@ -86,10 +65,12 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
         return String.format(pattern, this.controller.getMavenGavVersion());
     }
 
-    private DistributableWebModel getModelVersion() {
+    private DistributableWebSubsystemModel getModelVersion() {
         switch (this.controller) {
             case EAP_7_4_0:
-                return DistributableWebModel.VERSION_2_0_0;
+                return DistributableWebSubsystemModel.VERSION_2_0_0;
+            case EAP_8_0_0:
+                return DistributableWebSubsystemModel.VERSION_4_0_0;
             default:
                 throw new IllegalArgumentException();
         }
@@ -113,6 +94,23 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
                         formatArtifact("org.jboss.eap:wildfly-clustering-web-infinispan:%s"),
                         formatArtifact("org.jboss.eap:wildfly-clustering-web-spi:%s"),
                 };
+            case EAP_8_0_0:
+                return new String[] {
+                        formatSubsystemArtifact(),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-common:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-ee-hotrod:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-ee-infinispan:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-ee-spi:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-infinispan-client-service:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-infinispan-embedded-service:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-marshalling-spi:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-service:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-web-container:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-web-hotrod:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-web-infinispan:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-web-service:%s"),
+                        formatArtifact("org.jboss.eap:wildfly-clustering-web-spi:%s"),
+                };
             default:
                 throw new IllegalArgumentException();
         }
@@ -123,7 +121,7 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
      */
     @Test
     public void testTransformation() throws Exception {
-        String subsystemXmlResource = String.format("wildfly-distributable-web-transform-%d_%d_%d.xml", this.version.getMajor(), this.version.getMinor(), this.version.getMicro());
+        String subsystemXmlResource = String.format("distributable-web-transform-%s.xml", this.version);
 
         // create builder for current subsystem version
         KernelServicesBuilder builder = createKernelServicesBuilder(this.additionalInitialization)
@@ -165,7 +163,7 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
         Assert.assertNotNull(legacyServices);
         Assert.assertTrue(legacyServices.isSuccessfulBoot());
 
-        List<ModelNode> operations = builder.parseXmlResource("wildfly-distributable-web-transform-reject.xml");
+        List<ModelNode> operations = builder.parseXmlResource("distributable-web-reject.xml");
         ModelTestUtils.checkFailedTransformedBootOperations(services, this.version, operations, this.createFailedOperationTransformationConfig());
     }
 
@@ -173,7 +171,7 @@ public class DistributableWebTransformerTestCase extends AbstractSubsystemTest {
         FailedOperationTransformationConfig config = new FailedOperationTransformationConfig();
         PathAddress subsystemAddress = PathAddress.pathAddress(ModelDescriptionConstants.SUBSYSTEM, DistributableWebExtension.SUBSYSTEM_NAME);
 
-        if (DistributableWebModel.VERSION_3_0_0.requiresTransformation(this.version)) {
+        if (DistributableWebSubsystemModel.VERSION_3_0_0.requiresTransformation(this.version)) {
             config.addFailedAttribute(subsystemAddress.append(InfinispanSessionManagementResourceDefinition.pathElement("protostream")), new FailedOperationTransformationConfig.NewAttributesConfig(SessionManagementResourceDefinition.Attribute.MARSHALLER.getName()));
             config.addFailedAttribute(subsystemAddress.append(HotRodSessionManagementResourceDefinition.pathElement("remote-protostream")), new FailedOperationTransformationConfig.NewAttributesConfig(SessionManagementResourceDefinition.Attribute.MARSHALLER.getName()));
         }

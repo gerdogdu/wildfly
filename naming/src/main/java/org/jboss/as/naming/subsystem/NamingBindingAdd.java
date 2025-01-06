@@ -1,25 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.naming.subsystem;
+
+import static org.jboss.as.controller.ModuleIdentifierUtil.canonicalModuleIdentifier;
 
 import static org.jboss.as.naming.subsystem.NamingSubsystemModel.TYPE;
 
@@ -55,12 +40,10 @@ import org.jboss.as.naming.service.ExternalContextBinderService;
 import org.jboss.as.naming.service.ExternalContextsService;
 import org.jboss.dmr.ModelNode;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
 import org.jboss.modules.ModuleNotFoundException;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
@@ -115,7 +98,7 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
 
         Object bindValue = createSimpleBinding(context, model);
 
-        ValueManagedReferenceFactory referenceFactory = new ValueManagedReferenceFactory(new ImmediateValue<Object>(bindValue));
+        ValueManagedReferenceFactory referenceFactory = new ValueManagedReferenceFactory(bindValue);
 
 
         final BinderService binderService = new BinderService(name, bindValue);
@@ -162,7 +145,7 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
     }
 
     private ObjectFactory createObjectFactory(OperationContext context, ModelNode model) throws OperationFailedException {
-        final ModuleIdentifier moduleID = ModuleIdentifier.fromString(NamingBindingResourceDefinition.MODULE.resolveModelAttribute(context, model).asString());
+        final String moduleID = canonicalModuleIdentifier(NamingBindingResourceDefinition.MODULE.resolveModelAttribute(context, model).asString());
         final String className = NamingBindingResourceDefinition.CLASS.resolveModelAttribute(context, model).asString();
         final Module module;
         try {
@@ -321,7 +304,7 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
             final BindingType type = BindingType.forName(NamingBindingResourceDefinition.BINDING_TYPE.resolveModelAttribute(context, model).asString());
             if (type == BindingType.SIMPLE) {
                 Object bindValue = createSimpleBinding(context, model);
-                factory.setFactory(new ValueManagedReferenceFactory(new ImmediateValue<Object>(bindValue)));
+                factory.setFactory(new ValueManagedReferenceFactory(bindValue));
                 service.setSource(bindValue);
             } else if (type == BindingType.OBJECT_FACTORY) {
                 final ObjectFactory objectFactoryClassInstance = createObjectFactory(context, model);

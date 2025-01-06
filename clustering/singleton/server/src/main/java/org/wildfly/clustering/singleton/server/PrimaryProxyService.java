@@ -1,27 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.singleton.server;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -34,8 +18,7 @@ import java.util.concurrent.CompletionStage;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StopContext;
-import org.wildfly.clustering.dispatcher.CommandDispatcherException;
-import org.wildfly.clustering.group.Node;
+import org.wildfly.clustering.server.GroupMember;
 
 /**
  * Service that proxies the value from the primary node.
@@ -59,11 +42,11 @@ public class PrimaryProxyService<T> implements Service<T> {
             throw SingletonLogger.ROOT_LOGGER.notStarted(context.getServiceName().getCanonicalName());
         }
         try {
-            Map<Node, CompletionStage<Optional<T>>> responses = context.getCommandDispatcher().executeOnGroup(new SingletonValueCommand<>());
+            Map<GroupMember, CompletionStage<Optional<T>>> responses = context.getCommandDispatcher().dispatchToGroup(SingletonValueCommand.getInstance());
             // Prune non-primary (i.e. null) results
-            Map<Node, Optional<T>> results = new HashMap<>();
+            Map<GroupMember, Optional<T>> results = new HashMap<>();
             try {
-                for (Map.Entry<Node, CompletionStage<Optional<T>>> entry : responses.entrySet()) {
+                for (Map.Entry<GroupMember, CompletionStage<Optional<T>>> entry : responses.entrySet()) {
                     try {
                         Optional<T> response = entry.getValue().toCompletableFuture().join();
                         if (response != null) {
@@ -86,7 +69,7 @@ public class PrimaryProxyService<T> implements Service<T> {
                 throw SingletonLogger.ROOT_LOGGER.noResponseFromPrimary(context.getServiceName().getCanonicalName());
             }
             return values.next().orElse(null);
-        } catch (CommandDispatcherException e) {
+        } catch (IOException e) {
             throw new IllegalArgumentException(e);
         }
     }

@@ -1,7 +1,12 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.clustering.cluster.ejb.remote.bean;
 
-import javax.ejb.Remote;
-import javax.ejb.Stateless;
+import jakarta.ejb.Remote;
+import jakarta.ejb.Stateless;
 import java.util.Date;
 
 @Stateless

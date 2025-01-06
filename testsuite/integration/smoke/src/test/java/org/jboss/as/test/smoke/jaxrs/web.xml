@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <web-app version="3.0"
          xmlns="http://java.sun.com/xml/ns/javaee"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -7,7 +12,7 @@
          metadata-complete="false">
 
     <servlet-mapping>
-        <servlet-name>javax.ws.rs.core.Application</servlet-name>
+        <servlet-name>jakarta.ws.rs.core.Application</servlet-name>
         <url-pattern>/*</url-pattern>
     </servlet-mapping>
 

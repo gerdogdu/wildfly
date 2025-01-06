@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright (c) 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.web.reverseproxy;
 
@@ -249,7 +232,7 @@ public class ReverseProxyTestCase {
         try (CloseableHttpClient httpclient = HttpClients.createDefault()) {
             HttpResponse res = httpclient.execute(new HttpGet("http://" + url.getHost() + ":" + url.getPort() + "/proxy/name?wait=50"));
             // With https://issues.redhat.com/browse/UNDERTOW-1459 fix, status code should be 504
-            // FIXME: after undertow 2.2.13.Final integrated into WildFly full, this should be updated to 504 only
+            // FIXME: after undertow 2.2.13.Final integrated into WildFly, this should be updated to 504 only
             Assert.assertTrue("Service Unaviable expected because max-request-time is set to 10ms", res.getStatusLine().getStatusCode() == 504 || res.getStatusLine().getStatusCode() == 503);
         }
     }

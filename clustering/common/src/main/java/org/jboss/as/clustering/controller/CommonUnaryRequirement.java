@@ -1,53 +1,38 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.controller;
 
-import java.security.KeyStore;
-
-import javax.net.ssl.SSLContext;
-import javax.sql.DataSource;
-
+import org.jboss.as.controller.services.path.PathManager;
 import org.jboss.as.network.OutboundSocketBinding;
 import org.jboss.as.network.SocketBinding;
 import org.wildfly.clustering.service.UnaryRequirement;
-import org.wildfly.security.credential.store.CredentialStore;
+import org.wildfly.service.descriptor.UnaryServiceDescriptor;
 
 /**
  * Enumerates common unary requirements for clustering resources
  * @author Paul Ferraro
+ * @deprecated Superseded by {@link CommonServiceDescriptor}.
  */
+@Deprecated(forRemoval = true)
 public enum CommonUnaryRequirement implements UnaryRequirement, UnaryServiceNameFactoryProvider {
-    CREDENTIAL_STORE("org.wildfly.security.credential-store", CredentialStore.class),
-    DATA_SOURCE("org.wildfly.data-source", DataSource.class),
-    KEY_STORE("org.wildfly.security.key-store", KeyStore.class),
-    OUTBOUND_SOCKET_BINDING("org.wildfly.network.outbound-socket-binding", OutboundSocketBinding.class),
-    PATH("org.wildfly.management.path", String.class),
-    SOCKET_BINDING("org.wildfly.network.socket-binding", SocketBinding.class),
-    SSL_CONTEXT("org.wildfly.security.ssl-context", SSLContext.class),
+    CREDENTIAL_STORE(CommonServiceDescriptor.CREDENTIAL_STORE),
+    DATA_SOURCE(CommonServiceDescriptor.DATA_SOURCE),
+    KEY_STORE(CommonServiceDescriptor.KEY_STORE),
+    OUTBOUND_SOCKET_BINDING(OutboundSocketBinding.SERVICE_DESCRIPTOR),
+    PATH(PathManager.PATH_SERVICE_DESCRIPTOR),
+    SOCKET_BINDING(SocketBinding.SERVICE_DESCRIPTOR),
+    SSL_CONTEXT(CommonServiceDescriptor.SSL_CONTEXT),
     ;
     private final String name;
     private final Class<?> type;
     private final UnaryServiceNameFactory factory = new UnaryRequirementServiceNameFactory(this);
+
+    CommonUnaryRequirement(UnaryServiceDescriptor<?> descriptor) {
+        this(descriptor.getName(), descriptor.getType());
+    }
 
     CommonUnaryRequirement(String name, Class<?> type) {
         this.name = name;

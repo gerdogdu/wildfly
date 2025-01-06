@@ -1,35 +1,18 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.security.jacc.propagation;
 
-import javax.annotation.security.DeclareRoles;
-import javax.annotation.security.RolesAllowed;
-import javax.annotation.security.RunAs;
-import javax.ejb.EJB;
-import javax.ejb.Stateless;
+import jakarta.annotation.security.DeclareRoles;
+import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.RunAs;
+import jakarta.ejb.EJB;
+import jakarta.ejb.Stateless;
 
 /**
  * Implementation of {@link Manage} interface which has injected {@link TargetBean} EJB and calls it's methods as
- * {@link Manage#ROLE_MANAGER} role (using {@link javax.annotation.security.RunAs} annotation). This class is protected, it
+ * {@link Manage#ROLE_MANAGER} role (using {@link jakarta.annotation.security.RunAs} annotation). This class is protected, it
  * allows access to all test roles. Methods of this class are not protected.
  *
  * @author Josef Cacek

@@ -1,7 +1,12 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ejb.async.zerotimeout;
 
-import javax.ejb.Asynchronous;
-import javax.ejb.Remote;
+import jakarta.ejb.Asynchronous;
+import jakarta.ejb.Remote;
 import java.util.concurrent.Future;
 
 /**

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2022, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
@@ -29,7 +12,6 @@ import static org.jboss.as.controller.parsing.ParseUtils.requireNoContent;
 import static org.jboss.as.controller.parsing.ParseUtils.requireNoNamespaceAttribute;
 import static org.jboss.as.controller.parsing.ParseUtils.unexpectedAttribute;
 import static org.jboss.as.controller.parsing.ParseUtils.unexpectedElement;
-import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.CACHE;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.SIMPLE_CACHE;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DISTRIBUTABLE_CACHE;
 
@@ -47,11 +29,9 @@ import org.jboss.staxmapper.XMLExtendedStreamReader;
 
 /**
  * Parser for ejb3:10.0 namespace.
+ * TODO Parameterize a single parser class by schema version.  Inheritence is a poor model for versioning.
  */
 public class EJB3Subsystem100Parser extends EJB3Subsystem90Parser {
-
-    EJB3Subsystem100Parser() {
-    }
 
     @Override
     protected EJB3SubsystemNamespace getExpectedNamespace() {
@@ -120,7 +100,7 @@ public class EJB3Subsystem100Parser extends EJB3Subsystem90Parser {
                     break;
                 }
                 case BEAN_MANAGEMENT: {
-                    AttributeDefinition definition = DistributableCacheFactoryResourceDefinition.Attribute.BEAN_MANAGEMENT.getDefinition();
+                    AttributeDefinition definition = DistributableStatefulSessionBeanCacheProviderResourceDefinition.Attribute.BEAN_MANAGEMENT.getDefinition();
                     definition.getParser().parseAndSetParameter(definition, value, operation, reader);
                     break;
                 }
@@ -138,4 +118,41 @@ public class EJB3Subsystem100Parser extends EJB3Subsystem90Parser {
         operations.add(operation);
     }
 
+    @Override
+    protected void parseTimerService(final XMLExtendedStreamReader reader, List<ModelNode> operations) throws XMLStreamException {
+
+        PathAddress address = PathAddress.pathAddress(EJB3Extension.SUBSYSTEM_PATH, EJB3SubsystemModel.TIMER_SERVICE_PATH);
+        ModelNode operation = Util.createAddOperation(address);
+        operations.add(operation);
+
+        final int attCount = reader.getAttributeCount();
+        for (int i = 0; i < attCount; i++) {
+            requireNoNamespaceAttribute(reader, i);
+            final String value = reader.getAttributeValue(i);
+            final EJB3SubsystemXMLAttribute attribute = EJB3SubsystemXMLAttribute.forName(reader.getAttributeLocalName(i));
+            switch (attribute) {
+                case THREAD_POOL_NAME:
+                    TimerServiceResourceDefinition.THREAD_POOL_NAME.parseAndSetParameter(value, operation, reader);
+                    break;
+                case DEFAULT_DATA_STORE:
+                    TimerServiceResourceDefinition.DEFAULT_DATA_STORE.parseAndSetParameter(value, operation, reader);
+                    break;
+                case DEFAULT_PERSISTENT_TIMER_MANAGEMENT:
+                    TimerServiceResourceDefinition.DEFAULT_PERSISTENT_TIMER_MANAGEMENT.parseAndSetParameter(value, operation, reader);
+                    break;
+                case DEFAULT_TRANSIENT_TIMER_MANAGEMENT:
+                    TimerServiceResourceDefinition.DEFAULT_TRANSIENT_TIMER_MANAGEMENT.parseAndSetParameter(value, operation, reader);
+                    break;
+                default:
+                    throw unexpectedAttribute(reader, i);
+            }
+        }
+
+        while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
+            switch (EJB3SubsystemXMLElement.forName(reader.getLocalName())) {
+                case DATA_STORES:
+                    parseDataStores(reader, operations);
+            }
+        }
+    }
 }

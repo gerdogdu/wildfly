@@ -1,59 +1,38 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow;
 
 import static org.wildfly.extension.undertow.ServerDefinition.SERVER_CAPABILITY;
 
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.jboss.as.controller.AbstractAddStepHandler;
+import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.CapabilityServiceBuilder;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.Resource;
 import org.jboss.as.web.host.CommonWebServer;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.Property;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
-import org.wildfly.extension.undertow.session.DistributableServerRuntimeHandler;
+import org.wildfly.extension.undertow.session.DistributableServerServiceInstallerFactory;
 
 /**
  * @author <a href="mailto:tomaz.cerar@redhat.com">Tomaz Cerar</a> (c) 2013 Red Hat Inc.
  * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 final class ServerAdd extends AbstractAddStepHandler {
-
-    ServerAdd() {
-        super(new Parameters()
-                .addAttribute(ServerDefinition.ATTRIBUTES)
-                .addRuntimeCapability(SERVER_CAPABILITY)//only have server capability automatically registered
-        );
-    }
 
     @Override
     protected void performRuntime(OperationContext context, ModelNode operation, Resource resource) throws OperationFailedException {
@@ -76,24 +55,54 @@ final class ServerAdd extends AbstractAddStepHandler {
         if (isDefaultServer) { //only install for default server
             final CapabilityServiceBuilder<?> csb = context.getCapabilityServiceTarget().addCapability(CommonWebServer.CAPABILITY);
             final Consumer<WebServerService> wssConsumer = csb.provides(CommonWebServer.CAPABILITY, CommonWebServer.SERVICE_NAME);
-            final Supplier<Server> sSupplier = csb.requiresCapability(Capabilities.CAPABILITY_SERVER, Server.class, name);
+            final Supplier<Server> sSupplier = csb.requires(Server.SERVICE_DESCRIPTOR, name);
             csb.setInstance(new WebServerService(wssConsumer, sSupplier));
             csb.setInitialMode(ServiceController.Mode.PASSIVE);
 
-            addCommonHostListenerDeps(context, csb, UndertowExtension.HTTP_LISTENER_PATH);
-            addCommonHostListenerDeps(context, csb, UndertowExtension.AJP_LISTENER_PATH);
-            addCommonHostListenerDeps(context, csb, UndertowExtension.HTTPS_LISTENER_PATH);
+            addCommonHostListenerDeps(context, csb, HttpListenerResourceDefinition.PATH_ELEMENT);
+            addCommonHostListenerDeps(context, csb, AjpListenerResourceDefinition.PATH_ELEMENT);
+            addCommonHostListenerDeps(context, csb, HttpsListenerResourceDefinition.PATH_ELEMENT);
             csb.install();
         }
 
-        for (DistributableServerRuntimeHandler handler : ServiceLoader.load(DistributableServerRuntimeHandler.class, DistributableServerRuntimeHandler.class.getClassLoader())) {
-            handler.execute(context, name);
+        for (DistributableServerServiceInstallerFactory factory : ServiceLoader.load(DistributableServerServiceInstallerFactory.class, DistributableServerServiceInstallerFactory.class.getClassLoader())) {
+            factory.getServiceInstaller(context, name).install(context);
         }
     }
 
+    /**
+     * <strong>TODO</strong> WFCORE-6176 Update AbstractAddHandler and its Parameters class to support a more fit-to-use
+     * API for handling this kind of use case, i.e. to register a per-capability function to override the default
+     * registration logic.
+     * <p>
+     * Replaces the superclass implementation in order to only register {@link CommonWebServer#CAPABILITY} if
+     * the resource's name matches the containing subsystems {@link UndertowRootDefinition#DEFAULT_SERVER} value.
+     * <p>
+     * <strong>IMPORTANT</strong> This implemenation deliberately doesn't call the superclass implementation
+     * as we don't want it to always register {@link CommonWebServer#CAPABILITY}. So we directly handle all
+     * registration here.
+     *
+     * @param context – the context. Will not be null
+     * @param operation – the operation that is executing Will not be null
+     * @param resource – the resource that has been added. Will reflect any updates made by populateModel(OperationContext, ModelNode, Resource). Will not be null
+     */
     @Override
     protected void recordCapabilitiesAndRequirements(OperationContext context, ModelNode operation, Resource resource) throws OperationFailedException {
-        super.recordCapabilitiesAndRequirements(context, operation, resource);
+
+        context.registerCapability(SERVER_CAPABILITY.fromBaseCapability(context.getCurrentAddress()));
+
+        // We currently don't have any attributes that reference capabilities, but we have this code in case that changes
+        // since we are not calling the superclass code.
+        ModelNode model = resource.getModel();
+
+        Map<String, AttributeAccess> attributeAccessMap = context.getResourceRegistration().getAttributes(PathAddress.EMPTY_ADDRESS);
+        for (Map.Entry<String, AttributeAccess> entry : attributeAccessMap.entrySet()) {
+            AttributeAccess attributeAccess = entry.getValue();
+            AttributeDefinition ad = attributeAccess.getAttributeDefinition();
+            if (model.hasDefined(ad.getName()) || ad.hasCapabilityRequirements()) {
+                ad.addCapabilityRequirements(context, resource, model.get(ad.getName()));
+            }
+        }
 
         ModelNode parentModel = context.readResourceFromRoot(context.getCurrentAddress().getParent(), false).getModel();
         final String defaultServerName = UndertowRootDefinition.DEFAULT_SERVER.resolveModelAttribute(context, parentModel).asString();

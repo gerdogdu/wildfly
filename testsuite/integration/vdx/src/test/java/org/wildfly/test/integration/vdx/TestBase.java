@@ -1,18 +1,6 @@
 /*
- * Copyright 2016 Red Hat, Inc, and individual contributors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.test.integration.vdx;
@@ -27,10 +15,12 @@ import org.junit.rules.TestName;
 import org.wildfly.test.integration.vdx.utils.server.ServerBase;
 import org.wildfly.test.integration.vdx.utils.server.Server;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -88,7 +78,7 @@ public class TestBase {
 
         // copy server.log files for standalone or host-controller.log for domain
         Files.copy(container().getServerLogPath(), pathToArchiveDirectory.resolve(container().getServerLogPath().getFileName()), StandardCopyOption.REPLACE_EXISTING);
-        Files.delete(container().getServerLogPath());
+        deleteFile(container().getServerLogPath(), 5000);
     }
 
     private void createAndSetTestArchiveDirectoryToContainer(Path testArchiveDirectory) throws Exception {
@@ -97,5 +87,20 @@ public class TestBase {
             Files.createDirectories(testArchiveDirectory);
         }
         container().setTestArchiveDirectory(testArchiveDirectory);
+    }
+
+    private void deleteFile(Path path, int timeout) throws IOException, InterruptedException {
+        long done = System.currentTimeMillis() + timeout;
+        while (true) {
+            try {
+                Files.delete(path);
+                break;
+            } catch (IOException e) {
+                if (System.currentTimeMillis() > done) {
+                    throw e;
+                }
+            }
+            TimeUnit.MILLISECONDS.sleep(500);
+        }
     }
 }

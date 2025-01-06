@@ -1,6 +1,11 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.jaxrs.integration.ejb;
 
-import javax.transaction.SystemException;
+import jakarta.transaction.SystemException;
 
 /**
  * @author Stuart Douglas

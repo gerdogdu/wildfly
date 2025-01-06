@@ -1,35 +1,22 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.web.service.routing;
 
-import org.jboss.as.clustering.controller.CapabilityServiceConfigurator;
-import org.wildfly.clustering.service.SupplierDependency;
+import org.jboss.as.controller.capability.CapabilityServiceSupport;
+import org.wildfly.service.descriptor.NullaryServiceDescriptor;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.ServiceInstaller;
 
 /**
  * Defines a routing provider.
  * @author Paul Ferraro
  */
 public interface RoutingProvider {
+    NullaryServiceDescriptor<RoutingProvider> SERVICE_DESCRIPTOR = NullaryServiceDescriptor.of("org.wildfly.clustering.web.routing-provider", RoutingProvider.class);
+    NullaryServiceDescriptor<RoutingProvider> INFINISPAN_SERVICE_DESCRIPTOR = NullaryServiceDescriptor.of("org.wildfly.clustering.web.infinispan-routing-provider", RoutingProvider.class);
 
     /**
      * Builds the server dependencies to be made available to every deployment.
@@ -37,5 +24,5 @@ public interface RoutingProvider {
      * @param route the distinct route of the server
      * @return a service builder
      */
-    Iterable<CapabilityServiceConfigurator> getServiceConfigurators(String serverName, SupplierDependency<String> route);
+    Iterable<ServiceInstaller> getServiceInstallers(CapabilityServiceSupport support, String serverName, ServiceDependency<String> route);
 }

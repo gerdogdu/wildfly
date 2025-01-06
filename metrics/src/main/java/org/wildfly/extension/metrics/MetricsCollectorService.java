@@ -1,29 +1,9 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.extension.metrics;
 
-import static org.wildfly.extension.metrics.MetricsSubsystemDefinition.CLIENT_FACTORY_CAPABILITY;
-import static org.wildfly.extension.metrics.MetricsSubsystemDefinition.MANAGEMENT_EXECUTOR;
-import static org.wildfly.extension.metrics.MetricsSubsystemDefinition.PROCESS_STATE_NOTIFIER;
 import static org.wildfly.extension.metrics.MetricsSubsystemDefinition.WILDFLY_COLLECTOR;
 
 import java.util.concurrent.Executor;
@@ -34,8 +14,9 @@ import org.jboss.as.controller.LocalModelControllerClient;
 import org.jboss.as.controller.ModelControllerClientFactory;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.ProcessStateNotifier;
+import org.jboss.as.controller.RequirementServiceBuilder;
+import org.jboss.as.controller.management.Capabilities;
 import org.jboss.msc.service.Service;
-import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StopContext;
 
@@ -53,10 +34,10 @@ public class MetricsCollectorService implements Service<MetricCollector> {
     private LocalModelControllerClient modelControllerClient;
 
     static void install(OperationContext context) {
-        ServiceBuilder<?> serviceBuilder = context.getServiceTarget().addService(WILDFLY_COLLECTOR);
-        Supplier<ModelControllerClientFactory> modelControllerClientFactory = serviceBuilder.requires(context.getCapabilityServiceName(CLIENT_FACTORY_CAPABILITY, ModelControllerClientFactory.class));
-        Supplier<Executor> managementExecutor = serviceBuilder.requires(context.getCapabilityServiceName(MANAGEMENT_EXECUTOR, Executor.class));
-        Supplier<ProcessStateNotifier> processStateNotifier = serviceBuilder.requires(context.getCapabilityServiceName(PROCESS_STATE_NOTIFIER, ProcessStateNotifier.class));
+        RequirementServiceBuilder<?> serviceBuilder = context.getCapabilityServiceTarget().addService(WILDFLY_COLLECTOR);
+        Supplier<ModelControllerClientFactory> modelControllerClientFactory = serviceBuilder.requires(ModelControllerClientFactory.SERVICE_DESCRIPTOR);
+        Supplier<Executor> managementExecutor = serviceBuilder.requires(Capabilities.MANAGEMENT_EXECUTOR);
+        Supplier<ProcessStateNotifier> processStateNotifier = serviceBuilder.requires(ProcessStateNotifier.SERVICE_DESCRIPTOR);
         Consumer<MetricCollector> metricCollectorConsumer = serviceBuilder.provides(WILDFLY_COLLECTOR);
         MetricsCollectorService service = new MetricsCollectorService(modelControllerClientFactory, managementExecutor, processStateNotifier, metricCollectorConsumer);
         serviceBuilder.setInstance(service)

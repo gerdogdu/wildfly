@@ -1,39 +1,27 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2009, Red Hat Middleware LLC, and individual contributors
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ejb.pool.lifecycle;
 
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.PropertyPermission;
-import javax.ejb.EJB;
-import javax.jms.Connection;
-import javax.jms.Destination;
-import javax.jms.Message;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.QueueConnection;
-import javax.jms.QueueConnectionFactory;
-import javax.jms.QueueReceiver;
-import javax.jms.QueueSession;
-import javax.jms.Session;
-import javax.jms.TextMessage;
+import jakarta.ejb.EJB;
+import jakarta.jms.Connection;
+import jakarta.jms.Destination;
+import jakarta.jms.Message;
+import jakarta.jms.MessageProducer;
+import jakarta.jms.Queue;
+import jakarta.jms.QueueConnection;
+import jakarta.jms.QueueConnectionFactory;
+import jakarta.jms.QueueReceiver;
+import jakarta.jms.QueueSession;
+import jakarta.jms.Session;
+import jakarta.jms.TextMessage;
 import javax.naming.InitialContext;
 
 import org.jboss.arquillian.container.test.api.Deployer;
@@ -46,6 +34,7 @@ import org.jboss.as.arquillian.container.ManagementClient;
 import org.jboss.as.test.integration.common.jms.JMSOperations;
 import org.jboss.as.test.integration.common.jms.JMSOperationsProvider;
 import org.jboss.as.test.shared.TimeoutUtil;
+import org.jboss.as.test.shared.util.AssumeTestGroupUtil;
 import org.jboss.logging.Logger;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
@@ -95,7 +84,12 @@ public class PooledEJBLifecycleTestCase {
         archive.addClass(TimeoutUtil.class);
         archive.addClass(PointlesMathInterface.class);
         archive.addClass(Constants.class);
-        archive.addAsManifestResource(createPermissionsXmlAsset(new PropertyPermission("ts.timeout.factor", "read")), "jboss-permissions.xml");
+        archive.addClass(AssumeTestGroupUtil.class);
+        archive.addAsManifestResource(
+                createPermissionsXmlAsset(new PropertyPermission("ts.timeout.factor", "read"),
+                        new PropertyPermission("ts.preview", "read"),
+                        new PropertyPermission("ts.bootable.preview", "read")),
+                "jboss-permissions.xml");
         return archive;
     }
 
@@ -138,6 +132,8 @@ public class PooledEJBLifecycleTestCase {
     @SuppressWarnings("static-access")
     @Test
     public void testMDB() throws Exception {
+        // WildFly Preview doesn't configure a messaging broker
+        AssumeTestGroupUtil.assumeNotWildFlyPreview();
         boolean requiresUndeploy = false;
         try {
             // do the deployment of the MDB
@@ -234,7 +230,7 @@ public class PooledEJBLifecycleTestCase {
             assertEquals("Unexpected reply messsage", Constants.REPLY_MESSAGE_PREFIX + requestMessage, result);
         } finally {
             if (connection != null) {
-                // just closing the connection will close the session and other related resources (@see javax.jms.Connection)
+                // just closing the connection will close the session and other related resources (@see jakarta.jms.Connection)
                 safeClose(connection);
             }
         }
@@ -250,6 +246,8 @@ public class PooledEJBLifecycleTestCase {
 
         @Override
         public void setup(ManagementClient managementClient, String containerId) throws Exception {
+            // WildFly Preview doesn't configure a messaging broker
+            AssumeTestGroupUtil.assumeNotWildFlyPreview();
             // create the JMS queue
             final JMSOperations jmsOperations = JMSOperationsProvider.getInstance(managementClient);
             jmsOperations.createJmsQueue(QUEUE_NAME, Constants.QUEUE_JNDI_NAME);
@@ -257,6 +255,8 @@ public class PooledEJBLifecycleTestCase {
 
         @Override
         public void tearDown(ManagementClient managementClient, String containerId) throws Exception {
+            // WildFly Preview doesn't configure a messaging broker
+            AssumeTestGroupUtil.assumeNotWildFlyPreview();
             // destroy the JMS queue
             final JMSOperations jmsOperations = JMSOperationsProvider.getInstance(managementClient);
             jmsOperations.removeJmsQueue(QUEUE_NAME);

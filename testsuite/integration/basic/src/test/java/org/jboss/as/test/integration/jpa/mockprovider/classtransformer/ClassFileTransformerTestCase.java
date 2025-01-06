@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.jpa.mockprovider.classtransformer;
@@ -45,7 +28,7 @@ import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
  * Hibernate "hibernate.ejb.use_class_enhancer" test that causes hibernate to add a
- * javax.persistence.spi.ClassTransformer to the pu.
+ * jakarta.persistence.spi.ClassTransformer to the pu.
  *
  * @author Scott Marlow
  */
@@ -58,15 +41,16 @@ public class ClassFileTransformerTestCase {
     public static Archive<?> deploy() {
         JavaArchive persistenceProvider = ShrinkWrap.create(JavaArchive.class, "testpersistenceprovider.jar");
         persistenceProvider.addClasses(
+                AbstractTestPersistenceProvider.class,
                 TestClassTransformer.class,
                 TestEntityManagerFactory.class,
                 TestPersistenceProvider.class,
                 TestAdapter.class
         );
 
-        // META-INF/services/javax.persistence.spi.PersistenceProvider
+        // META-INF/services/jakarta.persistence.spi.PersistenceProvider
         persistenceProvider.addAsResource(new StringAsset("org.jboss.as.test.integration.jpa.mockprovider.classtransformer.TestPersistenceProvider"),
-                "META-INF/services/javax.persistence.spi.PersistenceProvider");
+                "META-INF/services/jakarta.persistence.spi.PersistenceProvider");
 
         EnterpriseArchive ear = ShrinkWrap.create(EnterpriseArchive.class, ARCHIVE_NAME + ".ear");
 

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.group;
 
@@ -27,7 +10,9 @@ import java.net.InetSocketAddress;
  * Identifies a member of a cluster.
  *
  * @author Paul Ferraro
+ * @deprecated Replaced by {@link org.wildfly.clustering.server.GroupMember}.
  */
+@Deprecated(forRemoval = true)
 public interface Node {
     /**
      * Returns the logical name of this node.
@@ -41,5 +26,7 @@ public interface Node {
      *
      * @return a socket binding address, or null if this node is a member of a singleton group.
      */
-    InetSocketAddress getSocketAddress();
+    default InetSocketAddress getSocketAddress() {
+        return null;
+    }
 }

@@ -1,6 +1,11 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.weld.ejb.requestscope;
 
-import javax.ejb.Remote;
+import jakarta.ejb.Remote;
 
 /**
  * @author Stuart Douglas

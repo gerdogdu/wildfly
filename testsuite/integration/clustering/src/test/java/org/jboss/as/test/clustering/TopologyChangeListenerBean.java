@@ -1,32 +1,17 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.clustering;
 
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.ejb.Remote;
-import javax.ejb.Stateless;
+import jakarta.ejb.Remote;
+import jakarta.ejb.Stateless;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -34,10 +19,13 @@ import javax.naming.NamingException;
 import org.infinispan.Cache;
 import org.infinispan.distribution.DistributionManager;
 import org.infinispan.distribution.LocalizedCacheTopology;
+import org.infinispan.factories.GlobalComponentRegistry;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.notifications.Listener;
+import org.infinispan.notifications.Listener.Observation;
 import org.infinispan.notifications.cachelistener.annotation.TopologyChanged;
 import org.infinispan.notifications.cachelistener.event.TopologyChangedEvent;
+import org.infinispan.util.concurrent.BlockingManager;
 import org.jboss.logging.Logger;
 
 /**
@@ -46,14 +34,14 @@ import org.jboss.logging.Logger;
  */
 @Stateless
 @Remote(TopologyChangeListener.class)
-@Listener(sync = false)
-public class TopologyChangeListenerBean implements TopologyChangeListener {
+@Listener(observation = Observation.POST)
+public class TopologyChangeListenerBean implements TopologyChangeListener, Runnable {
 
     private static final Logger logger = Logger.getLogger(TopologyChangeListenerBean.class);
 
     @Override
     public void establishTopology(String containerName, String cacheName, long timeout, String... nodes) throws InterruptedException {
-        Set<String> expectedMembers = Stream.of(nodes).sorted().collect(Collectors.toSet());
+        Set<String> expectedMembers = Stream.of(nodes).collect(Collectors.toSet());
         Cache<?, ?> cache = findCache(containerName, cacheName);
         if (cache == null) {
             throw new IllegalStateException(String.format("Cache %s.%s not found", containerName, cacheName));
@@ -103,11 +91,16 @@ public class TopologyChangeListenerBean implements TopologyChangeListener {
     }
 
     @TopologyChanged
-    public void topologyChanged(TopologyChangedEvent<?, ?> event) {
-        if (!event.isPre()) {
-            synchronized (this) {
-                this.notify();
-            }
+    public CompletionStage<Void> topologyChanged(TopologyChangedEvent<?, ?> event) {
+        BlockingManager blocking = GlobalComponentRegistry.componentOf(event.getCache().getCacheManager(), BlockingManager.class);
+        blocking.asExecutor(this.getClass().getName()).execute(this);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public void run() {
+        synchronized (this) {
+            this.notify();
         }
     }
 }

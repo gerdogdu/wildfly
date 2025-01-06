@@ -1,28 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2008, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.connector.subsystems.resourceadapters;
 
 import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
 import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.JNDI_NAME;
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATION;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATIONMILLIS;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BLOCKING_TIMEOUT_WAIT_MILLIS;
@@ -53,7 +38,6 @@ import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENABL
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENLISTMENT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENLISTMENT_TRACE;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.INTERLEAVING;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.JNDINAME;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.MCP;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.NOTXSEPARATEPOOL;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.NO_RECOVERY;
@@ -73,12 +57,12 @@ import static org.jboss.as.connector.subsystems.resourceadapters.Constants.SECUR
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.SHARABLE;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.TRACKING;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.USE_CCM;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WRAP_XA_RESOURCE;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.XA_RESOURCE_TIMEOUT;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
 
+import java.lang.invoke.MethodHandles;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -117,7 +101,7 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
     /**
      * The bundle
      */
-    private static CommonBundle bundle = Messages.getBundle(CommonBundle.class);
+    private static CommonBundle bundle = Messages.getBundle(MethodHandles.lookup(), CommonBundle.class);
 
 
     protected void parseConfigProperties(final XMLExtendedStreamReader reader, final Map<String, ModelNode> map) throws XMLStreamException, ParserException {
@@ -137,10 +121,10 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
      * parse a single connection-definition tag
      *
      * @param reader the reader
-     * @throws javax.xml.stream.XMLStreamException
+     * @throws XMLStreamException
      *                         XMLStreamException
      * @throws ParserException ParserException
-     * @throws org.jboss.jca.common.api.validator.ValidateException
+     * @throws ValidateException
      *                         ValidateException
      */
     protected void parseConnectionDefinitions_3_0(final XMLExtendedStreamReader reader, final Map<String, ModelNode> map,
@@ -177,7 +161,7 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                 }
                 case JNDI_NAME: {
                     jndiName = value;
-                    JNDINAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
+                    JNDI_NAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
                     break;
                 }
                 case POOL_NAME: {
@@ -302,10 +286,10 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
      * parse a single connection-definition tag
      *
      * @param reader the reader
-     * @throws javax.xml.stream.XMLStreamException
+     * @throws XMLStreamException
      *                         XMLStreamException
      * @throws ParserException ParserException
-     * @throws org.jboss.jca.common.api.validator.ValidateException
+     * @throws ValidateException
      *                         ValidateException
      */
     protected void parseConnectionDefinitions_4_0(final XMLExtendedStreamReader reader, final Map<String, ModelNode> map,
@@ -342,7 +326,7 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                 }
                 case JNDI_NAME: {
                     jndiName = value;
-                    JNDINAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
+                    JNDI_NAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
                     break;
                 }
                 case POOL_NAME: {
@@ -504,7 +488,7 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                 }
                 case JNDI_NAME: {
                     jndiName = value;
-                    JNDINAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
+                    JNDI_NAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
                     break;
                 }
                 case POOL_NAME: {
@@ -565,10 +549,10 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
      * parse a single connection-definition tag
      *
      * @param reader the reader
-     * @throws javax.xml.stream.XMLStreamException
+     * @throws XMLStreamException
      *                         XMLStreamException
      * @throws ParserException ParserException
-     * @throws org.jboss.jca.common.api.validator.ValidateException
+     * @throws ValidateException
      *                         ValidateException
      */
     protected void parseConnectionDefinitions_5_0(final XMLExtendedStreamReader reader, final Map<String, ModelNode> map,
@@ -658,10 +642,10 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
          * parse a single connection-definition tag
          *
          * @param reader the reader
-         * @throws javax.xml.stream.XMLStreamException
+         * @throws XMLStreamException
          *                         XMLStreamException
          * @throws ParserException ParserException
-         * @throws org.jboss.jca.common.api.validator.ValidateException
+         * @throws ValidateException
          *                         ValidateException
          */
         protected void parseConnectionDefinitions_1_0(final XMLExtendedStreamReader reader, final Map<String, ModelNode> map,
@@ -688,7 +672,7 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                     }
                     case JNDI_NAME: {
                         jndiName = value;
-                        JNDINAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
+                        JNDI_NAME.parseAndSetParameter(jndiName, connectionDefinitionNode, reader);
                         break;
                     }
                     case POOL_NAME: {
@@ -932,9 +916,9 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                     break;
                 }
                 case JNDI_NAME: {
-                    jndiName = rawAttributeText(reader, JNDINAME.getXmlName());
+                    jndiName = rawAttributeText(reader, JNDI_NAME.getXmlName());
                     if (jndiName != null) {
-                        JNDINAME.parseAndSetParameter(jndiName, adminObjectNode, reader);
+                        JNDI_NAME.parseAndSetParameter(jndiName, adminObjectNode, reader);
                     }
                     break;
                 }
@@ -1301,7 +1285,11 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                     Recovery.Tag tag = Recovery.Tag.forName(reader.getLocalName());
                     switch (tag) {
                         case RECOVER_CREDENTIAL: {
-                            parseElytronSupportedRecoveryCredential(reader, node);
+                            if (Namespace.forUri(reader.getNamespaceURI()).compareTo(Namespace.RESOURCEADAPTERS_7_1) >= 0) {
+                                parseElytronSupportedRecoveryCredential_7_1(reader, node);
+                            } else {
+                                parseElytronSupportedRecoveryCredential(reader, node);
+                            }
                             break;
                         }
                         case RECOVER_PLUGIN: {
@@ -1321,6 +1309,20 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
 
     private void parseSecuritySettings(XMLExtendedStreamReader reader, ModelNode node) throws XMLStreamException, ParserException,
             ValidateException {
+
+        for (Recovery.Attribute attribute : Recovery.Attribute.values()) {
+            switch (attribute) {
+                case NO_RECOVERY: {
+                    String value = rawAttributeText(reader, NO_RECOVERY.getXmlName());
+                    if (value != null) {
+                        NO_RECOVERY.parseAndSetParameter(value, node, reader);
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
 
         boolean securtyDomainMatched = false;
         while (reader.hasNext()) {
@@ -1440,7 +1442,6 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
     private void parseRecoveryCredential(XMLExtendedStreamReader reader, ModelNode node) throws XMLStreamException, ParserException,
             ValidateException {
 
-
         while (reader.hasNext()) {
             switch (reader.nextTag()) {
                 case END_ELEMENT: {
@@ -1473,6 +1474,76 @@ public abstract class CommonIronJacamarParser extends AbstractParser {
                         case SECURITY_DOMAIN: {
                             String value = rawElementText(reader);
                             RECOVERY_SECURITY_DOMAIN.parseAndSetParameter(value, node, reader);
+                            break;
+                        }
+                        default:
+                            throw ParseUtils.unexpectedElement(reader);
+                    }
+                    break;
+                }
+            }
+        }
+        throw ParseUtils.unexpectedEndElement(reader);
+    }
+
+    private void parseElytronSupportedRecoveryCredential_7_1(XMLExtendedStreamReader reader, ModelNode node)
+            throws XMLStreamException, ParserException, ValidateException {
+
+        for (Credential.Attribute attribute : Credential.Attribute.values()) {
+            switch (attribute) {
+                case USER_NAME: {
+                    String value = rawAttributeText(reader, RECOVERY_USERNAME.getXmlName());
+                    if (value != null) {
+                        RECOVERY_USERNAME.parseAndSetParameter(value, node, reader);
+                    }
+                    break;
+                }
+                case PASSWORD: {
+                    String value = rawAttributeText(reader, RECOVERY_PASSWORD.getXmlName());
+                    if (value != null) {
+                        RECOVERY_PASSWORD.parseAndSetParameter(value, node, reader);
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case END_ELEMENT: {
+                    if (DataSource.Tag.forName(reader.getLocalName()) == DataSource.Tag.SECURITY
+                            || Recovery.Tag.forName(reader.getLocalName()) == Recovery.Tag.RECOVER_CREDENTIAL) {
+
+                        return;
+                    } else {
+                        if (Credential.Tag.forName(reader.getLocalName()) == Credential.Tag.UNKNOWN) {
+                            throw ParseUtils.unexpectedEndElement(reader);
+                        }
+                    }
+                    break;
+                }
+                case START_ELEMENT: {
+                    switch (Credential.Tag.forName(reader.getLocalName())) {
+                        case CREDENTIAL_REFERENCE: {
+                            RECOVERY_CREDENTIAL_REFERENCE.getParser().parseElement(RECOVERY_CREDENTIAL_REFERENCE, reader, node);
+                            break;
+                        }
+                        case SECURITY_DOMAIN: {
+                            String value = rawElementText(reader);
+                            RECOVERY_SECURITY_DOMAIN.parseAndSetParameter(value, node, reader);
+                            break;
+                        }
+                        case ELYTRON_ENABLED: {
+                            String value = rawElementText(reader);
+                            value = value == null? "true": value;
+                            RECOVERY_ELYTRON_ENABLED.parseAndSetParameter(value, node, reader);
+                            break;
+                        }
+                        case AUTHENTICATION_CONTEXT: {
+                            String value = rawElementText(reader);
+                            RECOVERY_AUTHENTICATION_CONTEXT.parseAndSetParameter(value, node, reader);
                             break;
                         }
                         default:

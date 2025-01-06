@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.microprofile.health.deployment;
@@ -27,14 +10,14 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import javax.enterprise.event.Observes;
-import javax.enterprise.inject.Instance;
-import javax.enterprise.inject.spi.AfterDeploymentValidation;
-import javax.enterprise.inject.spi.BeanManager;
-import javax.enterprise.inject.spi.BeforeShutdown;
-import javax.enterprise.inject.spi.Extension;
-import javax.enterprise.inject.spi.ProcessAnnotatedType;
-import javax.enterprise.util.AnnotationLiteral;
+import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.Instance;
+import jakarta.enterprise.inject.spi.AfterDeploymentValidation;
+import jakarta.enterprise.inject.spi.BeanManager;
+import jakarta.enterprise.inject.spi.BeforeShutdown;
+import jakarta.enterprise.inject.spi.Extension;
+import jakarta.enterprise.inject.spi.ProcessAnnotatedType;
+import jakarta.enterprise.util.AnnotationLiteral;
 
 import io.smallrye.health.SmallRyeHealthReporter;
 import org.eclipse.microprofile.config.Config;
@@ -44,6 +27,7 @@ import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Liveness;
 import org.eclipse.microprofile.health.Readiness;
 import org.eclipse.microprofile.health.Startup;
+import org.jboss.as.server.moduleservice.ServiceModuleLoader;
 import org.jboss.modules.Module;
 import org.wildfly.extension.microprofile.health.MicroProfileHealthReporter;
 
@@ -84,24 +68,27 @@ public class CDIExtension implements Extension {
         addHealthChecks(Readiness.Literal.INSTANCE, reporter::addReadinessCheck, readinessChecks);
         addHealthChecks(Startup.Literal.INSTANCE, reporter::addStartupCheck, startupChecks);
         reporter.setUserChecksProcessed(true);
+
+        final Config config = ConfigProvider.getConfig(module.getClassLoader());
+        final boolean disableDefaultProcedures = config.getOptionalValue(MP_HEALTH_DISABLE_DEFAULT_PROCEDURES, Boolean.class).orElse(false);
         if (readinessChecks.isEmpty()) {
-            Config config = ConfigProvider.getConfig(module.getClassLoader());
-            boolean disableDefaultprocedure = config.getOptionalValue(MP_HEALTH_DISABLE_DEFAULT_PROCEDURES, Boolean.class).orElse(false);
-            if (!disableDefaultprocedure) {
+            if (!disableDefaultProcedures) {
                 // no readiness probe are present in the deployment. register a readiness check so that the deployment is considered ready
                 defaultReadinessCheck = new DefaultReadinessHealthCheck(module.getName());
                 reporter.addReadinessCheck(defaultReadinessCheck, module.getClassLoader());
             }
         }
         if (startupChecks.isEmpty()) {
-            Config config = ConfigProvider.getConfig(module.getClassLoader());
-            boolean disableDefaultprocedure = config.getOptionalValue(MP_HEALTH_DISABLE_DEFAULT_PROCEDURES, Boolean.class).orElse(false);
-            if (!disableDefaultprocedure) {
+            if (!disableDefaultProcedures) {
                 // no startup probes are present in the deployment. register a startup check so that the deployment is considered started
                 defaultStartupCheck = new DefaultStartupHealthCheck(module.getName());
                 reporter.addStartupCheck(defaultStartupCheck, module.getClassLoader());
             }
         }
+        // https://issues.redhat.com/browse/WFLY-19147 - let the per-application `mp.health.disable-default-procedures`
+        // configuration setting affect the Health checks response global server configuration
+        reporter.registerDeploymentDefaultProceduresConfiguration(
+                module.getName().replace(ServiceModuleLoader.MODULE_PREFIX, ""), disableDefaultProcedures);
     }
 
     private void addHealthChecks(AnnotationLiteral qualifier,

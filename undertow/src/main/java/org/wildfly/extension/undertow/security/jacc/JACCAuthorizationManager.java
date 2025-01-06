@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow.security.jacc;
@@ -26,7 +9,6 @@ import static java.security.AccessController.doPrivileged;
 
 import java.security.CodeSource;
 import java.security.Permission;
-import java.security.Policy;
 import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
@@ -36,10 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.security.jacc.WebResourcePermission;
-import javax.security.jacc.WebRoleRefPermission;
-import javax.security.jacc.WebUserDataPermission;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.security.jacc.WebResourcePermission;
+import jakarta.security.jacc.WebRoleRefPermission;
+import jakarta.security.jacc.WebUserDataPermission;
+import jakarta.servlet.http.HttpServletRequest;
 
 import io.undertow.security.idm.Account;
 import io.undertow.servlet.api.AuthorizationManager;
@@ -47,6 +29,7 @@ import io.undertow.servlet.api.Deployment;
 import io.undertow.servlet.api.ServletInfo;
 import io.undertow.servlet.api.SingleConstraintMatch;
 import io.undertow.servlet.api.TransportGuaranteeType;
+import org.wildfly.security.authz.jacc.PolicyUtil;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
@@ -142,8 +125,8 @@ public class JACCAuthorizationManager implements AuthorizationManager {
     }
 
     private boolean hasPermission(ProtectionDomain domain, Permission permission) {
-        Policy policy = WildFlySecurityManager.isChecking() ? doPrivileged((PrivilegedAction<Policy>) Policy::getPolicy) : Policy.getPolicy();
-        return policy.implies(domain, permission);
+        PolicyUtil policyUtil = WildFlySecurityManager.isChecking() ? doPrivileged((PrivilegedAction<PolicyUtil>) PolicyUtil::getPolicyUtil) : PolicyUtil.getPolicyUtil();
+        return policyUtil.implies(domain, permission);
     }
 
     private Principal[] getGrantedRoles(Account account, Deployment deployment) {

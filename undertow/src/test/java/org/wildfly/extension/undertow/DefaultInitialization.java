@@ -1,17 +1,6 @@
 /*
-Copyright 2017 Red Hat, Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow;
@@ -25,7 +14,6 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PORT;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
-import static org.wildfly.extension.undertow.Capabilities.CAPABILITY_BYTE_BUFFER_POOL;
 import static org.wildfly.extension.undertow.Capabilities.REF_IO_WORKER;
 
 import java.security.KeyStore;
@@ -53,8 +41,6 @@ import org.wildfly.security.credential.store.CredentialStore;
 import org.xnio.Pool;
 import org.xnio.XnioWorker;
 
-import io.undertow.connector.ByteBufferPool;
-
 /**
  * Initialization used in undertow subsystem tests.
  *
@@ -63,6 +49,10 @@ import io.undertow.connector.ByteBufferPool;
 class DefaultInitialization extends AdditionalInitialization.ManagementAdditionalInitialization {
 
     private static final long serialVersionUID = 1L;
+
+    public DefaultInitialization(final UndertowSubsystemSchema schema) {
+        super(schema);
+    }
 
     @Override
     protected ControllerInitializer createControllerInitializer() {
@@ -121,8 +111,6 @@ class DefaultInitialization extends AdditionalInitialization.ManagementAdditiona
                 ListenerResourceDefinition.WORKER.getDefaultValue().asString()), XnioWorker.class);
         capabilities.put(buildDynamicCapabilityName(REF_IO_WORKER, "non-default"),
                 XnioWorker.class);
-        capabilities.put(buildDynamicCapabilityName(CAPABILITY_BYTE_BUFFER_POOL,
-                ListenerResourceDefinition.BUFFER_POOL.getDefaultValue().asString()), ByteBufferPool.class);
         capabilities.put(buildDynamicCapabilityName("org.wildfly.io.buffer-pool",
                 ListenerResourceDefinition.BUFFER_POOL.getDefaultValue().asString()), Pool.class);
         capabilities.put(buildDynamicCapabilityName(Capabilities.REF_HTTP_AUTHENTICATION_FACTORY, "elytron-factory"), HttpAuthenticationFactory.class);
@@ -139,7 +127,7 @@ class DefaultInitialization extends AdditionalInitialization.ManagementAdditiona
 
         registerServiceCapabilities(capabilityRegistry, capabilities);
         registerCapabilities(capabilityRegistry,
-                RuntimeCapability.Builder.of("org.wildfly.network.outbound-socket-binding", true, OutboundSocketBinding.class).build(),
+                RuntimeCapability.Builder.of(OutboundSocketBinding.SERVICE_DESCRIPTOR).build(),
                 RuntimeCapability.Builder.of("org.wildfly.security.ssl-context", true, SSLContext.class).build()
         );
 

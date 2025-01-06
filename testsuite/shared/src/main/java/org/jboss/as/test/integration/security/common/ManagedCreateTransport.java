@@ -1,28 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.security.common;
 
-import javax.enterprise.util.AnnotationLiteral;
-
+import jakarta.enterprise.util.AnnotationLiteral;
 import org.apache.directory.server.annotations.CreateTransport;
 import org.apache.directory.server.annotations.TransportType;
 
@@ -49,6 +31,8 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     private boolean ssl;
     /** The number of threads to use. Default to 3 */
     private int nbThreads;
+    /** A flag to tell if the transport should ask for client certificate. Default to false */
+    private boolean clientAuth;
 
     // Constructors ----------------------------------------------------------
 
@@ -65,6 +49,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
         backlog = original.backlog();
         ssl = original.ssl();
         nbThreads = original.nbThreads();
+        clientAuth = original.clientAuth();
     }
 
     // Public methods --------------------------------------------------------
@@ -72,7 +57,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#protocol()
+     * @see CreateTransport#protocol()
      */
     public String protocol() {
         return protocol;
@@ -81,7 +66,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#type()
+     * @see CreateTransport#type()
      */
     public TransportType type() {
         return type;
@@ -90,7 +75,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#port()
+     * @see CreateTransport#port()
      */
     public int port() {
         return port;
@@ -99,7 +84,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#address()
+     * @see CreateTransport#address()
      */
     public String address() {
         return address;
@@ -108,7 +93,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#backlog()
+     * @see CreateTransport#backlog()
      */
     public int backlog() {
         return backlog;
@@ -117,7 +102,7 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#ssl()
+     * @see CreateTransport#ssl()
      */
     public boolean ssl() {
         return ssl;
@@ -126,10 +111,15 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
     /**
      *
      * @return
-     * @see org.apache.directory.server.annotations.CreateTransport#nbThreads()
+     * @see CreateTransport#nbThreads()
      */
     public int nbThreads() {
         return nbThreads;
+    }
+
+    @Override
+    public boolean clientAuth() {
+        return clientAuth;
     }
 
     /**
@@ -193,5 +183,9 @@ public class ManagedCreateTransport extends AnnotationLiteral<CreateTransport> i
      */
     public void setNbThreads(int nbThreads) {
         this.nbThreads = nbThreads;
+    }
+
+    public void setClientAuth(boolean clientAuth) {
+        this.clientAuth = clientAuth;
     }
 }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.manualmode.messaging;
 
@@ -38,18 +21,18 @@ import org.junit.runner.RunWith;
 import org.wildfly.core.testrunner.Server;
 import org.wildfly.core.testrunner.ServerControl;
 import org.wildfly.core.testrunner.ServerController;
-import org.wildfly.core.testrunner.WildflyTestRunner;
+import org.wildfly.core.testrunner.WildFlyRunner;
 
-import javax.inject.Inject;
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.DeliveryMode;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.Session;
-import javax.jms.TextMessage;
+import jakarta.inject.Inject;
+import jakarta.jms.Connection;
+import jakarta.jms.ConnectionFactory;
+import jakarta.jms.DeliveryMode;
+import jakarta.jms.Message;
+import jakarta.jms.MessageConsumer;
+import jakarta.jms.MessageProducer;
+import jakarta.jms.Queue;
+import jakarta.jms.Session;
+import jakarta.jms.TextMessage;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -70,7 +53,7 @@ import static org.junit.Assert.assertTrue;
  *
  * @author Tomas Hofman
  */
-@RunWith(WildflyTestRunner.class)
+@RunWith(WildFlyRunner.class)
 @RunAsClient
 @ServerControl(manual = true)
 public class CoreBridgeCallTimeoutTestCase {
@@ -105,7 +88,7 @@ public class CoreBridgeCallTimeoutTestCase {
         System.out.println("jvm.args:" + System.getProperty("jvm.args"));
         System.out.println("basedir:" + System.getProperty("basedir"));
         System.setProperty("jvm.args", ORIGINAL_JVM_ARGS +
-                " -Xmx512m -XX:MaxMetaspaceSize=256m " +
+                " -Xmx512m " +
                 "-Dorg.jboss.byteman.verbose " +
                 "-Djboss.modules.system.pkgs=org.jboss.byteman " +
                 "-Dorg.jboss.byteman.transform.all " +
@@ -264,7 +247,7 @@ public class CoreBridgeCallTimeoutTestCase {
 
     private static InitialContext createJNDIContext() throws NamingException {
         final Properties env = new Properties();
-        env.put(Context.INITIAL_CONTEXT_FACTORY, "org.jboss.naming.remote.client.InitialContextFactory");
+        env.put(Context.INITIAL_CONTEXT_FACTORY, "org.wildfly.naming.client.WildFlyInitialContextFactory");
         env.put(Context.PROVIDER_URL, "remote+http://" + TestSuiteEnvironment.getServerAddress() + ":8080");
         env.put(Context.SECURITY_PRINCIPAL, "guest");
         env.put(Context.SECURITY_CREDENTIALS, "guest");

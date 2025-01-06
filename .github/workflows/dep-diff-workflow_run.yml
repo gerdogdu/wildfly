@@ -13,63 +13,46 @@ env:
   DEPS_CHANGED_LABEL_NAME: deps-changed
   # People/teams to mention in the PR comment if dependencies changed
   CHANGE_MENTIONS: '@wildfly/prod'
+permissions: {}
 jobs:
   compare:
+    permissions:
+      actions: read # to download a workflow artifact
+      pull-requests: write # for commenting on and labeling pull requests
     runs-on: ubuntu-latest
     if: >
       ${{ github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Download artifacts
-        # It would have been nice to be able to use actions/download-artifact@v2
-        # for this, but as the artifacts are uploaded by another workflow it does
-        # not seem possible - so we need to do this stuff instead
-        uses: actions/github-script@v3.1.0
+      - uses: actions/download-artifact@v4
         with:
-          script: |
-            var artifacts = await github.actions.listWorkflowRunArtifacts({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               run_id: ${{github.event.workflow_run.id }},
-            });
-            console.log(artifacts);
-            var matchArtifact = artifacts.data.artifacts.filter((artifact) => {
-              return artifact.name == "input-artifacts"
-            })[0];
-            var download = await github.actions.downloadArtifact({
-               owner: context.repo.owner,
-               repo: context.repo.repo,
-               artifact_id: matchArtifact.id,
-               archive_format: 'zip',
-            });
-            var fs = require('fs');
-            fs.writeFileSync('${{github.workspace}}/input.zip', Buffer.from(download.data));
-
+          name: input-artifacts
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Set needed env vars in outputs
         id: prepare
         run: |
-          unzip input.zip
           echo current directory contents
           ls -al
-          echo "::set-output name=deps_ok_label_name::${DEPS_OK_LABEL_NAME}"
-          echo "::set-output name=deps_changed_label_name::${DEPS_CHANGED_LABEL_NAME}"
-          echo "::set-output name=change_mentions::${CHANGE_MENTIONS}"
+          echo "deps_ok_label_name=${DEPS_OK_LABEL_NAME}" >> $GITHUB_OUTPUT
+          echo "deps_changed_label_name=${DEPS_CHANGED_LABEL_NAME}" >> $GITHUB_OUTPUT
+          echo "change_mentions=${CHANGE_MENTIONS}" >> $GITHUB_OUTPUT
 
           echo Reading PR number
           tmp=$(<pr)
           echo "PR: ${tmp}"
-          echo "::set-output name=pr::${tmp}"
+          echo "pr=${tmp}" >> $GITHUB_OUTPUT
 
           echo Reading base version files
           tmp=$(<baseVersions)
           echo "Base version files: ${tmp}"
-          echo "::set-output name=base_files::${tmp}"
+          echo "base_files=${tmp}" >> $GITHUB_OUTPUT
 
           echo Reading new version files
           tmp=$(<newVersions)
           echo "New version files: ${tmp}"
-          echo "::set-output name=new_files::${tmp}"
+          echo "new_files=${tmp}" >> $GITHUB_OUTPUT
 
       - name: Check versions
         uses: wildfly/dep-tree-diff@master

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jaxrs.deployment;
@@ -40,6 +23,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.weld.WeldCapability;
 import org.jboss.modules.Module;
 import org.jboss.resteasy.util.GetRestful;
+import org.jboss.as.ee.component.ConcurrencyAttachments;
 
 /**
  * Integrates Jakarta RESTful Web Services with managed beans and Jakarta Enterprise Beans's
@@ -50,10 +34,12 @@ public class JaxrsComponentDeployer implements DeploymentUnitProcessor {
 
     /**
      * We use hard coded class names to avoid a direct dependency on Jakarta Enterprise Beans
-     *
+     * <p>
      * This allows the use of Jakarta RESTful Web Services in cut down servers without Jakarta Enterprise Beans
-     *
+     * </p>
+     * <p>
      * Kinda yuck, but there is not really any alternative if we want don't want the dependency
+     * </p>
      */
     private static final String SESSION_BEAN_DESCRIPTION_CLASS_NAME = "org.jboss.as.ejb3.component.session.SessionBeanComponentDescription";
 
@@ -75,7 +61,7 @@ public class JaxrsComponentDeployer implements DeploymentUnitProcessor {
         }
 
         // Set up the context for managed threads
-        phaseContext.getDeploymentUnit().addToAttachmentList(Attachments.ADDITIONAL_FACTORIES, ResteasyContextHandleFactory.INSTANCE);
+        phaseContext.getDeploymentUnit().addToAttachmentList(ConcurrencyAttachments.ADDITIONAL_FACTORIES, ResteasyContextHandleFactory.INSTANCE);
 
         // right now I only support resources
         if (!resteasy.isScanResources()) return;
@@ -90,11 +76,11 @@ public class JaxrsComponentDeployer implements DeploymentUnitProcessor {
         final CapabilityServiceSupport support = deploymentUnit.getAttachment(org.jboss.as.server.deployment.Attachments.CAPABILITY_SERVICE_SUPPORT);
         boolean partOfWeldDeployment = false;
         if (support.hasCapability(WELD_CAPABILITY_NAME)) {
-            partOfWeldDeployment = support.getOptionalCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class).get()
-                    .isPartOfWeldDeployment(deploymentUnit);
+            final WeldCapability weldCapability = support.getOptionalCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class).orElse(null);
+            partOfWeldDeployment = weldCapability != null && weldCapability.isPartOfWeldDeployment(deploymentUnit);
         }
         for (final ComponentDescription component : moduleDescription.getComponentDescriptions()) {
-            Class<?> componentClass = null;
+            Class<?> componentClass;
             try {
                 componentClass = loader.loadClass(component.getComponentClassName());
             } catch (ClassNotFoundException e) {
@@ -140,21 +126,15 @@ public class JaxrsComponentDeployer implements DeploymentUnitProcessor {
                 }
 
                 JAXRS_LOGGER.debugf("Found Jakarta RESTful Web Services Managed Bean: %s local jndi jaxRsTypeName: %s", component.getComponentClassName(), jndiName);
-                StringBuilder buf = new StringBuilder();
-                buf.append(jndiName).append(";").append(component.getComponentClassName()).append(";").append("true");
-
-                resteasy.getScannedJndiComponentResources().add(buf.toString());
+                resteasy.getScannedJndiComponentResources().add(jndiName + ";" + component.getComponentClassName() + ";" + "true");
                 // make sure its removed from list
                 resteasy.getScannedResourceClasses().remove(component.getComponentClassName());
             } else if (component instanceof ManagedBeanComponentDescription) {
                 String jndiName = "java:app/" + moduleDescription.getModuleName() + "/" + component.getComponentName();
 
                 JAXRS_LOGGER.debugf("Found Jakarta RESTful Web Services Managed Bean: %s local jndi name: %s", component.getComponentClassName(), jndiName);
-                StringBuilder buf = new StringBuilder();
-                buf.append(jndiName).append(";").append(component.getComponentClassName()).append(";").append("true");
-
-                resteasy.getScannedJndiComponentResources().add(buf.toString());
-                // make sure its removed from list
+                resteasy.getScannedJndiComponentResources().add(jndiName + ";" + component.getComponentClassName() + ";" + "true");
+                // make sure it's removed from list
                 resteasy.getScannedResourceClasses().remove(component.getComponentClassName());
             }
         }

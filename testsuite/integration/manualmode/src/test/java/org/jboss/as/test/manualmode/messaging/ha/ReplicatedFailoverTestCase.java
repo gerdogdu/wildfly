@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.manualmode.messaging.ha;
 
@@ -30,6 +13,8 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.WRI
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.client.ModelControllerClient;
 import org.jboss.as.controller.client.helpers.Operations;
@@ -37,6 +22,9 @@ import org.jboss.as.test.integration.common.jms.JMSOperations;
 import org.jboss.as.test.integration.common.jms.JMSOperationsProvider;
 import org.jboss.as.test.shared.TimeoutUtil;
 import org.jboss.dmr.ModelNode;
+import org.jgroups.util.Util;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 
 /**
  *
@@ -45,6 +33,14 @@ import org.jboss.dmr.ModelNode;
 public class ReplicatedFailoverTestCase extends FailoverTestCase {
     private static final ModelNode PRIMARY_STORE_ADDRESS = PathAddress.parseCLIStyleAddress("/subsystem=messaging-activemq/server=default/ha-policy=replication-primary").toModelNode();
     private static final ModelNode SECONDARY_STORE_ADDRESS = PathAddress.parseCLIStyleAddress("/subsystem=messaging-activemq/server=default/ha-policy=replication-secondary").toModelNode();
+
+    @BeforeClass
+    public static void beforeClass() {
+        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+            Assume.assumeFalse("[WFLY-14481] Disable on Windows", Util.checkForWindows());
+            return null;
+        });
+    }
 
     @Override
     protected void setUpServer1(ModelControllerClient client) throws Exception {
@@ -105,7 +101,7 @@ public class ReplicatedFailoverTestCase extends FailoverTestCase {
     }
 
     @Override
-    protected void testMasterInSyncWithReplica(ModelControllerClient client) throws Exception {
+    protected void testPrimaryInSyncWithReplica(ModelControllerClient client) throws Exception {
         ModelNode operation = Operations.createReadAttributeOperation(
                 PathAddress.parseCLIStyleAddress("/subsystem=messaging-activemq/server=default/ha-policy=replication-primary").toModelNode(),
                 "synchronized-with-backup");
@@ -118,7 +114,7 @@ public class ReplicatedFailoverTestCase extends FailoverTestCase {
     }
 
     @Override
-    protected void testSlaveInSyncWithReplica(ModelControllerClient client) throws Exception {
+    protected void testSecondaryInSyncWithReplica(ModelControllerClient client) throws Exception {
         ModelNode operation = Operations.createReadAttributeOperation(
                 PathAddress.parseCLIStyleAddress("/subsystem=messaging-activemq/server=default/ha-policy=replication-secondary").toModelNode(),
                 "synchronized-with-live");
@@ -126,7 +122,7 @@ public class ReplicatedFailoverTestCase extends FailoverTestCase {
     }
 
     @Override
-    protected void testMasterOutOfSyncWithReplica(ModelControllerClient client) throws Exception {
+    protected void testPrimaryOutOfSyncWithReplica(ModelControllerClient client) throws Exception {
         ModelNode operation = Operations.createReadAttributeOperation(
                 PathAddress.parseCLIStyleAddress("/subsystem=messaging-activemq/server=default/ha-policy=replication-primary").toModelNode(),
                 "synchronized-with-backup");
@@ -139,7 +135,7 @@ public class ReplicatedFailoverTestCase extends FailoverTestCase {
     }
 
     @Override
-    protected void testSlaveOutOfSyncWithReplica(ModelControllerClient client) throws Exception {
+    protected void testSecondaryOutOfSyncWithReplica(ModelControllerClient client) throws Exception {
         ModelNode operation = Operations.createReadAttributeOperation(
                 PathAddress.parseCLIStyleAddress("/subsystem=messaging-activemq/server=default/ha-policy=replication-secondary").toModelNode(),
                 "synchronized-with-live");

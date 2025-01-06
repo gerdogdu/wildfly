@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011-2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jpa.processor;
@@ -81,10 +64,8 @@ public class PersistenceUnitParseProcessor implements DeploymentUnitProcessor {
     private static final String JAR_FILE_EXTENSION = ".jar";
     private static final String LIB_FOLDER = "lib";
 
-    private final boolean appClientContainerMode;
+    public PersistenceUnitParseProcessor() {
 
-    public PersistenceUnitParseProcessor(boolean appclient) {
-        appClientContainerMode = appclient;
     }
 
     @Override
@@ -101,8 +82,7 @@ public class PersistenceUnitParseProcessor implements DeploymentUnitProcessor {
 
     private void handleJarDeployment(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
-        if (!isEarDeployment(deploymentUnit) && !isWarDeployment(deploymentUnit) &&
-                (!appClientContainerMode || DeploymentTypeMarker.isType(DeploymentType.APPLICATION_CLIENT, deploymentUnit)) ) {
+        if (!isEarDeployment(deploymentUnit) && !isWarDeployment(deploymentUnit) ) {
 
             // handle META-INF/persistence.xml
             // ordered list of PUs
@@ -125,7 +105,7 @@ public class PersistenceUnitParseProcessor implements DeploymentUnitProcessor {
 
     private void handleWarDeployment(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
-        if (!appClientContainerMode && isWarDeployment(deploymentUnit)) {
+        if (isWarDeployment(deploymentUnit)) {
 
             int puCount;
             // ordered list of PUs
@@ -423,23 +403,28 @@ public class PersistenceUnitParseProcessor implements DeploymentUnitProcessor {
             for (PersistenceUnitMetadata persistenceUnit : holder.getPersistenceUnits()) {
                 Properties properties = persistenceUnit.getProperties();
                 String backendType = properties == null ? null
-                        : properties.getProperty(Configuration.HIBERNATE_SEARCH_BACKEND_TYPE);
-                if (backendType != null) {
-                    backendType = trimToNull(backendType);
-                }
+                        : trimToNull(properties.getProperty(Configuration.HIBERNATE_SEARCH_BACKEND_TYPE));
                 if (backendType != null) {
                     HibernateSearchDeploymentMarker.markBackendType(deploymentUnit, backendType);
+                }
+                String coordinationStrategy = properties == null ? null
+                        : trimToNull(properties.getProperty(Configuration.HIBERNATE_SEARCH_COORDINATION_STRATEGY));
+                if (coordinationStrategy != null) {
+                    HibernateSearchDeploymentMarker.markCoordinationStrategy(deploymentUnit, coordinationStrategy);
                 }
             }
         }
     }
 
-    private String trimToNull(String backendType) {
-        backendType = backendType.trim();
-        if (backendType.isEmpty()) {
+    private String trimToNull(String string) {
+        if (string == null) {
             return null;
         }
-        return backendType;
+        string = string.trim();
+        if (string.isEmpty()) {
+            return null;
+        }
+        return string;
     }
 
     private void incrementPersistenceUnitCount(DeploymentUnit topDeploymentUnit, int persistenceUnitCount) {

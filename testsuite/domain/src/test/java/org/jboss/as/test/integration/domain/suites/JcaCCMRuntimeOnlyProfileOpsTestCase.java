@@ -1,19 +1,6 @@
 /*
- *
- * Copyright 2017 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain.suites;
@@ -43,8 +30,8 @@ import org.junit.Test;
  * Test cached-connection-manager runtime-only ops registered against domain profile resources
  */
 public class JcaCCMRuntimeOnlyProfileOpsTestCase {
-    private static final PathAddress MASTER = PathAddress.pathAddress(ModelDescriptionConstants.HOST, "master");
-    private static final PathAddress SLAVE = PathAddress.pathAddress(ModelDescriptionConstants.HOST, "slave");
+    private static final PathAddress PRIMARY = PathAddress.pathAddress(ModelDescriptionConstants.HOST, "primary");
+    private static final PathAddress SECONDARY = PathAddress.pathAddress(ModelDescriptionConstants.HOST, "secondary");
     private static final PathElement MAIN_ONE = PathElement.pathElement("server", "main-one");
     private static final PathElement MAIN_THREE = PathElement.pathElement("server", "main-three");
 
@@ -58,7 +45,7 @@ public class JcaCCMRuntimeOnlyProfileOpsTestCase {
     @BeforeClass
     public static void setupDomain() throws Exception {
         testSupport = DomainTestSuite.createSupport(JcaCCMRuntimeOnlyProfileOpsTestCase.class.getSimpleName());
-        client = testSupport.getDomainMasterLifecycleUtil().getDomainClient();
+        client = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient();
     }
 
     @AfterClass
@@ -76,22 +63,22 @@ public class JcaCCMRuntimeOnlyProfileOpsTestCase {
         ModelNode response = executeOp(op, SUCCESS);
 
         assertFalse(response.toString(), response.hasDefined(RESULT)); // handler doesn't set a result on profile
-        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "master", "main-one", "response", "result", "TX"));
-        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "master", "main-one", "response", "result", "NonTX"));
-        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "master", "main-one", "response", "result", "TX").asInt());
-        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "master", "main-one", "response", "result", "NonTX").asInt());
-        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "slave", "main-three", "response", "result", "TX"));
-        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "slave", "main-three", "response", "result", "NonTX"));
-        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "slave", "main-three", "response", "result", "TX").asInt());
-        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "slave", "main-three", "response", "result", "NonTX").asInt());
+        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "primary", "main-one", "response", "result", "TX"));
+        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "primary", "main-one", "response", "result", "NonTX"));
+        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "primary", "main-one", "response", "result", "TX").asInt());
+        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "primary", "main-one", "response", "result", "NonTX").asInt());
+        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "secondary", "main-three", "response", "result", "TX"));
+        assertTrue(response.toString(), response.hasDefined(SERVER_GROUPS, "main-server-group", "host", "secondary", "main-three", "response", "result", "NonTX"));
+        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "secondary", "main-three", "response", "result", "TX").asInt());
+        assertEquals(0, response.get(SERVER_GROUPS, "main-server-group", "host", "secondary", "main-three", "response", "result", "NonTX").asInt());
 
         // Now check direct invocation on servers
-        op = Util.createEmptyOperation(opName, MASTER.append(MAIN_ONE).append(SUBSYSTEM).append(CCM));
+        op = Util.createEmptyOperation(opName, PRIMARY.append(MAIN_ONE).append(SUBSYSTEM).append(CCM));
         response = executeOp(op, SUCCESS);
         assertEquals(0, response.get(RESULT).get("TX").asInt());
         assertEquals(0, response.get(RESULT).get("NonTX").asInt());
 
-        op = Util.createEmptyOperation(opName, SLAVE.append(MAIN_THREE).append(SUBSYSTEM).append(CCM));
+        op = Util.createEmptyOperation(opName, SECONDARY.append(MAIN_THREE).append(SUBSYSTEM).append(CCM));
         response = executeOp(op, SUCCESS);
         assertEquals(0, response.get(RESULT).get("TX").asInt());
         assertEquals(0, response.get(RESULT).get("NonTX").asInt());
@@ -104,19 +91,19 @@ public class JcaCCMRuntimeOnlyProfileOpsTestCase {
         ModelNode response = executeOp(op, SUCCESS);
 
         assertFalse(response.toString(), response.hasDefined(RESULT)); // handler doesn't set a result on profile
-        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "master", "main-one", "response", "result", "TX"));
-        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "master", "main-one", "response", "result", "NonTX"));
+        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "primary", "main-one", "response", "result", "TX"));
+        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "primary", "main-one", "response", "result", "NonTX"));
 
-        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "slave", "main-three", "response", "result", "TX"));
-        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "slave", "main-three", "response", "result", "NonTX"));
+        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "secondary", "main-three", "response", "result", "TX"));
+        assertTrue(response.toString(), response.has(SERVER_GROUPS, "main-server-group", "host", "secondary", "main-three", "response", "result", "NonTX"));
 
         // Now check direct invocation on servers
-        op = Util.createEmptyOperation(opName, MASTER.append(MAIN_ONE).append(SUBSYSTEM).append(CCM));
+        op = Util.createEmptyOperation(opName, PRIMARY.append(MAIN_ONE).append(SUBSYSTEM).append(CCM));
         response = executeOp(op, SUCCESS);
         assertTrue(response.has(RESULT, "TX"));
         assertTrue(response.has(RESULT, "NonTX"));
 
-        op = Util.createEmptyOperation(opName, SLAVE.append(MAIN_THREE).append(SUBSYSTEM).append(CCM));
+        op = Util.createEmptyOperation(opName, SECONDARY.append(MAIN_THREE).append(SUBSYSTEM).append(CCM));
         response = executeOp(op, SUCCESS);
         assertTrue(response.has(RESULT, "TX"));
         assertTrue(response.has(RESULT, "NonTX"));

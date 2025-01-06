@@ -1,28 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.connector.subsystems.resourceadapters;
 
 import static org.jboss.as.connector.logging.ConnectorLogger.SUBSYSTEM_RA_LOGGER;
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.JNDI_NAME;
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATION;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATIONMILLIS;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BLOCKING_TIMEOUT_WAIT_MILLIS;
@@ -58,7 +43,6 @@ import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENABL
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENLISTMENT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENLISTMENT_TRACE;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.INTERLEAVING;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.JNDINAME;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.MCP;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.MODULE;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.NOTXSEPARATEPOOL;
@@ -84,7 +68,6 @@ import static org.jboss.as.connector.subsystems.resourceadapters.Constants.STATI
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.TRACKING;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.TRANSACTION_SUPPORT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.USE_CCM;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WM_ELYTRON_SECURITY_DOMAIN;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WM_SECURITY;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WM_SECURITY_DEFAULT_GROUP;
@@ -172,8 +155,6 @@ public final class ResourceAdapterSubsystemParser implements XMLStreamConstants,
         ARCHIVE.marshallAsElement(ra, streamWriter);
         MODULE.marshallAsElement(ra, streamWriter);
 
-        BOOTSTRAP_CONTEXT.marshallAsElement(ra, streamWriter);
-
         if (ra.hasDefined(BEANVALIDATION_GROUPS.getName())) {
             streamWriter.writeStartElement(Activation.Tag.BEAN_VALIDATION_GROUPS.getLocalName());
             for (ModelNode bvg : ra.get(BEANVALIDATION_GROUPS.getName()).asList()) {
@@ -184,17 +165,22 @@ public final class ResourceAdapterSubsystemParser implements XMLStreamConstants,
             streamWriter.writeEndElement();
         }
 
-        TRANSACTION_SUPPORT.marshallAsElement(ra, streamWriter);
+        BOOTSTRAP_CONTEXT.marshallAsElement(ra, streamWriter);
+
         writeNewConfigProperties(streamWriter, ra);
+
+        TRANSACTION_SUPPORT.marshallAsElement(ra, streamWriter);
+
         TransactionSupportEnum transactionSupport = ra.hasDefined(TRANSACTION_SUPPORT.getName()) ? TransactionSupportEnum
             .valueOf(ra.get(TRANSACTION_SUPPORT.getName()).resolve().asString()) : null;
         boolean isXa = false;
         if (transactionSupport == TransactionSupportEnum.XATransaction) {
             isXa = true;
         }
-        if (ra.hasDefined(WM_SECURITY.getName()) && ra.get(WM_SECURITY.getName()).asBoolean()) {
+        if (ra.hasDefined(WM_SECURITY.getName()) && (ra.get(WM_SECURITY.getName()).getType().equals(ModelType.EXPRESSION) || ra.get(WM_SECURITY.getName()).asBoolean())) {
             streamWriter.writeStartElement(Activation.Tag.WORKMANAGER.getLocalName());
             streamWriter.writeStartElement(WorkManager.Tag.SECURITY.getLocalName());
+            WM_SECURITY.marshallAsAttribute(ra, streamWriter);
             WM_SECURITY_MAPPING_REQUIRED.marshallAsElement(ra, streamWriter);
             WM_SECURITY_DOMAIN.marshallAsElement(ra, streamWriter);
             WM_ELYTRON_SECURITY_DOMAIN.marshallAsElement(ra, streamWriter);
@@ -288,7 +274,7 @@ public final class ResourceAdapterSubsystemParser implements XMLStreamConstants,
     private void writeAdminObject(XMLExtendedStreamWriter streamWriter, ModelNode adminObject, final String poolName) throws XMLStreamException {
         streamWriter.writeStartElement(Activation.Tag.ADMIN_OBJECT.getLocalName());
         CLASS_NAME.marshallAsAttribute(adminObject, streamWriter);
-        JNDINAME.marshallAsAttribute(adminObject, streamWriter);
+        JNDI_NAME.marshallAsAttribute(adminObject, streamWriter);
         ENABLED.marshallAsAttribute(adminObject, streamWriter);
         USE_JAVA_CONTEXT.marshallAsAttribute(adminObject, streamWriter);
         streamWriter.writeAttribute("pool-name", poolName);
@@ -301,7 +287,7 @@ public final class ResourceAdapterSubsystemParser implements XMLStreamConstants,
     private void writeConDef(XMLExtendedStreamWriter streamWriter, ModelNode conDef, final String poolName, final boolean isXa) throws XMLStreamException {
         streamWriter.writeStartElement(Activation.Tag.CONNECTION_DEFINITION.getLocalName());
         CLASS_NAME.marshallAsAttribute(conDef, streamWriter);
-        JNDINAME.marshallAsAttribute(conDef, streamWriter);
+        JNDI_NAME.marshallAsAttribute(conDef, streamWriter);
         ENABLED.marshallAsAttribute(conDef, streamWriter);
         CONNECTABLE.marshallAsAttribute(conDef, streamWriter);
         TRACKING.marshallAsAttribute(conDef, streamWriter);
@@ -435,8 +421,8 @@ public final class ResourceAdapterSubsystemParser implements XMLStreamConstants,
                     || conDef.hasDefined(RECOVERY_SECURITY_DOMAIN.getName())
                     || conDef.hasDefined(RECOVERY_ELYTRON_ENABLED.getName())) {
                 streamWriter.writeStartElement(Recovery.Tag.RECOVER_CREDENTIAL.getLocalName());
-                RECOVERY_USERNAME.marshallAsElement(conDef, streamWriter);
-                RECOVERY_PASSWORD.marshallAsElement(conDef, streamWriter);
+                RECOVERY_USERNAME.marshallAsAttribute(conDef, streamWriter);
+                RECOVERY_PASSWORD.marshallAsAttribute(conDef, streamWriter);
                 RECOVERY_CREDENTIAL_REFERENCE.marshallAsElement(conDef, streamWriter);
                 RECOVERY_SECURITY_DOMAIN.marshallAsElement(conDef, streamWriter);
                 RECOVERY_ELYTRON_ENABLED.marshallAsElement(conDef, streamWriter);
@@ -476,17 +462,11 @@ public final class ResourceAdapterSubsystemParser implements XMLStreamConstants,
         list.add(subsystem);
 
         try {
-            String localName;
             switch (Namespace.forUri(reader.getNamespaceURI())) {
-                case RESOURCEADAPTERS_1_0:
-                case RESOURCEADAPTERS_1_1:
-                case RESOURCEADAPTERS_2_0:
-                case RESOURCEADAPTERS_3_0:
-                case RESOURCEADAPTERS_4_0:
-                case RESOURCEADAPTERS_5_0:
-                case RESOURCEADAPTERS_6_0:
-                case RESOURCEADAPTERS_6_1:{
-                    localName = reader.getLocalName();
+                case UNKNOWN:
+                    break;
+                default: {
+                    String localName = reader.getLocalName();
                     final Element element = Element.forName(reader.getLocalName());
                     SUBSYSTEM_RA_LOGGER.tracef("%s -> %s", localName, element);
                     switch (element) {

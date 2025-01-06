@@ -1,32 +1,15 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.faces.view.facelets;
 
-import javax.el.MethodExpression;
-import javax.el.ValueExpression;
-import javax.faces.view.Location;
-import javax.faces.view.facelets.FaceletContext;
-import javax.faces.view.facelets.TagAttribute;
+import jakarta.el.MethodExpression;
+import jakarta.el.ValueExpression;
+import jakarta.faces.view.Location;
+import jakarta.faces.view.facelets.FaceletContext;
+import jakarta.faces.view.facelets.TagAttribute;
 
 /**
  * Mock {@link TagAttribute} that implements a fixed {@link #toString()}.
@@ -61,7 +44,7 @@ public class MockTagAttribute extends TagAttribute {
     }
 
     @Override
-    public MethodExpression getMethodExpression(FaceletContext ctx, @SuppressWarnings("rawtypes") Class type, @SuppressWarnings("rawtypes") Class[] paramTypes) {
+    public MethodExpression getMethodExpression(FaceletContext ctx, Class type, Class[] paramTypes) {
         return null;
     }
 
@@ -91,12 +74,12 @@ public class MockTagAttribute extends TagAttribute {
     }
 
     @Override
-    public Object getObject(FaceletContext ctx, @SuppressWarnings("rawtypes") Class type) {
+    public Object getObject(FaceletContext ctx, Class type) {
         return null;
     }
 
     @Override
-    public ValueExpression getValueExpression(FaceletContext ctx, @SuppressWarnings("rawtypes") Class type) {
+    public ValueExpression getValueExpression(FaceletContext ctx, Class type) {
         return null;
     }
 

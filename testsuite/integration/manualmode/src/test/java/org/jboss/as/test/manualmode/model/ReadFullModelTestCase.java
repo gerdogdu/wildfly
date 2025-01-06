@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.manualmode.model;
 
@@ -26,7 +9,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REA
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.RECURSIVE;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.operations.common.Util;
@@ -38,7 +21,7 @@ import org.wildfly.core.testrunner.ManagementClient;
 import org.wildfly.core.testrunner.Server;
 import org.wildfly.core.testrunner.ServerControl;
 import org.wildfly.core.testrunner.ServerController;
-import org.wildfly.core.testrunner.WildflyTestRunner;
+import org.wildfly.core.testrunner.WildFlyRunner;
 
 /**
  * Ensures that the full model including runtime resources/attributes can be read in both normal and admin-only mode
@@ -47,8 +30,8 @@ import org.wildfly.core.testrunner.WildflyTestRunner;
  * @author Kabir Khan
  * @author Tomaz Cerar
  */
+@RunWith(WildFlyRunner.class)
 @ServerControl(manual = true)
-@RunWith(WildflyTestRunner.class)
 public class ReadFullModelTestCase {
 
     //This is the full-ha setup which is the fullest config we have

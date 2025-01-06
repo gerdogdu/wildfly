@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.component.stateful;
@@ -28,13 +11,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import javax.ejb.EJBLocalObject;
-import javax.ejb.EJBObject;
-import javax.ejb.TransactionManagementType;
+import jakarta.ejb.EJBLocalObject;
+import jakarta.ejb.EJBObject;
+import jakarta.ejb.TransactionManagementType;
 
-import org.jboss.as.controller.capability.CapabilityServiceSupport;
+import org.jboss.as.controller.RequirementServiceTarget;
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.Component;
 import org.jboss.as.ee.component.ComponentConfiguration;
@@ -49,12 +30,11 @@ import org.jboss.as.ee.component.interceptors.InterceptorClassDescription;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
 import org.jboss.as.ee.component.serialization.WriteReplaceInterface;
 import org.jboss.as.ee.metadata.MetadataCompleteMarker;
-import org.jboss.as.ejb3.cache.CacheFactoryBuilder;
-import org.jboss.as.ejb3.cache.CacheFactoryBuilderServiceNameProvider;
 import org.jboss.as.ejb3.cache.CacheInfo;
 import org.jboss.as.ejb3.component.EJBViewDescription;
 import org.jboss.as.ejb3.component.interceptors.ComponentTypeIdentityInterceptorFactory;
 import org.jboss.as.ejb3.component.session.SessionBeanComponentDescription;
+import org.jboss.as.ejb3.component.stateful.cache.StatefulSessionBeanCacheProvider;
 import org.jboss.as.ejb3.deployment.EjbJarDescription;
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.as.ejb3.tx.LifecycleCMTTxInterceptor;
@@ -64,7 +44,6 @@ import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.reflect.ClassReflectionIndex;
 import org.jboss.as.server.deployment.reflect.DeploymentReflectionIndex;
-import org.jboss.ejb.client.SessionID;
 import org.jboss.invocation.ImmediateInterceptorFactory;
 import org.jboss.invocation.Interceptor;
 import org.jboss.invocation.InterceptorFactory;
@@ -73,11 +52,10 @@ import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.metadata.ejb.spec.MethodInterfaceType;
 import org.jboss.metadata.ejb.spec.SessionBeanMetaData;
 import org.jboss.modules.ModuleLoader;
-import org.jboss.msc.Service;
-import org.jboss.msc.service.ServiceBuilder;
+import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
-import org.wildfly.clustering.service.ChildTargetService;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.ServiceInstaller;
 
 /**
  * User: jpai
@@ -217,26 +195,26 @@ public class StatefulComponentDescription extends SessionBeanComponentDescriptio
             @Override
             public void configure(DeploymentPhaseContext context, ComponentDescription description, ComponentConfiguration configuration) throws DeploymentUnitProcessingException {
                 DeploymentUnit unit = context.getDeploymentUnit();
-                CapabilityServiceSupport support = unit.getAttachment(org.jboss.as.server.deployment.Attachments.CAPABILITY_SERVICE_SUPPORT);
                 StatefulComponentDescription statefulDescription = (StatefulComponentDescription) description;
-                ServiceTarget target = context.getServiceTarget();
-                ServiceBuilder<?> builder = target.addService(statefulDescription.getCacheFactoryServiceName().append("installer"));
-                Supplier<CacheFactoryBuilder<SessionID, StatefulSessionComponentInstance>> cacheFactoryBuilder = builder.requires(this.getCacheFactoryBuilderRequirement(statefulDescription));
-                Service service = new ChildTargetService(new Consumer<ServiceTarget>() {
+                ServiceDependency<StatefulSessionBeanCacheProvider> provider = this.getStatefulSessionBeanCacheProvider(statefulDescription);
+                ServiceInstaller installer = new ServiceInstaller() {
                     @Override
-                    public void accept(ServiceTarget target) {
-                        cacheFactoryBuilder.get().getServiceConfigurator(unit, statefulDescription, configuration).configure(support).build(target).install();
+                    public ServiceController<?> install(RequirementServiceTarget target) {
+                        for (ServiceInstaller factoryInstaller : provider.get().getStatefulBeanCacheFactoryServiceInstallers(unit, statefulDescription, statefulComponentConfiguration)) {
+                            factoryInstaller.install(target);
+                        }
+                        return null;
                     }
-                });
-                builder.setInstance(service).install();
+                };
+                ServiceInstaller.builder(installer, unit.getAttachment(org.jboss.as.server.deployment.Attachments.CAPABILITY_SERVICE_SUPPORT)).requires(provider).build().install(context);
             }
 
-            private ServiceName getCacheFactoryBuilderRequirement(StatefulComponentDescription description) {
+            private ServiceDependency<StatefulSessionBeanCacheProvider> getStatefulSessionBeanCacheProvider(StatefulComponentDescription description) {
                 if (!description.isPassivationApplicable()) {
-                    return CacheFactoryBuilderServiceNameProvider.DEFAULT_PASSIVATION_DISABLED_CACHE_SERVICE_NAME;
+                    return ServiceDependency.on(StatefulSessionBeanCacheProvider.PASSIVATION_DISABLED_SERVICE_DESCRIPTOR);
                 }
                 CacheInfo cache = description.getCache();
-                return (cache != null) ? new CacheFactoryBuilderServiceNameProvider(cache.getName()).getServiceName() : CacheFactoryBuilderServiceNameProvider.DEFAULT_CACHE_SERVICE_NAME;
+                return (cache != null) ? ServiceDependency.on(StatefulSessionBeanCacheProvider.SERVICE_DESCRIPTOR, cache.getName()) : ServiceDependency.on(StatefulSessionBeanCacheProvider.DEFAULT_SERVICE_DESCRIPTOR);
             }
         });
 
@@ -429,10 +407,10 @@ public class StatefulComponentDescription extends SessionBeanComponentDescriptio
     }
 
     /**
-     * EJB 3.2 spec allows the TimeService to be injected/looked up/accessed from the stateful bean so as to allow access to the {@link javax.ejb.TimerService#getAllTimers()}
-     * method from a stateful bean. Hence we make timerservice applicable for stateful beans too. However, we return <code>false</code> in {@link #isTimerServiceRequired()} so that a {@link org.jboss.as.ejb3.timerservice.NonFunctionalTimerService}
-     * is made available for the stateful bean. The {@link org.jboss.as.ejb3.timerservice.NonFunctionalTimerService} only allows access to {@link javax.ejb.TimerService#getAllTimers()} and {@link javax.ejb.TimerService#getTimers()}
-     * methods and throws an {@link IllegalStateException} for all othre methods on the timerservice and that's exactly how we want it to behave for stateful beans
+     * EJB 3.2 spec allows the {@link jakarta.ejb.TimerService} to be injected/looked up/accessed from the stateful bean so as to allow access to the {@link jakarta.ejb.TimerService#getAllTimers()}
+     * method from a stateful bean. Hence we make {@link jakarta.ejb.TimerService} applicable for stateful beans too. However, we return <code>false</code> in {@link #isTimerServiceRequired()} so that a {@link org.jboss.as.ejb3.timerservice.NonFunctionalTimerService}
+     * is made available for the stateful bean. The {@link org.jboss.as.ejb3.timerservice.NonFunctionalTimerService} only allows access to {@link jakarta.ejb.TimerService#getAllTimers()} and {@link jakarta.ejb.TimerService#getTimers()}
+     * methods and throws an {@link IllegalStateException} for all other methods on the {@link jakarta.ejb.TimerService} and that's exactly how we want it to behave for stateful beans
      *
      * @return
      * @see {@link #isTimerServiceRequired()}

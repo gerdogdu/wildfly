@@ -1,28 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2020, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.test.integration.elytron.realm;
 
-import static javax.servlet.http.HttpServletResponse.SC_OK;
-import static javax.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
+import static jakarta.servlet.http.HttpServletResponse.SC_OK;
+import static jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -99,19 +82,18 @@ public class FilesystemRealmEncryptedTestCase {
         private static final String REALM_NAME = "fsRealmEncrypted";
         private static final String DOMAIN_NAME = "fsDomainEncrypted";
         private static final String CREDENTIAL_STORE = "mycredstore";
-        private static final String INVALID_CREDENTIAL_STORE = "invalidcredstore";
         private static final String SECRET_KEY = "key";
         private static ManagementClient managementClient;
 
 
         @Override
         public void setup(ManagementClient managementClient, java.lang.String s) throws Exception {
-            setUpTestDomain(DOMAIN_NAME, REALM_NAME, "filesystem", USER, PASSWORD, DEPLOYMENT_ENCRYPTED, CREDENTIAL_STORE, SECRET_KEY, INVALID_CREDENTIAL_STORE);
+            setUpTestDomain(DOMAIN_NAME, REALM_NAME, "filesystem", USER, PASSWORD, DEPLOYMENT_ENCRYPTED, CREDENTIAL_STORE, SECRET_KEY);
             SetUpTask.managementClient = managementClient;
             ServerReload.reloadIfRequired(managementClient);
         }
 
-        private void setUpTestDomain(String domainName, String realmName, String path, String username, String password, String deployment, String credentialStore, String secretKey, String invalidCredentialStore) throws Exception {
+        private void setUpTestDomain(String domainName, String realmName, String path, String username, String password, String deployment, String credentialStore, String secretKey) throws Exception {
             try (CLIWrapper cli =  new CLIWrapper(true)) {
                 cli.sendLine(String.format("/subsystem=elytron/secret-key-credential-store=%1$s:add(path=%1$s.cs, relative-to=jboss.server.config.dir, create=true, populate=true)",
                         credentialStore));
@@ -134,13 +116,13 @@ public class FilesystemRealmEncryptedTestCase {
         @Override
         public void tearDown(ManagementClient managementClient, java.lang.String s) throws Exception {
             SetUpTask.managementClient = managementClient;
-            tearDownDomain(DEPLOYMENT_ENCRYPTED, DOMAIN_NAME, REALM_NAME, USER, CREDENTIAL_STORE, INVALID_CREDENTIAL_STORE);
+            tearDownDomain(DEPLOYMENT_ENCRYPTED, DOMAIN_NAME, REALM_NAME, USER, CREDENTIAL_STORE);
             ServerReload.reloadIfRequired(managementClient);
         }
 
 
 
-        private void tearDownDomain(String deployment, String domainName, String realmName, String username, String credentialStore, String invalidCredentialStore) throws Exception {
+        private void tearDownDomain(String deployment, String domainName, String realmName, String username, String credentialStore) throws Exception {
             try (CLIWrapper cli = new CLIWrapper(true)) {
                 cli.sendLine(String.format("/subsystem=undertow/application-security-domain=%s:remove()", deployment));
                 cli.sendLine(String.format("/subsystem=elytron/security-domain=%s:remove()",
@@ -149,8 +131,6 @@ public class FilesystemRealmEncryptedTestCase {
                 cli.sendLine(String.format("/subsystem=elytron/filesystem-realm=%s:remove()", realmName));
                 cli.sendLine(String.format("/subsystem=elytron/secret-key-credential-store=%s:remove()",
                         credentialStore));
-                cli.sendLine(String.format("/subsystem=elytron/secret-key-credential-store=%s:remove()",
-                        invalidCredentialStore));
             }
         }
     }

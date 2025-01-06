@@ -1,33 +1,27 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.singleton.server;
 
-import org.wildfly.clustering.service.ServiceNameProvider;
-import org.wildfly.clustering.singleton.SingletonElectionListener;
+import org.jboss.msc.Service;
+import org.jboss.msc.service.ServiceName;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.server.dispatcher.CommandDispatcherFactory;
+import org.wildfly.clustering.server.provider.ServiceProviderRegistrar;
+import org.wildfly.clustering.singleton.election.SingletonElectionListener;
+import org.wildfly.clustering.singleton.election.SingletonElectionPolicy;
 
 /**
  * @author Paul Ferraro
  */
-public interface SingletonServiceContext extends ServiceNameProvider {
+public interface SingletonServiceContext {
+    ServiceName getServiceName();
+    Service getService();
     SingletonElectionListener getElectionListener();
+    SingletonElectionPolicy getElectionPolicy();
+    int getQuorum();
+    ServiceProviderRegistrar<ServiceName, GroupMember> getServiceProviderRegistrar();
+    CommandDispatcherFactory<GroupMember> getCommandDispatcherFactory();
 }

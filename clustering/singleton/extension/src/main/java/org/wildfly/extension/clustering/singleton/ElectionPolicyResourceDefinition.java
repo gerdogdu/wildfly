@@ -1,52 +1,53 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.singleton;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-import org.jboss.as.clustering.controller.CapabilityReference;
 import org.jboss.as.clustering.controller.ChildResourceDefinition;
-import org.jboss.as.clustering.controller.CommonUnaryRequirement;
 import org.jboss.as.clustering.controller.ResourceDescriptor;
-import org.jboss.as.clustering.controller.ResourceServiceConfiguratorFactory;
 import org.jboss.as.clustering.controller.ResourceServiceHandler;
-import org.jboss.as.clustering.controller.SimpleResourceRegistration;
-import org.jboss.as.clustering.controller.SimpleResourceServiceHandler;
-import org.jboss.as.clustering.controller.UnaryCapabilityNameResolver;
+import org.jboss.as.clustering.controller.SimpleResourceRegistrar;
 import org.jboss.as.controller.AttributeDefinition;
-import org.jboss.as.controller.CapabilityReferenceRecorder;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.RequirementServiceBuilder;
 import org.jboss.as.controller.StringListAttributeDefinition;
 import org.jboss.as.controller.capability.RuntimeCapability;
+import org.jboss.as.controller.capability.UnaryCapabilityNameResolver;
 import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
+import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
-import org.wildfly.clustering.singleton.SingletonElectionPolicy;
+import org.jboss.as.controller.registry.Resource;
+import org.jboss.as.network.OutboundSocketBinding;
+import org.jboss.dmr.ModelNode;
+import org.jgroups.JChannel;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.singleton.election.SingletonElectionPolicy;
+import org.wildfly.common.function.Functions;
+import org.wildfly.extension.clustering.singleton.election.OutboundSocketBindingPreference;
+import org.wildfly.service.descriptor.UnaryServiceDescriptor;
+import org.wildfly.subsystem.resource.ResourceModelResolver;
+import org.wildfly.subsystem.resource.capability.CapabilityReferenceRecorder;
+import org.wildfly.subsystem.resource.operation.ResourceOperationRuntimeHandler;
+import org.wildfly.subsystem.service.ResourceServiceConfigurator;
+import org.wildfly.subsystem.service.ResourceServiceInstaller;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.capability.CapabilityServiceInstaller;
 
 /**
  * Definition of an election policy resource.
  * @author Paul Ferraro
  */
-public abstract class ElectionPolicyResourceDefinition extends ChildResourceDefinition<ManagementResourceRegistration> {
+public abstract class ElectionPolicyResourceDefinition extends ChildResourceDefinition<ManagementResourceRegistration> implements ResourceServiceConfigurator, ResourceModelResolver<SingletonElectionPolicy> {
 
     static final PathElement WILDCARD_PATH = pathElement(PathElement.WILDCARD_VALUE);
 
@@ -54,35 +55,26 @@ public abstract class ElectionPolicyResourceDefinition extends ChildResourceDefi
         return PathElement.pathElement("election-policy", value);
     }
 
-    enum Capability implements org.jboss.as.clustering.controller.Capability {
-        ELECTION_POLICY("org.wildfly.clustering.singleton-policy.election", SingletonElectionPolicy.class),
-        ;
-        private final RuntimeCapability<Void> definition;
+    private static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of(SingletonElectionPolicy.SERVICE_DESCRIPTOR).setDynamicNameMapper(UnaryCapabilityNameResolver.PARENT).build();
 
-        Capability(String name, Class<?> type) {
-            this.definition = RuntimeCapability.Builder.of(name, true).setServiceType(type).setDynamicNameMapper(UnaryCapabilityNameResolver.PARENT).build();
-        }
-
-        @Override
-        public RuntimeCapability<Void> getDefinition() {
-            return this.definition;
-        }
-    }
-
-    enum Attribute implements org.jboss.as.clustering.controller.Attribute {
+    enum Attribute implements org.jboss.as.clustering.controller.Attribute, UnaryOperator<StringListAttributeDefinition.Builder> {
         NAME_PREFERENCES("name-preferences", "socket-binding-preferences"),
-        SOCKET_BINDING_PREFERENCES("socket-binding-preferences", "name-preferences", new CapabilityReference(Capability.ELECTION_POLICY, CommonUnaryRequirement.OUTBOUND_SOCKET_BINDING)),
+        SOCKET_BINDING_PREFERENCES("socket-binding-preferences", "name-preferences") {
+            @Override
+            public StringListAttributeDefinition.Builder apply(StringListAttributeDefinition.Builder builder) {
+                return builder.setAllowExpression(false)
+                        .setCapabilityReference(CapabilityReferenceRecorder.builder(CAPABILITY, OutboundSocketBinding.SERVICE_DESCRIPTOR).build())
+                        ;
+            }
+        }
         ;
         private final AttributeDefinition definition;
 
         Attribute(String name, String alternative) {
-            this.definition = createBuilder(name, alternative).build();
-        }
-
-        Attribute(String name, String alternative, CapabilityReferenceRecorder reference) {
-            this.definition = createBuilder(name, alternative)
-                    .setAllowExpression(false)
-                    .setCapabilityReference(reference)
+            this.definition = this.apply(new StringListAttributeDefinition.Builder(name).setAllowExpression(true))
+                    .setAlternatives(alternative)
+                    .setRequired(false)
+                    .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
                     .build();
         }
 
@@ -91,22 +83,17 @@ public abstract class ElectionPolicyResourceDefinition extends ChildResourceDefi
             return this.definition;
         }
 
-        private static StringListAttributeDefinition.Builder createBuilder(String name, String alternative) {
-            return new StringListAttributeDefinition.Builder(name)
-                    .setAllowExpression(true)
-                    .setRequired(false)
-                    .setAlternatives(alternative)
-                    ;
+        @Override
+        public StringListAttributeDefinition.Builder apply(StringListAttributeDefinition.Builder builder) {
+            return builder;
         }
     }
 
     private final UnaryOperator<ResourceDescriptor> configurator;
-    private final ResourceServiceConfiguratorFactory serviceConfiguratorFactory;
 
-    ElectionPolicyResourceDefinition(PathElement path, ResourceDescriptionResolver resolver, UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfiguratorFactory serviceConfiguratorFactory) {
+    ElectionPolicyResourceDefinition(PathElement path, ResourceDescriptionResolver resolver, UnaryOperator<ResourceDescriptor> configurator) {
         super(path, resolver);
         this.configurator = configurator;
-        this.serviceConfiguratorFactory = serviceConfiguratorFactory;
     }
 
     @Override
@@ -114,12 +101,52 @@ public abstract class ElectionPolicyResourceDefinition extends ChildResourceDefi
         ManagementResourceRegistration registration = parent.registerSubModel(this);
 
         ResourceDescriptor descriptor = this.configurator.apply(new ResourceDescriptor(this.getResourceDescriptionResolver()))
-                .addAttributes(ElectionPolicyResourceDefinition.Attribute.class)
-                .addCapabilities(ElectionPolicyResourceDefinition.Capability.class)
+                .addAttributes(Attribute.class)
+                .addCapabilities(List.of(CAPABILITY))
                 ;
-        ResourceServiceHandler handler = new SimpleResourceServiceHandler(this.serviceConfiguratorFactory);
-        new SimpleResourceRegistration(descriptor, handler).register(registration);
+        ResourceOperationRuntimeHandler handler = ResourceOperationRuntimeHandler.configureService(this);
+        new SimpleResourceRegistrar(descriptor, ResourceServiceHandler.of(handler)).register(registration);
 
         return registration;
+    }
+
+    @Override
+    public ResourceServiceInstaller configure(OperationContext context, ModelNode model) throws OperationFailedException {
+        List<ModelNode> socketBindingPreferences = Attribute.SOCKET_BINDING_PREFERENCES.resolveModelAttribute(context, model).asListOrEmpty();
+        List<ModelNode> namePreferences = Attribute.NAME_PREFERENCES.resolveModelAttribute(context, model).asListOrEmpty();
+        List<Predicate<GroupMember>> preferences = new ArrayList<>(socketBindingPreferences.size() + namePreferences.size());
+        List<Consumer<RequirementServiceBuilder<?>>> dependencies = new ArrayList<>(socketBindingPreferences.size());
+        if (!socketBindingPreferences.isEmpty()) {
+            Resource policy = context.readResourceFromRoot(context.getCurrentAddress().getParent(), false);
+            String containerName = SingletonPolicyResourceDefinition.Attribute.CACHE_CONTAINER.resolveModelAttribute(context, policy.getModel()).asString();
+            UnaryServiceDescriptor<JChannel> containerTransportChannel = UnaryServiceDescriptor.of("org.wildfly.clustering.infinispan.transport.channel", JChannel.class);
+            if (context.hasOptionalCapability(containerTransportChannel, containerName, CAPABILITY, Attribute.SOCKET_BINDING_PREFERENCES.getDefinition())) {
+                ServiceDependency<JChannel> channel = ServiceDependency.on(containerTransportChannel, containerName);
+                for (ModelNode preference : socketBindingPreferences) {
+                    ServiceDependency<OutboundSocketBinding> binding = ServiceDependency.on(OutboundSocketBinding.SERVICE_DESCRIPTOR, preference.toString());
+                    dependencies.add(binding);
+                    preferences.add(new OutboundSocketBindingPreference(binding, channel));
+                }
+            }
+        }
+        for (ModelNode preference : namePreferences) {
+            String name = preference.asString();
+            preferences.add(new Predicate<>() {
+                @Override
+                public boolean test(GroupMember member) {
+                    return member.getName().equals(name);
+                }
+
+                @Override
+                public String toString() {
+                    return name;
+                }
+            });
+        }
+
+        SingletonElectionPolicy electionPolicy = this.resolve(context, model);
+        return CapabilityServiceInstaller.builder(CAPABILITY, Functions.constantSupplier(electionPolicy.prefer(preferences)))
+                .requires(dependencies)
+                .build();
     }
 }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.deployment.processors.merging;
 
@@ -27,9 +10,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.annotation.security.DenyAll;
-import javax.annotation.security.PermitAll;
-import javax.annotation.security.RolesAllowed;
+import jakarta.annotation.security.DenyAll;
+import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 
 import org.jboss.as.ee.component.EEApplicationClasses;
 import org.jboss.as.ee.metadata.MethodAnnotationAggregator;
@@ -54,9 +37,9 @@ import org.jboss.metadata.ejb.spec.MethodPermissionsMetaData;
 import org.jboss.metadata.ejb.spec.MethodsMetaData;
 
 /**
- * Handles the {@link javax.annotation.security.RolesAllowed} {@link DenyAll} {@link javax.annotation.security.PermitAll} annotations
+ * Handles the {@link jakarta.annotation.security.RolesAllowed} {@link DenyAll} {@link jakarta.annotation.security.PermitAll} annotations
  * <p/>
- * Also processes the &lt;method-permission&gt; elements of an Jakarta Enterprise Beans and sets up appropriate security permissions on the Jakarta Enterprise Beans.
+ * Also processes the &lt;method-permission&gt; elements of a Jakarta Enterprise Beans bean and sets up appropriate security permissions on the Jakarta Enterprise Beans bean.
  * <p/>
  * This processor should be run *after* all the views of the Jakarta Enterprise Beans have been identified and set in the {@link EJBComponentDescription}
  *

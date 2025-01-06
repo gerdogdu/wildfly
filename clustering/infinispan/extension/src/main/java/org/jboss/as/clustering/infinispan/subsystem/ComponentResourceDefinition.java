@@ -1,40 +1,50 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.clustering.infinispan.subsystem;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jboss.as.clustering.controller.ChildResourceDefinition;
 import org.jboss.as.clustering.controller.ManagementResourceRegistration;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
+import org.wildfly.clustering.infinispan.service.InfinispanServiceDescriptor;
+import org.wildfly.service.descriptor.BinaryServiceDescriptor;
+import org.wildfly.subsystem.service.ResourceServiceConfigurator;
 
 /**
  * @author Paul Ferraro
  */
-public abstract class ComponentResourceDefinition extends ChildResourceDefinition<ManagementResourceRegistration> {
+public abstract class ComponentResourceDefinition extends ChildResourceDefinition<ManagementResourceRegistration> implements ResourceServiceConfigurator {
 
-    public static PathElement pathElement(String name) {
+    static PathElement pathElement(String name) {
         return PathElement.pathElement("component", name);
     }
 
-    public ComponentResourceDefinition(PathElement path) {
+    static <T> BinaryServiceDescriptor<T> serviceDescriptor(PathElement path, Class<T> type) {
+        return serviceDescriptor(List.of(path), type);
+    }
+
+    static <T> BinaryServiceDescriptor<T> serviceDescriptor(List<PathElement> paths, Class<T> type) {
+        Stream.Builder<String> builder = Stream.<String>builder().add(InfinispanServiceDescriptor.CACHE_CONFIGURATION.getName());
+        for (PathElement path : paths) {
+            builder.accept(path.getKey());
+            if (!path.isWildcard()) {
+                builder.accept(path.getValue());
+            }
+        }
+        return BinaryServiceDescriptor.of(builder.build().collect(Collectors.joining(".")), type);
+    }
+
+    ComponentResourceDefinition(PathElement path) {
         super(path, InfinispanExtension.SUBSYSTEM_RESOLVER.createChildResolver(path));
+    }
+
+    ComponentResourceDefinition(PathElement path, ResourceDescriptionResolver resolver) {
+        super(path, resolver);
     }
 }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.jca.statistics;
 
@@ -55,6 +38,7 @@ public class ResourceAdapterStatisticsTestCase extends JcaStatisticsBase {
     static int archiveCount = 0;
     static final String pack = "org.jboss.as.test.integration.jca.rar";
     static final String fact = "java:jboss/ConnectionFactory";
+    static final String shortFact = "jboss/ConnectionFactory";
 
     @ArquillianResource
     Deployer deployer;
@@ -124,6 +108,31 @@ public class ResourceAdapterStatisticsTestCase extends JcaStatisticsBase {
 
     }
 
+    private ModelNode prepareTestShortName() throws Exception {
+        String archiveName = getArchiveName(++archiveCount);
+        ModelNode address = getRaAddress(archiveName + ".rar");
+        ModelNode operation = new ModelNode();
+        operation.get(OP).set("add");
+        operation.get(OP_ADDR).set(address);
+        operation.get("archive").set(archiveName + ".rar");
+        executeOperation(operation);
+
+        ModelNode addressConn = address.clone();
+        int count = ++jndiCount;
+        addressConn.add("connection-definitions", fact + count);
+        ModelNode operationConn = new ModelNode();
+        operationConn.get(OP).set("add");
+        operationConn.get(OP_ADDR).set(addressConn);
+        operationConn.get("class-name").set(pack + ".MultipleManagedConnectionFactory1");
+        operationConn.get("jndi-name").set(shortFact + count);
+        executeOperation(operationConn);
+        operation = addressConn;
+
+        deployer.deploy(archiveName);
+        return operation;
+
+    }
+
     public static ResourceAdapterArchive createDeployment(String deploymentName) throws Exception {
 
         ResourceAdapterArchive raa = ShrinkWrap.create(ResourceAdapterArchive.class, deploymentName + ".rar");
@@ -153,6 +162,13 @@ public class ResourceAdapterStatisticsTestCase extends JcaStatisticsBase {
     @Test
     public void testOneConnection() throws Exception {
         ModelNode mn = prepareTest(false);
+        testStatistics(mn);
+        testStatisticsDouble(mn);
+    }
+
+    @Test
+    public void testOneConnectionShortName() throws Exception {
+        ModelNode mn = prepareTestShortName();
         testStatistics(mn);
         testStatisticsDouble(mn);
     }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.wildfly</groupId>
+        <artifactId>wildfly-parent</artifactId>
+        <!--
+        Maintain separation between the artifact id and the version to help prevent
+        merge conflicts between commits changing the GA and those changing the V.
+        -->
+        <version>35.0.0.Final-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>wildfly-standard-ee-bom</artifactId>
+    <description>
+        Build of materials that can be used to build standard WildFly maven modules
+        that provide traditional capabilities like Jakarta EE.
+    </description>
+    <packaging>pom</packaging>
+
+    <name>WildFly: Dependency Management (Base Dependencies)</name>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- Inherit the common deps -->
+            <dependency>
+                <groupId>${ee.maven.groupId}</groupId>
+                <artifactId>wildfly-common-ee-dependency-management</artifactId>
+                <version>${ee.maven.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Bom-specific dependencies.
+
+                 DO NOT add entries here for items shared between standard WildFly and WildFly Preview.
+
+                 Keep sorted!
+             -->
+
+            <dependency>
+                <groupId>${ee.maven.groupId}</groupId>
+                <artifactId>wildfly-ee-feature-pack-product-conf</artifactId>
+                <version>${ee.maven.version}</version>
+            </dependency>
+
+
+        </dependencies>
+    </dependencyManagement>
+
+</project>

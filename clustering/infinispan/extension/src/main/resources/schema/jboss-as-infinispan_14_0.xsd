@@ -1,24 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2022, Red Hat, Inc., and individual contributors
-  ~ as indicated by the @author tags. See the copyright.txt file in the
-  ~ distribution for a full listing of individual contributors.
-  ~
-  ~ This is free software; you can redistribute it and/or modify it
-  ~ under the terms of the GNU Lesser General Public License as
-  ~ published by the Free Software Foundation; either version 2.1 of
-  ~ the License, or (at your option) any later version.
-  ~
-  ~ This software is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  ~ Lesser General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU Lesser General Public
-  ~ License along with this software; if not, write to the Free
-  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 <xs:schema targetNamespace="urn:jboss:domain:infinispan:14.0"
            xmlns:xs="http://www.w3.org/2001/XMLSchema"
@@ -118,7 +101,7 @@
                 <xs:documentation>Indicates the default cache for this cache container.</xs:documentation>
             </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="marshaller" type="tns:marshaller">
+        <xs:attribute name="marshaller" type="tns:marshaller" default="LEGACY">
             <xs:annotation>
                 <xs:documentation>Defines the marshalling implementation used to marshal cache entries.</xs:documentation>
             </xs:annotation>
@@ -266,7 +249,7 @@
         </xs:attribute>
         <xs:attribute name="concurrency-level" type="xs:int" default="1000">
             <xs:annotation>
-                <xs:documentation>Concurrency level for lock containers. Adjust this value according to the number of concurrent threads interacting with Infinispan.</xs:documentation>
+                <xs:documentation>Deprecated. This attribute has no effect.</xs:documentation>
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
@@ -361,7 +344,7 @@
     <xs:complexType name="clustered-cache" abstract="true">
         <xs:complexContent>
             <xs:extension base="tns:cache">
-                <xs:attribute name="remote-timeout" type="xs:long" default="10000">
+                <xs:attribute name="remote-timeout" type="xs:long">
                     <xs:annotation>
                         <xs:documentation>The timeout (in ms) used to wait for an acknowledgment when making a remote call, after which the call is aborted and an exception is thrown.</xs:documentation>
                     </xs:annotation>
@@ -499,7 +482,7 @@
                 </xs:documentation>
             </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="passivation" type="xs:boolean" default="true">
+        <xs:attribute name="passivation" type="xs:boolean" default="false">
             <xs:annotation>
                 <xs:documentation>
                     If true, data is only written to the cache store when it is evicted from memory, a phenomenon known as 'passivation'.
@@ -514,7 +497,12 @@
                 <xs:documentation>If true, fetch persistent state when joining a cluster.</xs:documentation>
             </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="purge" type="xs:boolean" default="true">
+        <xs:attribute name="purge" type="xs:boolean" default="false">
+            <xs:annotation>
+                <xs:documentation>If true, purges this cache store when it starts up.</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="segmented" type="xs:boolean" default="true">
             <xs:annotation>
                 <xs:documentation>If true, purges this cache store when it starts up.</xs:documentation>
             </xs:annotation>
@@ -748,9 +736,14 @@
     </xs:complexType>
 
     <xs:complexType name="partition-handling">
-        <xs:attribute name="enabled" type="xs:boolean" default="false">
+        <xs:attribute name="when-split" type="tns:when-split" default="ALLOW_READ_WRITES">
             <xs:annotation>
-                <xs:documentation>If enabled, the cache will enter degraded mode upon detecting a network partition that threatens the integrity of the cache.</xs:documentation>
+                <xs:documentation>Defines the availability of cache entries after a network partition is detected.</xs:documentation>
+            </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="merge-policy" type="tns:merge-policy" default="NONE">
+            <xs:annotation>
+                <xs:documentation>Defines the policy for resolving cache entry conflicts when merging partitions.</xs:documentation>
             </xs:annotation>
         </xs:attribute>
     </xs:complexType>
@@ -1024,12 +1017,14 @@
             </xs:enumeration>
             <xs:enumeration value="JBOSS">
                 <xs:annotation>
-                    <xs:documentation>Marshals cache entries using JBoss Marshalling.</xs:documentation>
+                    <xs:documentation>Marshals cache entries using JBoss Marshalling using externalizers loaded from modules associated with this container.</xs:documentation>
                 </xs:annotation>
             </xs:enumeration>
             <xs:enumeration value="PROTOSTREAM">
                 <xs:annotation>
-                    <xs:documentation>Marshals cache entries using ProtoStream.</xs:documentation>
+                    <xs:documentation>
+                        Marshals cache entries using ProtoStream configured to use schemas/marshallers loaded from modules associated with this container.
+                    </xs:documentation>
                 </xs:annotation>
             </xs:enumeration>
         </xs:restriction>
@@ -1139,7 +1134,7 @@
                 </xs:documentation>
             </xs:annotation>
         </xs:attribute>
-        <xs:attribute name="marshaller" type="tns:marshaller">
+        <xs:attribute name="marshaller" type="tns:marshaller" default="LEGACY">
             <xs:annotation>
                 <xs:documentation>Defines the marshalling implementation used to marshal cache entries.</xs:documentation>
             </xs:annotation>
@@ -1321,6 +1316,23 @@
             <xs:enumeration value="2.9"/>
             <xs:enumeration value="3.0"/>
             <xs:enumeration value="3.1"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="when-split">
+        <xs:restriction base="xs:token">
+            <xs:enumeration value="ALLOW_READS"/>
+            <xs:enumeration value="ALLOW_READ_WRITES"/>
+            <xs:enumeration value="DENY_READ_WRITES"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="merge-policy">
+        <xs:restriction base="xs:token">
+            <xs:enumeration value="NONE"/>
+            <xs:enumeration value="PREFERRED_ALWAYS"/>
+            <xs:enumeration value="PREFERRED_NON_NULL"/>
+            <xs:enumeration value="REMOVE_ALL"/>
         </xs:restriction>
     </xs:simpleType>
 

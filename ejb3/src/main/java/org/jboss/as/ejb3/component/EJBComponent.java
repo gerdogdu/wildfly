@@ -1,31 +1,14 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.component;
 
 import static java.security.AccessController.doPrivileged;
+import static org.jboss.as.ejb3.logging.EjbLogger.ROOT_LOGGER;
 
 import java.lang.reflect.Method;
 import java.security.AccessController;
-import java.security.Policy;
 import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedExceptionAction;
@@ -36,20 +19,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import javax.ejb.EJBHome;
-import javax.ejb.EJBLocalHome;
-import javax.ejb.TimerService;
-import javax.ejb.TransactionAttributeType;
-import javax.ejb.TransactionManagementType;
+import jakarta.ejb.EJBHome;
+import jakarta.ejb.EJBLocalHome;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.ejb.TransactionManagementType;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.security.jacc.EJBRoleRefPermission;
-import javax.transaction.Status;
-import javax.transaction.SystemException;
-import javax.transaction.TransactionManager;
-import javax.transaction.TransactionSynchronizationRegistry;
-import javax.transaction.UserTransaction;
+import jakarta.security.jacc.EJBRoleRefPermission;
+import jakarta.transaction.Status;
+import jakarta.transaction.SystemException;
+import jakarta.transaction.TransactionManager;
+import jakarta.transaction.TransactionSynchronizationRegistry;
+import jakarta.transaction.UserTransaction;
 
 import org.jboss.as.ee.component.BasicComponent;
 import org.jboss.as.ee.component.ComponentView;
@@ -63,7 +45,8 @@ import org.jboss.as.ejb3.security.EJBSecurityMetaData;
 import org.jboss.as.ejb3.security.JaccInterceptor;
 import org.jboss.as.ejb3.subsystem.EJBStatistics;
 import org.jboss.as.ejb3.suspend.EJBSuspendHandlerService;
-import org.jboss.as.ejb3.timerservice.TimerServiceImpl;
+import org.jboss.as.ejb3.timerservice.spi.ManagedTimerService;
+import org.jboss.as.ejb3.timerservice.spi.ManagedTimerServiceFactory;
 import org.jboss.as.ejb3.tx.ApplicationExceptionDetails;
 import org.jboss.as.naming.ManagedReference;
 import org.jboss.as.naming.context.NamespaceContextSelector;
@@ -84,6 +67,7 @@ import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.authz.Roles;
+import org.wildfly.security.authz.jacc.PolicyUtil;
 import org.wildfly.security.manager.WildFlySecurityManager;
 import org.wildfly.transaction.client.ContextTransactionManager;
 
@@ -108,7 +92,7 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
     private final ServiceName ejbObjectViewServiceName;
     private final ServiceName ejbLocalObjectViewServiceName;
 
-    private final TimerService timerService;
+    private final ManagedTimerServiceFactory timerServiceFactory;
     private final Map<Method, InterceptorFactory> timeoutInterceptors;
     private final Method timeoutMethod;
     private final String applicationName;
@@ -131,6 +115,8 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
     private final boolean securityRequired;
     private final EJBComponentDescription componentDescription;
     private final boolean legacyCompliantPrincipalPropagation;
+
+    private volatile ManagedTimerService timerService;
 
     /**
      * Construct a new instance.
@@ -159,7 +145,7 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
         // security metadata
         this.securityMetaData = ejbComponentCreateService.getSecurityMetaData();
         this.viewServices = ejbComponentCreateService.getViewServices();
-        this.timerService = ejbComponentCreateService.getTimerService();
+        this.timerServiceFactory = ejbComponentCreateService.getTimerServiceFactory();
         this.timeoutMethod = ejbComponentCreateService.getTimeoutMethod();
         this.ejbLocalHomeViewServiceName = ejbComponentCreateService.getEjbLocalHome();
         this.ejbHomeViewServiceName = ejbComponentCreateService.getEjbHome();
@@ -364,8 +350,8 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
         }
     }
 
-    public TimerService getTimerService() throws IllegalStateException {
-        return timerService;
+    public ManagedTimerService getTimerService() {
+        return this.timerService;
     }
 
     public TransactionAttributeType getTransactionAttributeType(final MethodInterfaceType methodIntf, final Method method) {
@@ -437,14 +423,21 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
     public boolean isCallerInRole(final String roleName) throws IllegalStateException {
         if (isSecurityDomainKnown()) {
             if (enableJacc) {
-                Policy policy = WildFlySecurityManager.isChecking() ? doPrivileged((PrivilegedAction<Policy>) Policy::getPolicy) : Policy.getPolicy();
+                PolicyUtil policyUtil = WildFlySecurityManager.isChecking() ? doPrivileged((PrivilegedAction<PolicyUtil>) PolicyUtil::getPolicyUtil) : PolicyUtil.getPolicyUtil();
                 ProtectionDomain domain = new ProtectionDomain(null, null, null, JaccInterceptor.getGrantedRoles(getCallerSecurityIdentity()));
-                return policy.implies(domain, new EJBRoleRefPermission(getComponentName(), roleName));
+                return policyUtil.implies(domain, new EJBRoleRefPermission(getComponentName(), roleName));
             } else {
-                return checkCallerSecurityIdentityRole(roleName);
+                boolean tmpBool = checkCallerSecurityIdentityRole(roleName); // rls debug todo remove
+                if (ROOT_LOGGER.isTraceEnabled()) {
+                    ROOT_LOGGER.trace("## EJBComponent isCallerInRole checkCallerSecurityIdentityRole() returned: "
+                    + tmpBool);
+                }
+                return tmpBool;
             }
         }
-
+        if (ROOT_LOGGER.isTraceEnabled()) {
+            ROOT_LOGGER.trace("## EJBComponent isCallerInRole No security, no role membership");
+        }
         // No security, no role membership.
         return false;
     }
@@ -581,18 +574,17 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
     public synchronized void init() {
         getShutDownInterceptorFactory().start();
         super.init();
-        if(this.timerService instanceof TimerServiceImpl) {
-            ((TimerServiceImpl) this.timerService).activate();
-        }
+
+        this.timerService = this.timerServiceFactory.createTimerService(this);
+        this.timerService.start();
     }
 
     @Override
     public final void stop() {
         getShutDownInterceptorFactory().shutdown();
-        if(this.timerService instanceof TimerServiceImpl) {
-            ((TimerServiceImpl) this.timerService).deactivate();
-        }
+        this.timerService.stop();
         this.done();
+        this.timerService.close();
     }
 
     @Override
@@ -618,6 +610,10 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
         Roles roles = identity.getRoles("ejb", true);
         if(roles != null) {
             if(roles.contains(roleName)) {
+                if (ROOT_LOGGER.isTraceEnabled()) {
+                    ROOT_LOGGER.trace("## EJBComponent checkCallerSecurityIdentityRole  roleName: " + roleName
+                            + "   found in identity.roles   principal: " + identity.getPrincipal().getName());
+                }
                 return true;
             }
             if(securityMetaData.getSecurityRoleLinks() != null) {
@@ -625,11 +621,20 @@ public abstract class EJBComponent extends BasicComponent implements ServerActiv
                 if(linked != null) {
                     for (String role : roles) {
                         if (linked.contains(role)) {
+                            if (ROOT_LOGGER.isTraceEnabled()) {
+                                ROOT_LOGGER.trace("## EJBComponent checkCallerSecurityIdentityRole roleName: "
+                                        + roleName + "  found in securityMetaData.getSecurityRoleLinks(),"
+                                        + "  runAsPrincipal: " + securityMetaData.getRunAsPrincipal());
+                            }
                             return true;
                         }
                     }
                 }
             }
+        }
+        if (ROOT_LOGGER.isTraceEnabled()) {
+            ROOT_LOGGER.trace("## EJBComponent checkCallerSecurityIdentityRole  roleName: "
+                    + roleName + "  no role found    Principal: " + identity.getPrincipal().getName());
         }
         return false;
     }

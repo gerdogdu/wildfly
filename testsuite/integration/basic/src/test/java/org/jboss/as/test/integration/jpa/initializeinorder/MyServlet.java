@@ -1,15 +1,20 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.jpa.initializeinorder;
 
 import java.io.IOException;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.annotation.WebServlet;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.servlet.Servlet;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.annotation.WebServlet;
 
 /**
  * @author Scott Marlow

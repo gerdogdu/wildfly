@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.wildfly</groupId>
+        <artifactId>wildfly-parent</artifactId>
+        <!--
+        Maintain separation between the artifact id and the version to help prevent
+        merge conflicts between commits changing the GA and those changing the V.
+        -->
+        <version>35.0.0.Final-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>wildfly-preview-expansion-bom</artifactId>
+    <description>
+        Build of materials that can be used to build WildFly Preview maven modules
+        that provide expansion capabilities like MicroProfile.
+    </description>
+    <packaging>pom</packaging>
+
+    <name>WildFly Preview: Dependency Management (Expansion Dependencies)</name>
+
+
+    <dependencyManagement>
+        <dependencies>
+
+            <!-- Inherit the preview ee deps -->
+            <dependency>
+                <groupId>${ee.maven.groupId}</groupId>
+                <artifactId>wildfly-preview-ee-bom</artifactId>
+                <version>${full.maven.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!--
+                Re-expose the standard-expansion deps.
+             -->
+            <dependency>
+                <groupId>${ee.maven.groupId}</groupId>
+                <artifactId>wildfly-standard-expansion-bom</artifactId>
+                <version>${ee.maven.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Dependencies specific to this bom. Keep sorted -->
+
+            <dependency>
+                <groupId>org.wildfly.extras.vertx</groupId>
+                <artifactId>wildfly-vertx-feature-pack-content</artifactId>
+                <version>${version.org.wildfly.vertx}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.wildfly.extras.vertx</groupId>
+                <artifactId>wildfly-vertx-feature-pack-content</artifactId>
+                <version>${version.org.wildfly.vertx}</version>
+                <type>zip</type>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>

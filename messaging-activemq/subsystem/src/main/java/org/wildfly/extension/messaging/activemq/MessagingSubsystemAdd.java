@@ -1,32 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.messaging.activemq;
 
 import static org.apache.activemq.artemis.api.core.client.ActiveMQClient.SCHEDULED_THREAD_POOL_SIZE_PROPERTY_KEY;
 import static org.apache.activemq.artemis.api.core.client.ActiveMQClient.THREAD_POOL_MAX_SIZE_PROPERTY_KEY;
-import static org.jboss.as.server.services.net.SocketBindingResourceDefinition.SOCKET_BINDING_CAPABILITY;
 import static org.jboss.as.weld.Capabilities.WELD_CAPABILITY_NAME;
-import static org.wildfly.extension.messaging.activemq.Capabilities.OUTBOUND_SOCKET_BINDING_CAPABILITY;
 import static org.wildfly.extension.messaging.activemq.CommonAttributes.JGROUPS_BROADCAST_GROUP;
 import static org.wildfly.extension.messaging.activemq.CommonAttributes.JGROUPS_DISCOVERY_GROUP;
 import static org.wildfly.extension.messaging.activemq.CommonAttributes.JGROUPS_CLUSTER;
@@ -54,6 +35,8 @@ import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.OperationStepHandler;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.registry.Resource;
+import org.jboss.as.network.OutboundSocketBinding;
+import org.jboss.as.network.SocketBinding;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
 import org.jboss.as.server.deployment.Phase;
@@ -74,8 +57,8 @@ import org.wildfly.extension.messaging.activemq.deployment.JMSDestinationDefinit
 import org.wildfly.extension.messaging.activemq.deployment.MessagingDependencyProcessor;
 import org.wildfly.extension.messaging.activemq.deployment.MessagingXmlInstallDeploymentUnitProcessor;
 import org.wildfly.extension.messaging.activemq.deployment.MessagingXmlParsingDeploymentUnitProcessor;
-import org.wildfly.extension.messaging.activemq.deployment.injection.CDIDeploymentProcessor;
-import org.wildfly.extension.messaging.activemq.logging.MessagingLogger;
+import org.wildfly.extension.messaging.activemq.injection.deployment.CDIDeploymentProcessor;
+import org.wildfly.extension.messaging.activemq._private.MessagingLogger;
 
 /**
  * Add handler for the messaging subsystem.
@@ -83,8 +66,6 @@ import org.wildfly.extension.messaging.activemq.logging.MessagingLogger;
  * @author Brian Stansberry (c) 2011 Red Hat Inc.
  */
 class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
-
-    private static final ServiceName JBOSS_MESSAGING_ACTIVEMQ = ServiceName.JBOSS.append(MessagingExtension.SUBSYSTEM_NAME);
 
     final BiConsumer<OperationContext, String> broadcastCommandDispatcherFactoryInstaller;
 
@@ -105,7 +86,7 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 // keep the statements ordered by phase + priority
                 processorTarget.addDeploymentProcessor(MessagingExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_JMS_CONNECTION_FACTORY_RESOURCE_INJECTION, new DefaultJMSConnectionFactoryResourceReferenceProcessor());
                 processorTarget.addDeploymentProcessor(MessagingExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_RESOURCE_DEF_ANNOTATION_JMS_DESTINATION, new JMSDestinationDefinitionAnnotationProcessor());
-                processorTarget.addDeploymentProcessor(MessagingExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_RESOURCE_DEF_ANNOTATION_JMS_CONNECTION_FACTORY, new JMSConnectionFactoryDefinitionAnnotationProcessor(MessagingServices.capabilityServiceSupport.hasCapability("org.wildfly.legacy-security")));
+                processorTarget.addDeploymentProcessor(MessagingExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_RESOURCE_DEF_ANNOTATION_JMS_CONNECTION_FACTORY, new JMSConnectionFactoryDefinitionAnnotationProcessor());
                 processorTarget.addDeploymentProcessor(MessagingExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_MESSAGING_XML_RESOURCES, new MessagingXmlParsingDeploymentUnitProcessor());
                 processorTarget.addDeploymentProcessor(MessagingExtension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_JMS, new MessagingDependencyProcessor());
 
@@ -155,7 +136,7 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 scheduledThreadPoolMaxSizeValue = ActiveMQClient.getGlobalScheduledThreadPoolSize();
             }
             MessagingLogger.ROOT_LOGGER.debugf("Setting global client thread pool size to: regular=%s, scheduled=%s", threadPoolMaxSizeValue, scheduledThreadPoolMaxSizeValue);
-            ActiveMQClient.setGlobalThreadPoolProperties(threadPoolMaxSizeValue, scheduledThreadPoolMaxSizeValue);
+            ActiveMQClient.setGlobalThreadPoolProperties(threadPoolMaxSizeValue, scheduledThreadPoolMaxSizeValue, ActiveMQClient.DEFAULT_FLOW_CONTROL_THREAD_POOL_MAX_SIZE);
         }
         context.getServiceTarget().addService(MessagingServices.ACTIVEMQ_CLIENT_THREAD_POOL)
                 .setInstance( new ThreadPoolService())
@@ -168,8 +149,9 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 // Transform the configuration based on the recursive model
                 final ModelNode model = Resource.Tools.readModel(context.readResource(PathAddress.EMPTY_ADDRESS));
                 // Process connectors
-                final Set<String> connectorsSocketBindings = new HashSet<String>();
-                final Map<String, TransportConfiguration> connectors = TransportConfigOperationHandlers.processConnectors(context, "localhost", model, connectorsSocketBindings);
+                final Set<String> connectorsSocketBindings = new HashSet<>();
+                final Map<String, String> sslContextNames = new HashMap<>();
+                final Map<String, TransportConfiguration> connectors = TransportConfigOperationHandlers.processConnectors(context, "localhost", model, connectorsSocketBindings, sslContextNames);
 
                 Map<String, ServiceName> outboundSocketBindings = new HashMap<>();
                 Map<String, Boolean> outbounds = TransportConfigOperationHandlers.listOutBoundSocketBinding(context, connectorsSocketBindings);
@@ -177,12 +159,12 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 for (final String connectorSocketBinding : connectorsSocketBindings) {
                     // find whether the connectorSocketBinding references a SocketBinding or an OutboundSocketBinding
                     if (outbounds.get(connectorSocketBinding)) {
-                        final ServiceName outboundSocketName = OUTBOUND_SOCKET_BINDING_CAPABILITY.getCapabilityServiceName(connectorSocketBinding);
+                        final ServiceName outboundSocketName = context.getCapabilityServiceName(OutboundSocketBinding.SERVICE_DESCRIPTOR, connectorSocketBinding);
                         outboundSocketBindings.put(connectorSocketBinding, outboundSocketName);
                     } else {
                         // check if the socket binding has not already been added by the acceptors
                         if (!socketBindings.containsKey(connectorSocketBinding)) {
-                            socketBindings.put(connectorSocketBinding, SOCKET_BINDING_CAPABILITY.getCapabilityServiceName(connectorSocketBinding));
+                            socketBindings.put(connectorSocketBinding, context.getCapabilityServiceName(SocketBinding.SERVICE_DESCRIPTOR, connectorSocketBinding));
                         }
                     }
                 }
@@ -206,7 +188,7 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                         String clusterName = JGROUPS_CLUSTER.resolveModelAttribute(context, broadcastGroupModel).asString();
                         clusterNames.put(key, clusterName);
                     } else {
-                        final ServiceName groupBindingServiceName = GroupBindingService.getBroadcastBaseServiceName(JBOSS_MESSAGING_ACTIVEMQ).append(name);
+                        final ServiceName groupBindingServiceName = GroupBindingService.getBroadcastBaseServiceName(MessagingServices.getActiveMQServiceName()).append(name);
                         if (!groupBindingServices.contains(groupBindingServiceName)) {
                             groupBindingServices.add(groupBindingServiceName);
                         }
@@ -225,7 +207,7 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                         String clusterName = JGROUPS_CLUSTER.resolveModelAttribute(context, discoveryGroupModel).asString();
                         clusterNames.put(key, clusterName);
                     } else {
-                        final ServiceName groupBindingServiceName = GroupBindingService.getDiscoveryBaseServiceName(JBOSS_MESSAGING_ACTIVEMQ).append(name);
+                        final ServiceName groupBindingServiceName = GroupBindingService.getDiscoveryBaseServiceName(MessagingServices.getActiveMQServiceName()).append(name);
                         if (!groupBindingServices.contains(groupBindingServiceName)) {
                             groupBindingServices.add(groupBindingServiceName);
                         }
@@ -239,7 +221,8 @@ class MessagingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                         outboundSocketBindings,
                         groupBindings,
                         commandDispatcherFactories,
-                        clusterNames))
+                        clusterNames,
+                        sslContextNames))
                         .install();
             }
         }, OperationContext.Stage.RUNTIME);

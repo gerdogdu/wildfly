@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.component;
@@ -33,11 +16,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
-import javax.ejb.TimerService;
-import javax.ejb.TransactionAttributeType;
-import javax.ejb.TransactionManagementType;
-import javax.transaction.TransactionSynchronizationRegistry;
-import javax.transaction.UserTransaction;
+
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.ejb.TransactionManagementType;
+import jakarta.transaction.TransactionSynchronizationRegistry;
+import jakarta.transaction.UserTransaction;
 
 import org.jboss.as.ee.component.BasicComponentCreateService;
 import org.jboss.as.ee.component.ComponentConfiguration;
@@ -48,6 +31,7 @@ import org.jboss.as.ejb3.component.messagedriven.MessageDrivenComponentDescripti
 import org.jboss.as.ejb3.deployment.ApplicationExceptions;
 import org.jboss.as.ejb3.security.EJBSecurityMetaData;
 import org.jboss.as.ejb3.suspend.EJBSuspendHandlerService;
+import org.jboss.as.ejb3.timerservice.spi.ManagedTimerServiceFactory;
 import org.jboss.invocation.InterceptorFactory;
 import org.jboss.invocation.Interceptors;
 import org.jboss.invocation.proxy.MethodIdentifier;
@@ -78,8 +62,6 @@ public class EJBComponentCreateService extends BasicComponentCreateService {
 
     private final EJBSecurityMetaData securityMetaData;
 
-    private final TimerService timerService;
-
     private final Map<Method, InterceptorFactory> timeoutInterceptors;
 
     private final Method timeoutMethod;
@@ -101,6 +83,7 @@ public class EJBComponentCreateService extends BasicComponentCreateService {
     private final InjectedValue<SecurityDomain> securityDomain = new InjectedValue<>();
     private final InjectedValue<Function> identityOutflowFunction = new InjectedValue<>();
     private final InjectedValue<EJBSuspendHandlerService> ejbSuspendHandler = new InjectedValue<>();
+    private final InjectedValue<ManagedTimerServiceFactory> timerServiceFactory = new InjectedValue<>();
 
     private final ShutDownInterceptorFactory shutDownInterceptorFactory;
 
@@ -121,8 +104,6 @@ public class EJBComponentCreateService extends BasicComponentCreateService {
         this.applicationExceptions = applicationExceptions;
         final EJBComponentDescription ejbComponentDescription = (EJBComponentDescription) componentConfiguration.getComponentDescription();
         this.transactionManagementType = ejbComponentDescription.getTransactionManagementType();
-
-        this.timerService = ejbComponentDescription.getTimerService();
 
         // CMTTx
         if (transactionManagementType.equals(TransactionManagementType.CONTAINER)) {
@@ -291,10 +272,6 @@ public class EJBComponentCreateService extends BasicComponentCreateService {
         return timeoutInterceptors;
     }
 
-    public TimerService getTimerService() {
-        return timerService;
-    }
-
     public Method getTimeoutMethod() {
         return timeoutMethod;
     }
@@ -397,5 +374,13 @@ public class EJBComponentCreateService extends BasicComponentCreateService {
 
     public boolean isSecurityRequired() {
         return securityRequired;
+    }
+
+    public ManagedTimerServiceFactory getTimerServiceFactory() {
+        return this.timerServiceFactory.getValue();
+    }
+
+    public Injector<ManagedTimerServiceFactory> getTimerServiceFactoryInjector() {
+        return this.timerServiceFactory;
     }
 }

@@ -1,6 +1,14 @@
 [[WildFly_JNDI_Implementation]]
 = WildFly JNDI Implementation
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 [[introduction]]
 == Introduction
 
@@ -29,9 +37,9 @@ multiple naming stores in every WildFly instance, serving different JNDI
 namespaces:
 
 * java:comp - the standard EE namespace for entries scoped to a specific
-component, such as an Jakarta Enterprise Beans
+component, such as a Jakarta Enterprise Beans bean
 * java:module - the standard EE namespace for entries scoped to specific
-module, such as an Jakarta Enterprise Beans jar, and shared by all components in it
+module, such as a Jakarta Enterprise Beans jar, and shared by all components in it
 * java:app - the standard EE namespace for entries scoped to a specific
 application, i.e. EAR, and shared by all modules in it
 * java:global - the standard EE namespace for entries shared by all
@@ -266,7 +274,7 @@ and
 [source,java,options="nowrap"]
 ----
 /**
- * Deployment processor responsible for processing {@link javax.resource.AdministeredObjectDefinition} and {@link javax.resource.AdministeredObjectDefinitions}.
+ * Deployment processor responsible for processing {@link jakarta.resource.AdministeredObjectDefinition} and {@link jakarta.resource.AdministeredObjectDefinitions}.
  *
  * @author Jesper Pedersen
  * @author Eduardo Martins

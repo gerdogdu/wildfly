@@ -1,6 +1,15 @@
 [[Jakarta_Enterprise_Beans_Deployment_Runtime_Resources]]
 = Jakarta Enterprise Beans Deployment Runtime Resources
 
+ifdef::env-github[]
+:imagesdir: ../../
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 Enterprise bean deployment exposes certain management runtime resources to help users inspect enterprise bean metadata
 and monitor invocation statistics. Bean metadata is configured in the application via deployment descriptor and
 annotations. Stateless, stateful, singleton session beans and message-driven beans support a common set of resources,
@@ -65,7 +74,7 @@ The following is a sample output for a stateless session bean named `ManagedStat
         "pool-remove-count" => 0,
         "run-as-role" => "Role3",
         "security-domain" => "other",
-        "timeout-method" => "public void sample.ManagedStatelessBean.timeout(javax.ejb.Timer)",
+        "timeout-method" => "public void sample.ManagedStatelessBean.timeout(jakarta.ejb.Timer)",
         "timers" => [{
             "time-remaining" => 4735224L,
             "next-timeout" => 1577768415000L,
@@ -93,7 +102,7 @@ The following is a sample output for a stateless session bean named `ManagedStat
 
 To view it in WildFly Administration Console, go to the `Management Model` section of the target deployment. For example,
 
-image:ejb/stateless-management-resource.png[images/ejb/stateless-management-resource.png]
+image:images/ejb/stateless-management-resource.png[alt=ejb/stateless-management-resource.png]
 
 [[Stateful_Session_Bean_Runtime_Resources]]
 == Stateful Session Bean Runtime Resources
@@ -174,7 +183,7 @@ The following is a sample output for a stateful session bean named `ManagedState
 
 To view it in WildFly Administration Console, go to the `Management Model` section of the target deployment. For example,
 
-image:ejb/stateful-management-resource.png[images/ejb/stateful-management-resource.png]
+image:images/ejb/stateful-management-resource.png[alt=ejb/stateful-management-resource.png]
 
 [[Singleton_Bean_Runtime_Resources]]
 == Singleton Bean Runtime Resources
@@ -221,7 +230,7 @@ The following is a sample output for a singleton bean named `ManagedSingletonBea
         "peak-concurrent-invocations" => 1L,
         "run-as-role" => "Role3",
         "security-domain" => "other",
-        "timeout-method" => "public void sample.ManagedSingletonBean.timeout(javax.ejb.Timer)",
+        "timeout-method" => "public void sample.ManagedSingletonBean.timeout(jakarta.ejb.Timer)",
         "timers" => [{
             "time-remaining" => 4304279L,
             "next-timeout" => 1577768415000L,
@@ -249,7 +258,7 @@ The following is a sample output for a singleton bean named `ManagedSingletonBea
 
 To view it in WildFly Administration Console, go to the `Management Model` section of the target deployment. For example,
 
-image:ejb/singleton-management-resource.png[images/ejb/singleton-management-resource.png]
+image:images/ejb/singleton-management-resource.png[alt=ejb/singleton-management-resource.png]
 
 [[Message_Driven_Bean_Runtime_Resources]]
 == Message-driven Bean Runtime Resources
@@ -267,7 +276,7 @@ The following is a sample output for a message-driven bean named `ManagedMDB` in
     "outcome" => "success",
     "result" => {
         "activation-config" => [
-            ("destinationType" => "javax.jms.Queue"),
+            ("destinationType" => "jakarta.jms.Queue"),
             ("destination" => "java:/queue/ManagedMDB-queue")
         ],
         "component-class-name" => "sample.ManagedMDB",
@@ -281,7 +290,7 @@ The following is a sample output for a message-driven bean named `ManagedMDB` in
         "invocations" => 0L,
         "message-destination-link" => undefined,
         "message-destination-type" => undefined,
-        "messaging-type" => "javax.jms.MessageListener",
+        "messaging-type" => "jakarta.jms.MessageListener",
         "methods" => {},
         "peak-concurrent-invocations" => 0L,
         "pool-available-count" => 16,
@@ -292,7 +301,7 @@ The following is a sample output for a message-driven bean named `ManagedMDB` in
         "pool-remove-count" => 0,
         "run-as-role" => "Role3",
         "security-domain" => "other",
-        "timeout-method" => "public void sample.ManagedMDB.timeout(javax.ejb.Timer)",
+        "timeout-method" => "public void sample.ManagedMDB.timeout(jakarta.ejb.Timer)",
         "timers" => [{
             "time-remaining" => 4213581L,
             "next-timeout" => 1577768415000L,
@@ -320,4 +329,4 @@ The following is a sample output for a message-driven bean named `ManagedMDB` in
 
 To view it in WildFly Administration Console, go to the `Management Model` section of the target deployment. For example,
 
-image:ejb/mdb-management-resource.png[images/ejb/mdb-management-resource.png]
+image:images/ejb/mdb-management-resource.png[alt=ejb/mdb-management-resource.png]

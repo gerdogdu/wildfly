@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain.suites;
@@ -41,7 +24,6 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOC
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.STEPS;
 import static org.jboss.as.test.integration.domain.management.util.DomainTestSupport.cleanFile;
 import static org.jboss.as.test.integration.domain.management.util.DomainTestSupport.validateResponse;
-import static org.jboss.as.test.integration.domain.util.EENamespaceTransformer.jakartaTransform;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
@@ -108,10 +90,10 @@ public class DeploymentOverlayTestCase {
         MAIN_SERVER_GROUP_DEPLOYMENT_ADDRESS.add(SERVER_GROUP, "main-server-group");
         MAIN_SERVER_GROUP_DEPLOYMENT_ADDRESS.add(DEPLOYMENT, TEST);
         MAIN_SERVER_GROUP_DEPLOYMENT_ADDRESS.protect();
-        MAIN_RUNNING_SERVER_ADDRESS.add(HOST, "master");
+        MAIN_RUNNING_SERVER_ADDRESS.add(HOST, "primary");
         MAIN_RUNNING_SERVER_ADDRESS.add(SERVER, "main-one");
         MAIN_RUNNING_SERVER_ADDRESS.protect();
-        MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(HOST, "master");
+        MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(HOST, "primary");
         MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(SERVER, "main-one");
         MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(DEPLOYMENT, TEST);
         MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.protect();
@@ -136,12 +118,7 @@ public class DeploymentOverlayTestCase {
         new File(tmpDir, "archives").mkdirs();
         new File(tmpDir, "exploded").mkdirs();
         File archiveTarget = new File(tmpDir, "archives/" + TEST);
-        jakartaTransform(webArchive.as(ZipExporter.class), archiveTarget);
-        //webArchive.as(ZipExporter.class).exportTo(new File(tmpDir, "archives/" + TEST), true);
-
-        // If the archive was transformed above by creating from the zipFile our reference is transformed as
-        // well so no further changes needed.
-        webArchive = ShrinkWrap.createFromZipFile(WebArchive.class, archiveTarget);
+        webArchive.as(ZipExporter.class).exportTo(archiveTarget, true);
         webArchive.as(ExplodedExporter.class).exportExploded(new File(tmpDir, "exploded"));
 
         // Launch the domain
@@ -195,7 +172,7 @@ public class DeploymentOverlayTestCase {
         ModelNode op = new ModelNode();
         op.get(ModelDescriptionConstants.OP_ADDR).set(ModelDescriptionConstants.DEPLOYMENT_OVERLAY, TEST_OVERLAY);
         op.get(ModelDescriptionConstants.OP).set(ModelDescriptionConstants.ADD);
-        executeOnMaster(op);
+        executeOnPrimary(op);
 
 
         //add an override that will not be linked via a wildcard
@@ -209,7 +186,7 @@ public class DeploymentOverlayTestCase {
         op.get(ModelDescriptionConstants.OP).set(ModelDescriptionConstants.ADD);
         op.get(ModelDescriptionConstants.CONTENT).get(INPUT_STREAM_INDEX).set(0);
         builder.addInputStream(getClass().getClassLoader().getResourceAsStream("deploymentoverlay/override.xml"));
-        executeOnMaster(builder.build());
+        executeOnPrimary(builder.build());
 
         //add the non-wildcard link to the server group
         op = new ModelNode();
@@ -218,7 +195,7 @@ public class DeploymentOverlayTestCase {
         addr.add(ModelDescriptionConstants.DEPLOYMENT_OVERLAY, TEST_OVERLAY);
         op.get(ModelDescriptionConstants.OP_ADDR).set(addr);
         op.get(ModelDescriptionConstants.OP).set(ModelDescriptionConstants.ADD);
-        executeOnMaster(op);
+        executeOnPrimary(op);
 
         op = new ModelNode();
         addr = new ModelNode();
@@ -227,7 +204,7 @@ public class DeploymentOverlayTestCase {
         addr.add(ModelDescriptionConstants.DEPLOYMENT, "test.war");
         op.get(ModelDescriptionConstants.OP_ADDR).set(addr);
         op.get(ModelDescriptionConstants.OP).set(ModelDescriptionConstants.ADD);
-        executeOnMaster(op);
+        executeOnPrimary(op);
 
 
         //add the wildard link
@@ -281,7 +258,7 @@ public class DeploymentOverlayTestCase {
         op.get(ModelDescriptionConstants.OP).set(ModelDescriptionConstants.ADD);
         steps.add(op);
 
-        executeOnMaster(opBuilder.build());
+        executeOnPrimary(opBuilder.build());
     }
 
 
@@ -299,13 +276,13 @@ public class DeploymentOverlayTestCase {
         ModelNode composite = createDeploymentOperation(content, MAIN_SERVER_GROUP_DEPLOYMENT_ADDRESS);
         OperationBuilder builder = new OperationBuilder(composite, true);
         builder.addInputStream(webArchive.as(ZipExporter.class).exportAsInputStream());
-        executeOnMaster(builder.build());
+        executeOnPrimary(builder.build());
 
-        DomainClient client = testSupport.getDomainMasterLifecycleUtil().createDomainClient();
-        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "master", "main-one", "standard-sockets", "/test/servlet"));
-        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "slave", "main-three", "standard-sockets", "/test/servlet"));
-        Assert.assertEquals("new file", performHttpCall(client, "master", "main-one", "standard-sockets", "/test/wildcard-new-file.txt"));
-        Assert.assertEquals("new file", performHttpCall(client, "slave", "main-three", "standard-sockets", "/test/wildcard-new-file.txt"));
+        DomainClient client = testSupport.getDomainPrimaryLifecycleUtil().createDomainClient();
+        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "primary", "main-one", "standard-sockets", "/test/servlet"));
+        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "secondary", "main-three", "standard-sockets", "/test/servlet"));
+        Assert.assertEquals("new file", performHttpCall(client, "primary", "main-one", "standard-sockets", "/test/wildcard-new-file.txt"));
+        Assert.assertEquals("new file", performHttpCall(client, "secondary", "main-three", "standard-sockets", "/test/wildcard-new-file.txt"));
 
         //Remove the wildcard overlay
         ModelNode op = Operations.createRemoveOperation(PathAddress.pathAddress(ModelDescriptionConstants.SERVER_GROUP, "main-server-group")
@@ -313,21 +290,21 @@ public class DeploymentOverlayTestCase {
                 .append(ModelDescriptionConstants.DEPLOYMENT, "*.war")
                 .toModelNode());
         op.get("redeploy-affected").set(true);
-        executeOnMaster(op);
-        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "master", "main-one", "standard-sockets", "/test/servlet"));
-        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "slave", "main-three", "standard-sockets", "/test/servlet"));
-        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "master", "main-one", "standard-sockets", "/test/wildcard-new-file.txt"));
-        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "slave", "main-three", "standard-sockets", "/test/wildcard-new-file.txt"));
+        executeOnPrimary(op);
+        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "primary", "main-one", "standard-sockets", "/test/servlet"));
+        Assert.assertEquals("OVERRIDDEN", performHttpCall(client, "secondary", "main-three", "standard-sockets", "/test/servlet"));
+        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "primary", "main-one", "standard-sockets", "/test/wildcard-new-file.txt"));
+        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "secondary", "main-three", "standard-sockets", "/test/wildcard-new-file.txt"));
         op = Operations.createRemoveOperation(PathAddress.pathAddress(ModelDescriptionConstants.SERVER_GROUP, "main-server-group")
                 .append(ModelDescriptionConstants.DEPLOYMENT_OVERLAY, TEST_OVERLAY)
                 .append(ModelDescriptionConstants.DEPLOYMENT, "test.war")
                 .toModelNode());
         op.get("redeploy-affected").set(true);
-        executeOnMaster(op);
-        Assert.assertEquals("NON OVERRIDDEN", performHttpCall(client, "master", "main-one", "standard-sockets", "/test/servlet"));
-        Assert.assertEquals("NON OVERRIDDEN", performHttpCall(client, "slave", "main-three", "standard-sockets", "/test/servlet"));
-        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "master", "main-one", "standard-sockets", "/test/wildcard-new-file.txt"));
-        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "slave", "main-three", "standard-sockets", "/test/wildcard-new-file.txt"));
+        executeOnPrimary(op);
+        Assert.assertEquals("NON OVERRIDDEN", performHttpCall(client, "primary", "main-one", "standard-sockets", "/test/servlet"));
+        Assert.assertEquals("NON OVERRIDDEN", performHttpCall(client, "secondary", "main-three", "standard-sockets", "/test/servlet"));
+        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "primary", "main-one", "standard-sockets", "/test/wildcard-new-file.txt"));
+        Assert.assertEquals("<html><head><title>Error</title></head><body>Not Found</body></html>", performHttpCall(client, "secondary", "main-three", "standard-sockets", "/test/wildcard-new-file.txt"));
     }
 
     private String performHttpCall(DomainClient client, String host, String server, String socketBindingGroup, String path) throws Exception {
@@ -359,12 +336,12 @@ public class DeploymentOverlayTestCase {
         return content.toString();
     }
 
-    private static ModelNode executeOnMaster(ModelNode op) throws IOException {
-        return validateResponse(testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op));
+    private static ModelNode executeOnPrimary(ModelNode op) throws IOException {
+        return validateResponse(testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op));
     }
 
-    private static ModelNode executeOnMaster(Operation op) throws IOException {
-        return validateResponse(testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op));
+    private static ModelNode executeOnPrimary(Operation op) throws IOException {
+        return validateResponse(testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op));
     }
 
     private static ModelNode createDeploymentOperation(ModelNode content, ModelNode... serverGroupAddressses) {
@@ -386,7 +363,7 @@ public class DeploymentOverlayTestCase {
         ModelNode op = getEmptyOperation("read-children-names", address);
         op.get("child-type").set("deployment");
 
-        ModelNode response = testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op);
+        ModelNode response = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op);
         ModelNode result = validateResponse(response);
         return result.isDefined() ? result.asList() : Collections.<ModelNode>emptyList();
     }
@@ -396,7 +373,7 @@ public class DeploymentOverlayTestCase {
         deplAddr.set(address);
         deplAddr.add("deployment", deploymentName);
         ModelNode op = getEmptyOperation(REMOVE, deplAddr);
-        ModelNode response = testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op);
+        ModelNode response = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op);
         validateResponse(response);
     }
 

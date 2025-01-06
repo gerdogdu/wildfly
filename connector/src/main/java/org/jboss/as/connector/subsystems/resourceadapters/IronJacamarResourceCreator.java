@@ -1,27 +1,12 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.connector.subsystems.resourceadapters;
 
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.JNDI_NAME;
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATION;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BACKGROUNDVALIDATIONMILLIS;
 import static org.jboss.as.connector.subsystems.common.pool.Constants.BLOCKING_TIMEOUT_WAIT_MILLIS;
@@ -50,7 +35,6 @@ import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ELYTR
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENABLED;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.ENLISTMENT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.INTERLEAVING;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.JNDINAME;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.NOTXSEPARATEPOOL;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.NO_RECOVERY;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.PAD_XID;
@@ -59,15 +43,11 @@ import static org.jboss.as.connector.subsystems.resourceadapters.Constants.RECOV
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.RECOVERY_AUTHENTICATION_CONTEXT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.RECOVERY_ELYTRON_ENABLED;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.RECOVERY_PASSWORD;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.RECOVERY_SECURITY_DOMAIN;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.RECOVERY_USERNAME;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.SAME_RM_OVERRIDE;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.SECURITY_DOMAIN;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.SECURITY_DOMAIN_AND_APPLICATION;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.SHARABLE;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.TRACKING;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.USE_CCM;
-import static org.jboss.as.connector.subsystems.resourceadapters.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WM_SECURITY_MAPPING_GROUP;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WM_SECURITY_MAPPING_USER;
 import static org.jboss.as.connector.subsystems.resourceadapters.Constants.WRAP_XA_RESOURCE;
@@ -144,14 +124,14 @@ public class IronJacamarResourceCreator {
     private void addConnectionDefinition(final Resource parent, ConnectionDefinition connDef) {
         final Resource connDefResource = new IronJacamarResource.IronJacamarRuntimeResource();
         final ModelNode model = connDefResource.getModel();
-        setAttribute(model, Constants.JNDINAME, connDef.getJndiName());
+        setAttribute(model, JNDI_NAME, connDef.getJndiName());
         if (connDef.getConfigProperties() != null) {
             for (Map.Entry<String, String> config : connDef.getConfigProperties().entrySet()) {
                 addConfigProperties(connDefResource, config.getKey(), config.getValue());
             }
         }
         setAttribute(model, CLASS_NAME, connDef.getClassName());
-        setAttribute(model, JNDINAME, connDef.getJndiName());
+        setAttribute(model, JNDI_NAME, connDef.getJndiName());
         setAttribute(model, USE_JAVA_CONTEXT, connDef.isUseJavaContext());
         setAttribute(model, ENABLED, connDef.isEnabled());
 
@@ -215,15 +195,9 @@ public class IronJacamarResourceCreator {
         if (security != null) {
             setAttribute(model, APPLICATION, security.isApplication());
 
-            if (security instanceof org.jboss.as.connector.metadata.api.common.Security &&
-                    ((org.jboss.as.connector.metadata.api.common.Security) security).isElytronEnabled()) {
-                setAttribute(model, ELYTRON_ENABLED, true);
-                setAttribute(model, AUTHENTICATION_CONTEXT, security.getSecurityDomain());
-                setAttribute(model, AUTHENTICATION_CONTEXT_AND_APPLICATION, security.getSecurityDomainAndApplication());
-            } else {
-                setAttribute(model, SECURITY_DOMAIN, security.getSecurityDomain());
-                setAttribute(model, SECURITY_DOMAIN_AND_APPLICATION, security.getSecurityDomainAndApplication());
-            }
+            setAttribute(model, ELYTRON_ENABLED, true);
+            setAttribute(model, AUTHENTICATION_CONTEXT, security.getSecurityDomain());
+            setAttribute(model, AUTHENTICATION_CONTEXT_AND_APPLICATION, security.getSecurityDomainAndApplication());
         }
         final TimeOut timeOut = connDef.getTimeOut();
         if (timeOut != null) {
@@ -262,13 +236,8 @@ public class IronJacamarResourceCreator {
             final Credential recoveryCredential =  recovery.getCredential();
             if (recoveryCredential != null) {
                 setAttribute(model, RECOVERY_PASSWORD, recoveryCredential.getPassword());
-                if (recoveryCredential instanceof org.jboss.as.connector.metadata.api.common.Credential &&
-                        ((org.jboss.as.connector.metadata.api.common.Credential) recoveryCredential).isElytronEnabled()) {
-                    setAttribute(model, RECOVERY_ELYTRON_ENABLED, true);
-                    setAttribute(model, RECOVERY_AUTHENTICATION_CONTEXT, recoveryCredential.getSecurityDomain());
-                } else {
-                    setAttribute(model, RECOVERY_SECURITY_DOMAIN, recoveryCredential.getSecurityDomain());
-                }
+                setAttribute(model, RECOVERY_ELYTRON_ENABLED, true);
+                setAttribute(model, RECOVERY_AUTHENTICATION_CONTEXT, recoveryCredential.getSecurityDomain());
                 setAttribute(model, RECOVERY_USERNAME, recoveryCredential.getUserName());
             }
         }
@@ -284,7 +253,7 @@ public class IronJacamarResourceCreator {
         final Resource adminObjectResource = new IronJacamarResource.IronJacamarRuntimeResource();
         final ModelNode model = adminObjectResource.getModel();
         setAttribute(model, CLASS_NAME, adminObject.getClassName());
-        setAttribute(model, JNDINAME, adminObject.getJndiName());
+        setAttribute(model, JNDI_NAME, adminObject.getJndiName());
         setAttribute(model, USE_JAVA_CONTEXT, adminObject.isUseJavaContext());
         setAttribute(model, ENABLED, adminObject.isEnabled());
         if (adminObject.getConfigProperties() != null) {
@@ -316,11 +285,8 @@ public class IronJacamarResourceCreator {
             if (security.getDefaultPrincipal() != null)
                 model.get(Constants.WM_SECURITY_DEFAULT_PRINCIPAL.getName()).set(security.getDefaultPrincipal());
             model.get(Constants.WM_SECURITY_MAPPING_REQUIRED.getName()).set(security.isMappingRequired());
-            if (security instanceof  WorkManagerSecurity && ((WorkManagerSecurity) security).isElytronEnabled()) {
+            if (security instanceof  WorkManagerSecurity) {
                 model.get(Constants.WM_ELYTRON_SECURITY_DOMAIN.getName()).set(security.getDomain());
-            }
-            else {
-                model.get(Constants.WM_SECURITY_DOMAIN.getName()).set(security.getDomain());
             }
             if (security.getGroupMappings() != null) {
                 for (Map.Entry<String, String> entry : security.getGroupMappings().entrySet()) {

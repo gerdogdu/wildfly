@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.weld.deployment;
@@ -30,7 +13,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.enterprise.inject.spi.Extension;
+import jakarta.enterprise.inject.spi.Extension;
 
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.weld.WeldModuleResourceLoader;
@@ -39,7 +22,6 @@ import org.jboss.as.weld.logging.WeldLogger;
 import org.jboss.as.weld.services.bootstrap.ProxyServicesImpl;
 import org.jboss.as.weld.util.Reflections;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.weld.bootstrap.api.Service;
 import org.jboss.weld.bootstrap.api.ServiceRegistry;
 import org.jboss.weld.bootstrap.api.helpers.SimpleServiceRegistry;
@@ -65,7 +47,7 @@ public class WeldDeployment implements CDI11Deployment {
 
     public static final String ADDITIONAL_CLASSES_BDA_SUFFIX = ".additionalClasses";
     public static final String BOOTSTRAP_CLASSLOADER_BDA_ID = "bootstrapBDA" + ADDITIONAL_CLASSES_BDA_SUFFIX;
-    static final Set<Class<?>> NON_OVERRIDABLE_SERVICES = Collections.singleton(ContextualStore.class);
+    static final Set<Class<?>> NON_OVERRIDABLE_SERVICES = Set.of(ContextualStore.class);
 
     private final Set<BeanDeploymentArchiveImpl> beanDeploymentArchives;
 
@@ -88,11 +70,11 @@ public class WeldDeployment implements CDI11Deployment {
     private volatile BeanDeploymentArchiveImpl bootstrapClassLoaderBeanDeploymentArchive;
 
     private final BeanDeploymentModule rootBeanDeploymentModule;
-    private final Map<ModuleIdentifier, EEModuleDescriptor> eeModuleDescriptors;
+    private final Map<String, EEModuleDescriptor> eeModuleDescriptors;
 
     public WeldDeployment(Set<BeanDeploymentArchiveImpl> beanDeploymentArchives, Collection<Metadata<Extension>> extensions,
             Module module, Set<ClassLoader> subDeploymentClassLoaders, DeploymentUnit deploymentUnit, BeanDeploymentModule rootBeanDeploymentModule,
-            Map<ModuleIdentifier, EEModuleDescriptor> eeModuleDescriptors) {
+            Map<String, EEModuleDescriptor> eeModuleDescriptors) {
         this.subDeploymentClassLoaders = new HashSet<ClassLoader>(subDeploymentClassLoaders);
         this.beanDeploymentArchives = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.beanDeploymentArchives.addAll(beanDeploymentArchives);

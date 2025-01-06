@@ -1,28 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.domain.management.cli;
 
-import static org.jboss.as.test.integration.domain.util.EENamespaceTransformer.jakartaTransform;
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 import java.io.File;
 import java.net.SocketPermission;
@@ -40,10 +22,9 @@ import org.jboss.as.test.integration.domain.suites.CLITestSuite;
 import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.integration.management.util.CLIOpResult;
 import org.jboss.as.test.shared.RetryTaskExecutor;
-import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.impl.base.exporter.zip.ZipExporterImpl;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -64,37 +45,40 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
     @BeforeClass
     public static void before() throws Exception {
 
+        //noinspection resource
         CLITestSuite.createSupport(RolloutPlanTestCase.class.getSimpleName());
         final WebArchive war = ShrinkWrap.create(WebArchive.class, "RolloutPlanTestCase.war");
         war.addClass(RolloutPlanTestServlet.class);
         war.addAsManifestResource(createPermissionsXmlAsset(
-                new SocketPermission(TestSuiteEnvironment.formatPossibleIpv6Address(CLITestSuite.hostAddresses.get("master")) + ":" + TEST_PORT, "listen,resolve"),           // main-one
-                new SocketPermission(TestSuiteEnvironment.formatPossibleIpv6Address(CLITestSuite.hostAddresses.get("master")) + ":" + (TEST_PORT + 350), "listen,resolve")),  // main-three
+                // RolloutPlanTestServlet binds a ServerSocket to the server's address and TEST_PORT
+                // But, as described in the SocketPermission javadoc, a 'listen' SocketPermission should always
+                // be for 'localhost', so that's what we grant.
+                new SocketPermission("localhost:" + TEST_PORT, "listen"),           // main-one
+                new SocketPermission("localhost:" + (TEST_PORT + 350), "listen")),  // main-three
                 "permissions.xml");
         String tempDir = System.getProperty("java.io.tmpdir");
         warFile = new File(tempDir + File.separator + "RolloutPlanTestCase.war");
-        //new ZipExporterImpl(war).exportTo(warFile, true);
-        jakartaTransform(war.as(ZipExporter.class), warFile);
+        new ZipExporterImpl(war).exportTo(warFile, true);
 
-        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
+        AbstractCliTestBase.initCLI(DomainTestSupport.primaryAddress);
 
         // add another server group to default profile
         cli.sendLine("/server-group=test-server-group:add(profile=default,socket-binding-group=standard-sockets)");
         cli.sendLine("/server-group=test-server-group/jvm=default:add");
         // add a server to the group
-        cli.sendLine("/host=master/server-config=test-one:add(group=test-server-group,socket-binding-port-offset=700");
-        cli.sendLine("/host=master/server-config=test-one/interface=public:add(inet-address=" +
-                CLITestSuite.hostAddresses.get("master") + ")");
-        CLITestSuite.addServer("test-one", "master", "test-server-group","default", 700, true);
+        cli.sendLine("/host=primary/server-config=test-one:add(group=test-server-group,socket-binding-port-offset=700");
+        cli.sendLine("/host=primary/server-config=test-one/interface=public:add(inet-address=" +
+                CLITestSuite.hostAddresses.get("primary") + ")");
+        CLITestSuite.addServer("test-one", "primary", "test-server-group","default", 700, true);
 
         // start main-two
-        cli.sendLine("/host=master/server-config=main-two:start(blocking=true)");
+        cli.sendLine("/host=primary/server-config=main-two:start(blocking=true)");
         CLIOpResult res = cli.readAllAsOpResult();
         Assert.assertTrue(res.isIsOutcomeSuccess());
         waitUntilState("main-two", "STARTED");
 
         // start test-one
-        cli.sendLine("/host=master/server-config=test-one:start(blocking=true)");
+        cli.sendLine("/host=primary/server-config=test-one:start(blocking=true)");
         res = cli.readAllAsOpResult();
         Assert.assertTrue(res.isIsOutcomeSuccess());
         waitUntilState("test-one", "STARTED");
@@ -109,13 +93,13 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         }
 
         // stop test-one
-        cli.sendLine("/host=master/server-config=test-one:stop(blocking=true)");
+        cli.sendLine("/host=primary/server-config=test-one:stop(blocking=true)");
         CLIOpResult res = cli.readAllAsOpResult();
         Assert.assertTrue(res.isIsOutcomeSuccess());
         waitUntilState("test-one", "STOPPED");
 
         // stop main-two
-        cli.sendLine("/host=master/server-config=main-two:stop(blocking=true)");
+        cli.sendLine("/host=primary/server-config=main-two:stop(blocking=true)");
         res = cli.readAllAsOpResult();
         Assert.assertTrue(res.isIsOutcomeSuccess());
         waitUntilState("main-two", "DISABLED");
@@ -126,7 +110,7 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
     }
 
     @After
-    public void afterTest() throws Exception {
+    public void afterTest() {
 
         // undeploy helper servlets
         cli.sendLine("undeploy RolloutPlanTestCase.war --all-relevant-server-groups", true);
@@ -168,11 +152,11 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
 
         // check that the apps were deployed in correct order
         // get application deployment times from servers
-        long mainOneTime = Long.valueOf(checkURL("main-one", false));
-        long mainTwoTime = Long.valueOf(checkURL("main-two", false));
-        long mainThreeTime = Long.valueOf(checkURL("main-three", false));
-        long otherTwoTime = Long.valueOf(checkURL("other-two", false));
-        long testOneTime = Long.valueOf(checkURL("test-one", false));
+        long mainOneTime = Long.parseLong(checkURL("main-one"));
+        long mainTwoTime = Long.parseLong(checkURL("main-two"));
+        long mainThreeTime = Long.parseLong(checkURL("main-three"));
+        long otherTwoTime = Long.parseLong(checkURL("other-two"));
+        long testOneTime = Long.parseLong(checkURL("test-one"));
 
         Assert.assertTrue(mainOneTime < otherTwoTime);
         Assert.assertTrue(mainTwoTime < otherTwoTime);
@@ -186,11 +170,11 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         cli.sendLine("deploy " + warFile.getAbsolutePath() + " --all-server-groups --headers={rollout id=testPlan2}");
 
         // check that the apps were deployed in reversed order
-        mainOneTime = Long.valueOf(checkURL("main-one", false));
-        mainTwoTime = Long.valueOf(checkURL("main-two", false));
-        mainThreeTime = Long.valueOf(checkURL("main-three", false));
-        otherTwoTime = Long.valueOf(checkURL("other-two", false));
-        testOneTime = Long.valueOf(checkURL("test-one", false));
+        mainOneTime = Long.parseLong(checkURL("main-one"));
+        mainTwoTime = Long.parseLong(checkURL("main-two"));
+        mainThreeTime = Long.parseLong(checkURL("main-three"));
+        otherTwoTime = Long.parseLong(checkURL("other-two"));
+        testOneTime = Long.parseLong(checkURL("test-one"));
 
         Assert.assertTrue(mainOneTime > otherTwoTime);
         Assert.assertTrue(mainTwoTime > otherTwoTime);
@@ -219,10 +203,10 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         // deploy helper servlets
         cli.sendLine("deploy " + warFile.getAbsolutePath() + " --all-server-groups");
 
-        checkURL("main-one", false, "/RolloutPlanTestCase/RolloutServlet");
-        checkURL("main-two", false, "/RolloutPlanTestCase/RolloutServlet");
-        checkURL("main-three", false, "/RolloutPlanTestCase/RolloutServlet");
-        checkURL("test-one", false, "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("main-one", "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("main-two", "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("main-three", "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("test-one", "/RolloutPlanTestCase/RolloutServlet");
 
         // prepare socket binding
         cli.sendLine("/socket-binding-group=standard-sockets/socket-binding=test-binding:add(interface=public,port=" + TEST_PORT + ")");
@@ -239,7 +223,7 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         // 1st scenario - main-one should fail, but the whole operation should succeed
 
         // let the helper server bind to test port to prevent successful subsequent add connector operation on main-one
-        checkURL("main-one", false, "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" + TEST_PORT);
+        checkURL("main-one", "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" + TEST_PORT);
         CLIOpResult ret = testAddConnector("maxFailOnePlan");
         Assert.assertTrue(ret.isIsOutcomeSuccess());
         Assert.assertFalse(getServerStatus("main-one", ret));
@@ -254,8 +238,8 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         Assert.assertTrue(getServerStatus("test-one", ret));
 
         // 2nd scenario - main-one and main-three failures -> main-two should be rolled back but the operation succeed
-        checkURL("main-three", false, "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" +
-                String.valueOf(TEST_PORT + CLITestSuite.portOffsets.get("main-three")));
+        checkURL("main-three", "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" +
+                (TEST_PORT + CLITestSuite.portOffsets.get("main-three")));
         ret = testAddConnector("maxFailOnePlan");
         Assert.assertTrue(ret.isIsOutcomeSuccess());
         Assert.assertFalse(getServerStatus("main-one", ret));
@@ -291,7 +275,7 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         cli.sendLine("rollout-plan add --name=maxFailPercPlan --content=" + rolloutPlan);
 
         // 1st scenario - server-one should fail, but the whole operation should succeed
-        checkURL("main-one", false, "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" + TEST_PORT);
+        checkURL("main-one", "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" + TEST_PORT);
         CLIOpResult ret = testAddConnector("maxFailPercPlan");
         Assert.assertTrue(ret.isIsOutcomeSuccess());
         Assert.assertFalse(getServerStatus("main-one", ret));
@@ -306,8 +290,8 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         Assert.assertTrue(getServerStatus("test-one", ret));
 
         // 2nd scenario - main-one and main-three should fail -> main-two should be rolled back but the operation succeed
-        checkURL("main-three", false, "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" +
-                String.valueOf(TEST_PORT + CLITestSuite.portOffsets.get("main-three")));
+        checkURL("main-three", "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" +
+                (TEST_PORT + CLITestSuite.portOffsets.get("main-three")));
         ret = testAddConnector("maxFailPercPlan");
         Assert.assertTrue(ret.isIsOutcomeSuccess());
         Assert.assertFalse(getServerStatus("main-one", ret));
@@ -329,10 +313,10 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         // deploy helper servlets
         cli.sendLine("deploy " + warFile.getAbsolutePath() + " --all-server-groups");
 
-        checkURL("main-one", false, "/RolloutPlanTestCase/RolloutServlet");
-        checkURL("main-two", false, "/RolloutPlanTestCase/RolloutServlet");
-        checkURL("main-three", false, "/RolloutPlanTestCase/RolloutServlet");
-        checkURL("test-one", false, "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("main-one", "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("main-two", "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("main-three", "/RolloutPlanTestCase/RolloutServlet");
+        checkURL("test-one", "/RolloutPlanTestCase/RolloutServlet");
 
         // prepare socket binding
         cli.sendLine("/socket-binding-group=standard-sockets/socket-binding=test-binding:add(interface=public,port=" + TEST_PORT + ")");
@@ -350,9 +334,9 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
         // let the main-one ane main-three fail, main two rollback and then test-one rollback
 
         // let the helper server bind to test port to prevent successful subsequent add connector operation on main-one
-        checkURL("main-one", false, "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" + TEST_PORT);
-        checkURL("main-three", false, "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" +
-                String.valueOf(TEST_PORT + CLITestSuite.portOffsets.get("main-three")));
+        checkURL("main-one", "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" + TEST_PORT);
+        checkURL("main-three", "/RolloutPlanTestCase/RolloutServlet?operation=bind&bindPort=" +
+                (TEST_PORT + CLITestSuite.portOffsets.get("main-three")));
         CLIOpResult ret = testAddConnector("groupsRollbackPlan");
         Assert.assertFalse(ret.isIsOutcomeSuccess());
         Assert.assertFalse(getServerStatus("main-one", ret));
@@ -397,6 +381,7 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
     }
 
 
+    @SuppressWarnings({"rawtypes", "RedundantExplicitVariableType"})
     private boolean getServerStatus(String serverName, CLIOpResult result) throws Exception {
         Map  groups = (Map) result.getServerGroups();
         for (Object group : groups.values()) {
@@ -417,23 +402,20 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
     }
 
 
-    private static String checkURL(String server, boolean shouldFail) throws Exception {
-        return checkURL(server, shouldFail, "/RolloutPlanTestCase/RolloutServlet");
+    private static String checkURL(String server) throws Exception {
+        return checkURL(server, "/RolloutPlanTestCase/RolloutServlet");
     }
-    private static String checkURL(String server, boolean shouldFail, String path) throws Exception {
+    private static String checkURL(String server, String path) throws Exception {
         String address = CLITestSuite.hostAddresses.get(getServerHost(server));
         Integer portOffset = CLITestSuite.portOffsets.get(server);
 
         URL url = new URL("http", address, 8080 + portOffset, path);
-        boolean failed = false;
-        String response = null;
+        String response;
         try {
             response = HttpRequest.get(url.toString(), 60, TimeUnit.SECONDS);
         } catch (Exception e) {
-            failed = true;
-            if (!shouldFail) throw new Exception("Http request failed.", e);
+            throw new Exception("Http request failed.", e);
         }
-        if (shouldFail) Assert.assertTrue(failed);
         return response;
 
     }
@@ -447,8 +429,8 @@ public class RolloutPlanTestCase extends AbstractCliTestBase {
 
     private static void waitUntilState(final String serverName, final String state) throws TimeoutException {
         final String serverHost = CLITestSuite.getServerHost(serverName);
-        RetryTaskExecutor<Void> taskExecutor = new RetryTaskExecutor<Void>();
-        taskExecutor.retryTask(new Callable<Void>() {
+        RetryTaskExecutor<Void> taskExecutor = new RetryTaskExecutor<>();
+        taskExecutor.retryTask(new Callable<>() {
             public Void call() throws Exception {
                 cli.sendLine("/host=" + serverHost + "/server-config=" + serverName + ":read-attribute(name=status)");
                 CLIOpResult res = cli.readAllAsOpResult();

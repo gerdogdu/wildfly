@@ -1,27 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.iiop.tm;
 
+import org.jboss.as.txn.logging.TransactionLogger;
 import org.omg.CORBA.LocalObject;
 import org.omg.PortableInterceptor.ORBInitInfo;
 import org.omg.PortableInterceptor.ORBInitInfoPackage.InvalidName;
@@ -34,8 +18,7 @@ public class InboundTransactionCurrentInitializer extends LocalObject implements
             // Create and register the InboundTransactionCurrent implementation class
             info.register_initial_reference(InboundTransactionCurrent.NAME, new InboundTransactionCurrentImpl());
         } catch (InvalidName e) {
-            throw new RuntimeException("Could not register initial " +
-                "reference for InboundTransactionCurrent implementation: " + e, e);
+            throw TransactionLogger.ROOT_LOGGER.cannotRegister(e);
         }
     }
 

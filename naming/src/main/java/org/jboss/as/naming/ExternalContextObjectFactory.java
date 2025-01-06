@@ -1,4 +1,11 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.naming;
+
+import static org.jboss.as.controller.ModuleIdentifierUtil.canonicalModuleIdentifier;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
@@ -7,6 +14,7 @@ import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Hashtable;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.naming.Binding;
@@ -22,7 +30,6 @@ import org.jboss.as.server.deployment.ModuleClassFactory;
 import org.jboss.invocation.proxy.ProxyConfiguration;
 import org.jboss.invocation.proxy.ProxyFactory;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
@@ -50,7 +57,7 @@ public class ExternalContextObjectFactory implements ObjectFactory {
     @Override
     public Object getObjectInstance(final Object obj, final Name name, final Context nameCtx, final Hashtable<?, ?> environment) throws Exception {
         String cacheString = (String) environment.get(CACHE_CONTEXT);
-        boolean cache = cacheString != null && cacheString.toLowerCase().equals("true");
+        boolean cache = cacheString != null && cacheString.toLowerCase(Locale.ENGLISH).equals("true");
         if (cache) {
             if (cachedObject == null) {
                 synchronized (this) {
@@ -94,7 +101,7 @@ public class ExternalContextObjectFactory implements ObjectFactory {
             Constructor ctor = initialContextClass.getConstructor(Hashtable.class);
             loadedContext = (Context) ctor.newInstance(newEnvironment);
         } else {
-            Module module = Module.getBootModuleLoader().loadModule(ModuleIdentifier.fromString(initialContextModule));
+            Module module = Module.getBootModuleLoader().loadModule(canonicalModuleIdentifier(initialContextModule));
             loader = module.getClassLoader();
             final ClassLoader currentClassLoader = WildFlySecurityManager.getCurrentContextClassLoaderPrivileged();
             try {

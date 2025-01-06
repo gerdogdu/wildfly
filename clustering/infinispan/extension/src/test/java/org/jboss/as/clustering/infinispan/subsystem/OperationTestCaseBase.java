@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.infinispan.subsystem;
@@ -26,10 +9,11 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.jboss.as.clustering.controller.Attribute;
-import org.jboss.as.clustering.controller.CommonUnaryRequirement;
+import org.jboss.as.clustering.controller.CommonServiceDescriptor;
 import org.jboss.as.clustering.jgroups.subsystem.JGroupsSubsystemInitialization;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.operations.common.Util;
+import org.jboss.as.network.OutboundSocketBinding;
 import org.jboss.as.subsystem.test.AbstractSubsystemTest;
 import org.jboss.as.subsystem.test.AdditionalInitialization;
 import org.jboss.as.subsystem.test.KernelServicesBuilder;
@@ -43,7 +27,7 @@ import org.jboss.dmr.ModelNode;
  */
 public class OperationTestCaseBase extends AbstractSubsystemTest {
 
-    static final String SUBSYSTEM_XML_FILE = String.format("subsystem-infinispan-%d_%d.xml", InfinispanSchema.CURRENT.major(), InfinispanSchema.CURRENT.minor());
+    static final String SUBSYSTEM_XML_FILE = String.format("infinispan-%d.%d.xml", InfinispanSubsystemSchema.CURRENT.getVersion().major(), InfinispanSubsystemSchema.CURRENT.getVersion().minor());
 
     public OperationTestCaseBase() {
         super(InfinispanExtension.SUBSYSTEM_NAME, new InfinispanExtension());
@@ -55,8 +39,10 @@ public class OperationTestCaseBase extends AbstractSubsystemTest {
 
     AdditionalInitialization createAdditionalInitialization() {
         return new JGroupsSubsystemInitialization()
-                .require(CommonUnaryRequirement.OUTBOUND_SOCKET_BINDING, "hotrod-server-1", "hotrod-server-2")
-                .require(CommonUnaryRequirement.DATA_SOURCE, "ExampleDS", "new-datasource")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "hotrod-server-1")
+                .require(OutboundSocketBinding.SERVICE_DESCRIPTOR, "hotrod-server-2")
+                .require(CommonServiceDescriptor.DATA_SOURCE, "ExampleDS")
+                .require(CommonServiceDescriptor.DATA_SOURCE, "new-datasource")
                 ;
     }
 
@@ -140,6 +126,7 @@ public class OperationTestCaseBase extends AbstractSubsystemTest {
         return getCacheAddress(containerName, cacheType, cacheName).append(JDBCStoreResourceDefinition.PATH);
     }
 
+    @SuppressWarnings("deprecation")
     protected static PathAddress getRemoteCacheStoreAddress(String containerName, String cacheType, String cacheName) {
         return getCacheAddress(containerName, cacheType, cacheName).append(RemoteStoreResourceDefinition.PATH);
     }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2021, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.jsf.beanvalidation.cdi;
 
@@ -48,7 +31,7 @@ import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.asset.EmptyAsset;
+import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,7 +52,7 @@ public class BeanValidationCdiIntegrationTestCase {
     @ArquillianResource
     private URL url;
 
-    private final Pattern viewStatePattern = Pattern.compile("id=\".*javax.faces.ViewState.*\" value=\"([^\"]*)\"");
+    private final Pattern viewStatePattern = Pattern.compile("id=\".*jakarta.faces.ViewState.*\" value=\"([^\"]*)\"");
     private final Pattern nameErrorPattern = Pattern.compile("<div id=\"nameError\">([^<]+)</div>");
     private final Pattern numberErrorPattern = Pattern.compile("<div id=\"numberError\">([^<]+)</div>");
 
@@ -79,7 +62,7 @@ public class BeanValidationCdiIntegrationTestCase {
         war.addPackage(BeanValidationCdiIntegrationTestCase.class.getPackage());
         war.addAsWebResource(BeanValidationCdiIntegrationTestCase.class.getPackage(), "register.xhtml", "register.xhtml");
         war.addAsWebResource(BeanValidationCdiIntegrationTestCase.class.getPackage(), "confirmation.xhtml", "confirmation.xhtml");
-        war.addAsWebInfResource(EmptyAsset.INSTANCE, "beans.xml");
+        war.addAsWebInfResource(new StringAsset("<beans bean-discovery-mode=\"all\"></beans>"), "beans.xml");
         war.addAsWebInfResource(BeanValidationCdiIntegrationTestCase.class.getPackage(), "faces-config.xml","faces-config.xml");
         return war;
     }
@@ -142,7 +125,7 @@ public class BeanValidationCdiIntegrationTestCase {
             HttpPost post = new HttpPost(requestUrl);
 
             List<NameValuePair> list = new ArrayList<NameValuePair>();
-            list.add(new BasicNameValuePair("javax.faces.ViewState", jsfViewState));
+            list.add(new BasicNameValuePair("jakarta.faces.ViewState", jsfViewState));
             list.add(new BasicNameValuePair("register", "register"));
             list.add(new BasicNameValuePair("register:inputName", name));
             list.add(new BasicNameValuePair("register:inputNumber", Integer.toString(numberOfPeople)));

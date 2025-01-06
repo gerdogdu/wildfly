@@ -1,27 +1,19 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2022 Red Hat, Inc., and individual contributors
- * as indicated by the @author tags.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jpa.hibernate;
 
 import static org.jboss.logging.Logger.Level.INFO;
+import static org.jboss.logging.Logger.Level.WARN;
 
+import java.lang.invoke.MethodHandles;
+
+import org.hibernate.boot.archive.spi.ArchiveException;
 import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Logger;
+import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
@@ -38,7 +30,7 @@ public interface JpaLogger extends BasicLogger {
     /**
      * A logger with the category {@code org.jipijapa}.
      */
-    JpaLogger JPA_LOGGER = Logger.getMessageLogger(JpaLogger.class, "org.jipijapa");
+    JpaLogger JPA_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), JpaLogger.class, "org.jipijapa");
 
     /**
      * Inform that the Hibernate second level cache is enabled.
@@ -57,6 +49,10 @@ public interface JpaLogger extends BasicLogger {
     @Message(id = 20261, value = "Hibernate ORM did not register LifeCycleListener")
     IllegalStateException HibernateORMDidNotRegisterLifeCycleListener();
 
+    @LogMessage(level = WARN)
+    @Message(id = 20262, value = "Application custom cache region setting is ignored %s=%s")
+    void ignoredCacheRegionSetting(String propertyName, String setting );
+
     /**
      * Creates an exception indicating application is setting persistence unit property "hibernate.id.new_generator_mappings" to
      * false which indicates that the old ID generator should be used, however Hibernate ORM 6 does not include the old ID generator.
@@ -67,5 +63,8 @@ public interface JpaLogger extends BasicLogger {
             ", remove the setting or set to true.  "+
             "Refer to Hibernate ORM migration documentation for how to update the next id state in the application database.")
     IllegalStateException failOnIncompatibleSetting();
+
+    @Message(id = 20264, value = "Unable to open VirtualFile-based InputStream")
+    ArchiveException unableOpenInputStream(@Cause Throwable cause);
 
 }

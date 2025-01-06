@@ -1,6 +1,11 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.web.websocket;
 
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 import java.io.IOException;
 import java.net.SocketPermission;
@@ -9,10 +14,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.PropertyPermission;
 
-import javax.websocket.ContainerProvider;
-import javax.websocket.DeploymentException;
-import javax.websocket.Session;
-import javax.websocket.WebSocketContainer;
+import jakarta.websocket.ContainerProvider;
+import jakarta.websocket.DeploymentException;
+import jakarta.websocket.Session;
+import jakarta.websocket.WebSocketContainer;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.OperateOnDeployment;
@@ -95,7 +100,7 @@ public class WebSocketTestCase {
         return ShrinkWrap.create(WebArchive.class, name + ".war")
                 .addClasses(AnnotatedEndpoint.class)
                 .addAsManifestResource(new StringAsset("io.undertow.websockets.jsr.UndertowContainerProvider"),
-                        "services/javax.websocket.ContainerProvider");
+                        "services/jakarta.websocket.ContainerProvider");
     }
 
 }

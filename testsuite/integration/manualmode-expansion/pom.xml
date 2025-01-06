@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.wildfly</groupId>
+        <artifactId>wildfly-ts-integ</artifactId>
+        <!--
+        Maintain separation between the artifact id and the version to help prevent
+        merge conflicts between commits changing the GA and those changing the V.
+        -->
+        <version>35.0.0.Final-SNAPSHOT</version>
+    </parent>
+
+    <!-- ********************************************************************************** -->
+    <!-- *********** Manual-mode Integration Tests for expansion functionality ************ -->
+    <!-- ********************************************************************************** -->
+    <artifactId>wildfly-ts-manualmode-expansion</artifactId>
+
+    <name>WildFly Test Suite: Integration - Manual Mode Tests - Expansion </name>
+
+    <properties>
+        <jbossas.ts.integ.dir>${basedir}/..</jbossas.ts.integ.dir>
+        <jbossas.ts.dir>${jbossas.ts.integ.dir}/..</jbossas.ts.dir>
+        <jbossas.project.dir>${jbossas.ts.dir}/..</jbossas.project.dir>
+        <!-- Byteman -->
+        <byteman.host>127.0.0.1</byteman.host>
+        <byteman.port>17091</byteman.port>
+        <!-- JVM args -->
+        <microprofile.server.jvm.args>${server.jvm.args} -Djboss.node.name=microprofile</microprofile.server.jvm.args>
+        <!-- This module tests expanded funtionality, so use a bom that includes expansion dependencies -->
+        <dependency.management.import.artifact>wildfly-standard-expansion-bom</dependency.management.import.artifact>
+        <dependency.management.import.test.artifact>wildfly-standard-test-expansion-bom</dependency.management.import.test.artifact>
+        <channel.provisioning.phase>process-test-resources</channel.provisioning.phase>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${full.maven.groupId}</groupId>
+                <artifactId>${dependency.management.import.test.artifact}</artifactId>
+                <version>${full.maven.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.mvc</groupId>
+            <artifactId>jakarta.mvc-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-cli</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.parsson</groupId>
+            <artifactId>parsson</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-test-runner</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.microprofile.health</groupId>
+            <artifactId>microprofile-health-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.shrinkwrap.descriptors</groupId>
+            <artifactId>shrinkwrap-descriptors-impl-javaee</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Runtime-only dependencies -->
+        <dependency>
+            <groupId>org.jboss.arquillian.junit</groupId>
+            <artifactId>arquillian-junit-container</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-testsuite-shared</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Build the server configurations.
+                 TODO This is copied from 'manualmode' and builds unneeded servers. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions combine.children="append">
+                    <execution>
+                        <id>build-manual-mode-servers</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <ant antfile="${jbossas.ts.integ.dir}/src/test/scripts/manualmode-build.xml">
+                                    <property name="management.address" value="${node0}"/>
+                                    <property name="node1" value="${node1}"/>
+                                    <property name="node0" value="${node0}"/>
+                                    <property name="mcast.ttl" value="${mcast.ttl}"/>
+                                    <property name="jboss.dist" value="${jboss.dist}"/>
+                                    <target name="build-manual-mode"/>
+                                </ant>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <version>${version.org.wildfly.plugin}</version>
+                <executions>
+                    <execution>
+                        <phase>none</phase>
+                        <goals>
+                            <goal>execute-commands</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>channel-provisioning-comparison</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${channel.provisioning.phase}</phase>
+                        <configuration>
+                            <provisioning-dir>${project.build.directory}/wildfly-from-channel</provisioning-dir>
+                            <record-provisioning-state>true</record-provisioning-state>
+                            <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                            <offline-provisioning>true</offline-provisioning>
+                            <overwrite-provisioned-server>true</overwrite-provisioned-server>
+                            <galleon-options>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                            </galleon-options>
+                            <channels>
+                                <channel>
+                                    <manifest>
+                                        <groupId>${channels.maven.groupId}</groupId>
+                                        <artifactId>wildfly</artifactId>
+                                        <version>${full.maven.version}</version>
+                                    </manifest>
+                                </channel>
+                            </channels>
+                            <feature-packs>
+                                <feature-pack>
+                                    <transitive>true</transitive>
+                                    <groupId>${ee.maven.groupId}</groupId>
+                                    <artifactId>wildfly-ee-galleon-pack</artifactId>
+                                    <version>${ee.maven.version}</version>
+                                    <included-packages>
+                                        <name>docs.examples.configs</name>
+                                    </included-packages>
+                                </feature-pack>
+                                <feature-pack>
+                                    <groupId>${full.maven.groupId}</groupId>
+                                    <artifactId>wildfly-galleon-pack</artifactId>
+                                    <version>${full.maven.version}</version>
+                                    <included-packages>
+                                        <name>docs.examples.configs</name>
+                                    </included-packages>
+                                </feature-pack>
+                            </feature-packs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- galleon-maven-plugin installation provisioning is vulnerable to leftover files in the target
+                     folder from previous builds, so always clean even if the clean lifecycle is not invoked -->
+                <artifactId>maven-clean-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>clean-wildfly-without-channel</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.directory}/wildfly-without-channel</directory>
+                                    <follow-symlinks>false</follow-symlinks>
+                                    <use-default-excludes>false</use-default-excludes>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jboss.galleon</groupId>
+                <artifactId>galleon-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>channel-provisioning-comparison</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${channel.provisioning.phase}</phase>
+                        <configuration>
+                            <install-dir>${project.build.directory}/wildfly-without-channel</install-dir>
+                            <record-state>true</record-state>
+                            <log-time>${galleon.log.time}</log-time>
+                            <offline>true</offline>
+                            <plugin-options>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                            </plugin-options>
+                            <feature-packs>
+                                <feature-pack>
+                                    <transitive>true</transitive>
+                                    <groupId>${ee.maven.groupId}</groupId>
+                                    <artifactId>wildfly-ee-galleon-pack</artifactId>
+                                    <version>${ee.maven.version}</version>
+                                    <included-packages>
+                                        <name>docs.examples.configs</name>
+                                    </included-packages>
+                                </feature-pack>
+                                <feature-pack>
+                                    <groupId>${full.maven.groupId}</groupId>
+                                    <artifactId>wildfly-galleon-pack</artifactId>
+                                    <version>${full.maven.version}</version>
+                                    <included-packages>
+                                        <name>docs.examples.configs</name>
+                                    </included-packages>
+                                </feature-pack>
+                            </feature-packs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Surefire. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Workaround for nasty and hacky tests not cleaning up completely after themselves. -->
+                    <reuseForks>false</reuseForks>
+                    <environmentVariables>
+                        <JBOSS_HOME>${wildfly.dir}</JBOSS_HOME>
+                    </environmentVariables>
+
+                    <!-- Parameters to test cases. -->
+                    <systemPropertyVariables combine.children="append">
+                        <!--<management.address>${node0}</management.address>-->
+                        <byteman.server.ipaddress>${node0}</byteman.server.ipaddress>
+                        <byteman.server.port>${byteman.port}</byteman.server.port>
+                        <byteman.host>${node0}</byteman.host>
+                        <byteman.port>${byteman.port}</byteman.port>
+                        <jvm.args>${jvm.args.ip.server} ${modular.jdk.args} -Dmaven.repo.local=${settings.localRepository}</jvm.args>
+                        <server.jvm2.args>${surefire.system.args} ${jvm.args.ip} -Djboss.bind.address=${node1} -Djboss.bind.address.management=${node1} -Djboss.bind.address.unsecure=${node1} -Dnode0=${node0} -Dnode1=${node1} ${modular.jdk.args}</server.jvm2.args>
+                        <microprofile.server.jvm.args>${microprofile.server.jvm.args}</microprofile.server.jvm.args>
+                        <arquillian.launch>manual-mode</arquillian.launch>
+                        <jboss.config.file.name>standalone-ha.xml</jboss.config.file.name>
+                        <ryuk.container.timeout>60</ryuk.container.timeout>
+                        <node0>${node0}</node0>
+                        <node1>${node1}</node1>
+                        <node2>${node2}</node2>
+                        <node3>${node3}</node3>
+                        <mcast>${mcast}</mcast>
+                        <dist.output.dir>dist/target/${server.output.dir.prefix}-${server.output.dir.version}</dist.output.dir>
+                        <build.output.dir>${wildfly.build.output.dir}</build.output.dir>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-test</id>
+                        <phase>${surefire.default-test.phase}</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <stripVersion>true</stripVersion>
+                            <includeGroupIds>org.jboss.byteman</includeGroupIds>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- -Dts.nomanualmode -->
+        <profile>
+            <id>ts.nomanualmode</id>
+            <activation>
+                <property>
+                    <name>noManualmode</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <!-- Disable the surefire tests -->
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default-test</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>none</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <version>${version.org.wildfly.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>channel-provisioning-comparison</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>external.wildfly.channels</id>
+            <activation>
+                <property>
+                    <name>external.wildfly.channels</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Disable channel-provisioning executions to avoid interference between external settings and the test -->
+                <channel.provisioning.phase>none</channel.provisioning.phase>
+            </properties>
+        </profile>
+        <profile>
+            <id>internal.wildfly.channels</id>
+            <activation>
+                <property>
+                    <name>internal.wildfly.channels</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Disable channel-provisioning executions to avoid interference between external settings and the test -->
+                <channel.provisioning.phase>none</channel.provisioning.phase>
+            </properties>
+        </profile>
+        <profile>
+            <id>ignore-ee-feature-pack</id>
+            <activation>
+                <property>
+                    <name>testsuite.ee.galleon.pack.artifactId</name>
+                    <value>wildfly-ee-galleon-pack</value>
+                </property>
+            </activation>
+            <properties>
+                <!-- Don't run expansion tests if we're configured to test wildfly-ee -->
+                <surefire.default-test.phase>none</surefire.default-test.phase>
+                <!-- No point provisioning as we won't test -->
+                <channel.provisioning.phase>none</channel.provisioning.phase>
+            </properties>
+        </profile>
+        <profile>
+            <id>ignore-ee-alt-dist</id>
+            <activation>
+                <property>
+                    <name>testsuite.default.build.project.prefix</name>
+                    <value>ee-</value>
+                </property>
+            </activation>
+            <properties>
+                <!-- Don't run expansion tests if we're configured to test wildfly-ee -->
+                <surefire.default-test.phase>none</surefire.default-test.phase>
+                <!-- No point provisioning as we won't test -->
+                <channel.provisioning.phase>none</channel.provisioning.phase>
+            </properties>
+        </profile>
+    </profiles>
+</project>

@@ -1,33 +1,30 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.web;
 
+import static org.wildfly.extension.clustering.web.RankedAffinityResourceDefinition.Attribute.DELIMITER;
+import static org.wildfly.extension.clustering.web.RankedAffinityResourceDefinition.Attribute.MAX_ROUTES;
+
 import org.jboss.as.clustering.controller.SimpleResourceDescriptorConfigurator;
 import org.jboss.as.controller.AttributeDefinition;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
+import org.jboss.as.controller.capability.RuntimeCapability;
+import org.jboss.as.controller.capability.UnaryCapabilityNameResolver;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
+import org.wildfly.clustering.session.cache.affinity.NarySessionAffinityConfiguration;
+import org.wildfly.clustering.web.service.routing.RouteLocatorProvider;
+import org.wildfly.clustering.web.service.routing.RoutingProvider;
+import org.wildfly.common.function.Functions;
+import org.wildfly.extension.clustering.web.routing.infinispan.RankedRouteLocatorProvider;
+import org.wildfly.subsystem.service.ResourceServiceInstaller;
+import org.wildfly.subsystem.service.capability.CapabilityServiceInstaller;
 
 /**
  * @author Paul Ferraro
@@ -35,6 +32,12 @@ import org.jboss.dmr.ModelType;
 public class RankedAffinityResourceDefinition extends AffinityResourceDefinition {
 
     static final PathElement PATH = pathElement("ranked");
+
+    static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of(RouteLocatorProvider.SERVICE_DESCRIPTOR)
+            .setAllowMultipleRegistrations(true)
+            .setDynamicNameMapper(UnaryCapabilityNameResolver.PARENT)
+            .addRequirements(RoutingProvider.INFINISPAN_SERVICE_DESCRIPTOR.getName())
+            .build();
 
     public enum Attribute implements org.jboss.as.clustering.controller.Attribute {
         DELIMITER("delimiter", ModelType.STRING, new ModelNode(".")),
@@ -57,6 +60,24 @@ public class RankedAffinityResourceDefinition extends AffinityResourceDefinition
     }
 
     RankedAffinityResourceDefinition() {
-        super(PATH, new SimpleResourceDescriptorConfigurator<>(Attribute.class), RankedAffinityServiceConfigurator::new);
+        super(PATH, CAPABILITY, new SimpleResourceDescriptorConfigurator<>(Attribute.class));
+    }
+
+    @Override
+    public ResourceServiceInstaller configure(OperationContext context, ModelNode model) throws OperationFailedException {
+        String delimiter = DELIMITER.resolveModelAttribute(context, model).asString();
+        int maxRoutes = MAX_ROUTES.resolveModelAttribute(context, model).asInt();
+        NarySessionAffinityConfiguration configuration = new NarySessionAffinityConfiguration() {
+            @Override
+            public int getMaxMembers() {
+                return maxRoutes;
+            }
+
+            @Override
+            public String getDelimiter() {
+                return delimiter;
+            }
+        };
+        return CapabilityServiceInstaller.builder(CAPABILITY, RankedRouteLocatorProvider::new, Functions.constantSupplier(configuration)).build();
     }
 }

@@ -1,11 +1,16 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.iiop.transaction;
 
-import javax.annotation.Resource;
-import javax.ejb.RemoteHome;
-import javax.ejb.Stateless;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
-import javax.transaction.TransactionSynchronizationRegistry;
+import jakarta.annotation.Resource;
+import jakarta.ejb.RemoteHome;
+import jakarta.ejb.Stateless;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.transaction.TransactionSynchronizationRegistry;
 
 /**
  * @author Stuart Douglas

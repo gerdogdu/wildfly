@@ -1,6 +1,11 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.clustering.cluster.ejb2.remote.bean;
 
-import javax.ejb.EJBHome;
+import jakarta.ejb.EJBHome;
 
 /**
  * The remote home interface for the Heartbeat Enterprise Beans 2.x bean
@@ -8,5 +13,5 @@ import javax.ejb.EJBHome;
  * @author Richard Achmatowicz
  */
 public interface HeartbeatRemoteHome extends EJBHome {
-    HeartbeatRemote create() throws java.rmi.RemoteException, javax.ejb.CreateException;
+    HeartbeatRemote create() throws java.rmi.RemoteException, jakarta.ejb.CreateException;
 }

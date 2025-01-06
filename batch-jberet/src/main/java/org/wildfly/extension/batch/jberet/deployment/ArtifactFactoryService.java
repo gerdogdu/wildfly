@@ -1,63 +1,52 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.batch.jberet.deployment;
 
-import java.lang.reflect.Method;
-import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import javax.enterprise.context.Dependent;
-import javax.enterprise.context.RequestScoped;
-import javax.enterprise.context.spi.CreationalContext;
-import javax.enterprise.inject.spi.Bean;
-import javax.enterprise.inject.spi.BeanManager;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
+import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.context.spi.CreationalContext;
+import jakarta.enterprise.inject.spi.Bean;
+import jakarta.enterprise.inject.spi.BeanManager;
 
 import org.jberet.creation.AbstractArtifactFactory;
 import org.jberet.spi.ArtifactFactory;
-import org.jboss.msc.service.Service;
+import org.jboss.msc.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
-import org.jboss.msc.value.InjectedValue;
 import org.jboss.weld.bean.builtin.BeanManagerProxy;
 import org.jboss.weld.context.RequestContext;
 import org.jboss.weld.context.unbound.UnboundLiteral;
 import org.jboss.weld.manager.BeanManagerImpl;
 import org.wildfly.extension.batch.jberet._private.BatchLogger;
-import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
  * ArtifactFactory for Jakarta EE runtime environment.
  *
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
-public class ArtifactFactoryService extends AbstractArtifactFactory implements Service<ArtifactFactory>, WildFlyArtifactFactory {
-    private final InjectedValue<BeanManager> beanManagerInjector = new InjectedValue<>();
+public class ArtifactFactoryService extends AbstractArtifactFactory implements Service, WildFlyArtifactFactory {
+    private final Consumer<ArtifactFactory> artifactFactoryConsumer;
+    private final Supplier<BeanManager> beanManagerSupplier;
 
     private final Map<Object, Holder> contexts = Collections.synchronizedMap(new HashMap<>());
     private volatile BeanManager beanManager;
+
+    public ArtifactFactoryService(final Consumer<ArtifactFactory> artifactFactoryConsumer,
+                                  final Supplier<BeanManager> beanManagerSupplier) {
+        this.artifactFactoryConsumer = artifactFactoryConsumer;
+        this.beanManagerSupplier = beanManagerSupplier;
+    }
 
     @Override
     public void destroy(final Object instance) {
@@ -96,11 +85,13 @@ public class ArtifactFactoryService extends AbstractArtifactFactory implements S
 
     @Override
     public void start(final StartContext context) throws StartException {
-        beanManager = beanManagerInjector.getOptionalValue();
+        beanManager = beanManagerSupplier != null ? beanManagerSupplier.get() : null;
+        artifactFactoryConsumer.accept(this);
     }
 
     @Override
     public void stop(final StopContext context) {
+        artifactFactoryConsumer.accept(null);
         beanManager = null;
         synchronized (contexts) {
             for (Holder holder : contexts.values()) {
@@ -111,11 +102,6 @@ public class ArtifactFactoryService extends AbstractArtifactFactory implements S
             }
             contexts.clear();
         }
-    }
-
-    @Override
-    public ArtifactFactory getValue() throws IllegalStateException, IllegalArgumentException {
-        return this;
     }
 
     @Override
@@ -135,43 +121,15 @@ public class ArtifactFactoryService extends AbstractArtifactFactory implements S
         };
     }
 
-    public InjectedValue<BeanManager> getBeanManagerInjector() {
-        return beanManagerInjector;
-    }
-
     private BeanManagerImpl getBeanManager() {
         final BeanManager beanManager = this.beanManager;
         return beanManager == null ? null : BeanManagerProxy.unwrap(beanManager);
     }
 
     private static Bean<?> getBean(final String ref, final BeanManager beanManager, final ClassLoader classLoader) {
-        if (beanManager == null) {
-            return null;
-        }
-        //TODO call findBean method directly after fully switching to EE10
-        try {
-            final Method findBeanMethod = WildFlySecurityManager.doUnchecked(new PrivilegedExceptionAction<Method>() {
-                @Override
-                public Method run() throws Exception {
-                    final Method m = AbstractArtifactFactory.class.getDeclaredMethod("findBean", String.class, BeanManager.class, ClassLoader.class);
-                    m.setAccessible(true);
-                    return m;
-                }
-            });
-            final Object result = findBeanMethod.invoke(null, ref, beanManager, classLoader);
-            BatchLogger.LOGGER.tracef("Found bean: %s", result);
-            return (Bean<?>) result;
-        } catch (Exception e) {
-            BatchLogger.LOGGER.tracef("Looking up bean reference for '%s'", ref);
-            final Set<Bean<?>> beans = beanManager.getBeans(ref);
-            final Bean<?> bean = beanManager.resolve(beans);
-            if (bean != null) {
-                BatchLogger.LOGGER.tracef("Found bean '%s' for reference '%s'", bean, ref);
-            } else {
-                BatchLogger.LOGGER.tracef("No bean found for reference '%s;'", ref);
-            }
-            return bean;
-        }
+        final Bean<?> result = beanManager == null ? null : AbstractArtifactFactory.findBean(ref, beanManager, classLoader);
+        BatchLogger.LOGGER.tracef("Found bean: %s for ref: %s", result, ref);
+        return result;
     }
 
     private static class Holder {

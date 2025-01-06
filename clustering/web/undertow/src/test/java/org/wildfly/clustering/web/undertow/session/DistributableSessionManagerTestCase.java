@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.web.undertow.session;
 
@@ -26,14 +9,13 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -52,13 +34,12 @@ import io.undertow.util.Protocols;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.wildfly.clustering.ee.Batch;
-import org.wildfly.clustering.ee.Batcher;
-import org.wildfly.clustering.web.session.ImmutableSession;
-import org.wildfly.clustering.web.session.ImmutableSessionMetaData;
-import org.wildfly.clustering.web.session.Session;
-import org.wildfly.clustering.web.session.SessionManager;
-import org.wildfly.clustering.web.session.SessionMetaData;
+import org.wildfly.clustering.cache.batch.Batch;
+import org.wildfly.clustering.session.Session;
+import org.wildfly.clustering.session.SessionManager;
+import org.wildfly.clustering.session.SessionMetaData;
+import org.wildfly.clustering.session.SessionStatistics;
+import org.wildfly.common.function.Functions;
 import org.xnio.OptionMap;
 import org.xnio.StreamConnection;
 import org.xnio.channels.Configurable;
@@ -69,22 +50,24 @@ import org.xnio.conduits.StreamSourceConduit;
 
 public class DistributableSessionManagerTestCase {
     private final String deploymentName = "mydeployment.war";
-    private final SessionManager<Map<String, Object>, Batch> manager = mock(SessionManager.class);
+    private final SessionManager<Map<String, Object>> manager = mock(SessionManager.class);
     private final SessionListener listener = mock(SessionListener.class);
     private final SessionListeners listeners = new SessionListeners();
+    private final SessionStatistics stats = mock(SessionStatistics.class);
     private final RecordableSessionManagerStatistics statistics = mock(RecordableSessionManagerStatistics.class);
 
     private DistributableSessionManager adapter;
 
     @Before
     public void init() {
+        when(this.manager.getStatistics()).thenReturn(this.stats);
+
         DistributableSessionManagerConfiguration config = mock(DistributableSessionManagerConfiguration.class);
 
         when(config.getDeploymentName()).thenReturn(this.deploymentName);
         when(config.getSessionListeners()).thenReturn(this.listeners);
         when(config.getSessionManager()).thenReturn(this.manager);
         when(config.getStatistics()).thenReturn(this.statistics);
-        when(config.isOrphanSessionAllowed()).thenReturn(false);
 
         this.adapter = new DistributableSessionManager(config);
         this.adapter.registerSessionListener(this.listener);
@@ -105,18 +88,9 @@ public class DistributableSessionManagerTestCase {
 
     @Test
     public void stop() {
-        when(this.manager.getStopTimeout()).thenReturn(Duration.ZERO);
-
         this.adapter.stop();
 
         verify(this.manager).stop();
-    }
-
-    @Test
-    public void setDefaultSessionTimeout() {
-        this.adapter.setDefaultSessionTimeout(10);
-
-        verify(this.manager).setDefaultMaxInactiveInterval(Duration.ofSeconds(10L));
     }
 
     @Test
@@ -128,7 +102,13 @@ public class DistributableSessionManagerTestCase {
         StreamSinkConduit sinkConduit = mock(StreamSinkConduit.class);
         ConduitStreamSinkChannel sinkChannel = new ConduitStreamSinkChannel(configurable, sinkConduit);
         StreamConnection stream = mock(StreamConnection.class);
+        String id = "foo";
+        Supplier<String> identifierFactory = Functions.constantSupplier(id);
+        int expectedTimeout = 10;
 
+        this.adapter.setDefaultSessionTimeout(expectedTimeout);
+
+        when(this.manager.getIdentifierFactory()).thenReturn(identifierFactory);
         when(stream.getSourceChannel()).thenReturn(sourceChannel);
         when(stream.getSinkChannel()).thenReturn(sinkChannel);
 
@@ -141,14 +121,19 @@ public class DistributableSessionManagerTestCase {
 
         SessionConfig config = mock(SessionConfig.class);
 
-        Assert.assertThrows(IllegalStateException.class, () -> this.adapter.createSession(exchange, config));
+        io.undertow.server.session.Session session = this.adapter.createSession(exchange, config);
+
+        // Verify that a nonce session was created
+        verify(this.manager, never()).createSession(id);
+
+        Assert.assertEquals(id, session.getId());
+        Assert.assertEquals(expectedTimeout, session.getMaxInactiveInterval());
     }
 
     @Test
     public void createSessionNoSessionId() {
         HttpServerExchange exchange = new HttpServerExchange(null);
         Supplier<String> identifierFactory = mock(Supplier.class);
-        Batcher<Batch> batcher = mock(Batcher.class);
         Batch batch = mock(Batch.class);
         SessionConfig config = mock(SessionConfig.class);
         Session<Map<String, Object>> session = mock(Session.class);
@@ -158,8 +143,7 @@ public class DistributableSessionManagerTestCase {
         when(this.manager.getIdentifierFactory()).thenReturn(identifierFactory);
         when(identifierFactory.get()).thenReturn(sessionId);
         when(this.manager.createSession(sessionId)).thenReturn(session);
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch);
+        when(this.manager.getBatchFactory()).thenReturn(Functions.constantSupplier(batch));
         when(session.getId()).thenReturn(sessionId);
         when(session.getMetaData()).thenReturn(metaData);
         when(metaData.isNew()).thenReturn(true);
@@ -170,8 +154,8 @@ public class DistributableSessionManagerTestCase {
 
         verify(this.listener).sessionCreated(sessionAdapter, exchange);
         verify(config).setSessionId(exchange, sessionId);
-        verify(batcher).suspendBatch();
-        verify(this.statistics).record(sessionAdapter);
+        verify(batch).suspend();
+        verify(this.statistics).record(metaData);
 
         String expected = "expected";
         when(session.getId()).thenReturn(expected);
@@ -183,7 +167,6 @@ public class DistributableSessionManagerTestCase {
     @Test
     public void createSessionSpecifiedSessionId() {
         HttpServerExchange exchange = new HttpServerExchange(null);
-        Batcher<Batch> batcher = mock(Batcher.class);
         Batch batch = mock(Batch.class);
         SessionConfig config = mock(SessionConfig.class);
         Session<Map<String, Object>> session = mock(Session.class);
@@ -192,8 +175,7 @@ public class DistributableSessionManagerTestCase {
 
         when(config.findSessionId(exchange)).thenReturn(sessionId);
         when(this.manager.createSession(sessionId)).thenReturn(session);
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch);
+        when(this.manager.getBatchFactory()).thenReturn(Functions.constantSupplier(batch));
         when(session.getId()).thenReturn(sessionId);
         when(session.getMetaData()).thenReturn(metaData);
         when(metaData.isNew()).thenReturn(true);
@@ -203,8 +185,8 @@ public class DistributableSessionManagerTestCase {
         assertNotNull(sessionAdapter);
 
         verify(this.listener).sessionCreated(sessionAdapter, exchange);
-        verify(batcher).suspendBatch();
-        verify(this.statistics).record(sessionAdapter);
+        verify(batch).suspend();
+        verify(this.statistics).record(metaData);
 
         String expected = "expected";
         when(session.getId()).thenReturn(expected);
@@ -216,15 +198,13 @@ public class DistributableSessionManagerTestCase {
     @Test
     public void createSessionAlreadyExists() {
         HttpServerExchange exchange = new HttpServerExchange(null);
-        Batcher<Batch> batcher = mock(Batcher.class);
         Batch batch = mock(Batch.class);
         SessionConfig config = mock(SessionConfig.class);
         String sessionId = "session";
 
         when(config.findSessionId(exchange)).thenReturn(sessionId);
         when(this.manager.createSession(sessionId)).thenReturn(null);
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch);
+        when(this.manager.getBatchFactory()).thenReturn(Functions.constantSupplier(batch));
 
         IllegalStateException exception = null;
         try {
@@ -242,7 +222,6 @@ public class DistributableSessionManagerTestCase {
     @Test
     public void getSession() {
         HttpServerExchange exchange = new HttpServerExchange(null);
-        Batcher<Batch> batcher = mock(Batcher.class);
         Batch batch = mock(Batch.class);
         SessionConfig config = mock(SessionConfig.class);
         Session<Map<String, Object>> session = mock(Session.class);
@@ -251,8 +230,7 @@ public class DistributableSessionManagerTestCase {
 
         when(config.findSessionId(exchange)).thenReturn(sessionId);
         when(this.manager.findSession(sessionId)).thenReturn(session);
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch);
+        when(this.manager.getBatchFactory()).thenReturn(Functions.constantSupplier(batch));
         when(session.getId()).thenReturn(sessionId);
         when(session.getMetaData()).thenReturn(metaData);
         when(metaData.isNew()).thenReturn(false);
@@ -263,7 +241,7 @@ public class DistributableSessionManagerTestCase {
 
         verifyNoInteractions(this.statistics);
 
-        verify(batcher).suspendBatch();
+        verify(batch).suspend();
 
         String expected = "expected";
         when(session.getId()).thenReturn(expected);
@@ -307,27 +285,25 @@ public class DistributableSessionManagerTestCase {
     @Test
     public void getSessionNotExists() {
         HttpServerExchange exchange = new HttpServerExchange(null);
-        Batcher<Batch> batcher = mock(Batcher.class);
         Batch batch = mock(Batch.class);
         SessionConfig config = mock(SessionConfig.class);
         String sessionId = "session";
 
         when(config.findSessionId(exchange)).thenReturn(sessionId);
         when(this.manager.findSession(sessionId)).thenReturn(null);
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch);
+        when(this.manager.getBatchFactory()).thenReturn(Functions.constantSupplier(batch));
 
         io.undertow.server.session.Session sessionAdapter = this.adapter.getSession(exchange, config);
 
         assertNull(sessionAdapter);
 
         verify(batch).close();
-        verify(batcher, never()).suspendBatch();
+        verify(batch, never()).suspend();
     }
 
     @Test
     public void activeSessions() {
-        when(this.manager.getActiveSessions()).thenReturn(Collections.singleton("expected"));
+        when(this.stats.getActiveSessions()).thenReturn(Collections.singleton("expected"));
 
         int result = this.adapter.getActiveSessions().size();
 
@@ -344,7 +320,7 @@ public class DistributableSessionManagerTestCase {
     @Test
     public void getActiveSessions() {
         String expected = "expected";
-        when(this.manager.getActiveSessions()).thenReturn(Collections.singleton(expected));
+        when(this.stats.getActiveSessions()).thenReturn(Collections.singleton(expected));
 
         Set<String> result = this.adapter.getActiveSessions();
 
@@ -355,7 +331,7 @@ public class DistributableSessionManagerTestCase {
     @Test
     public void getAllSessions() {
         String expected = "expected";
-        when(this.manager.getLocalSessions()).thenReturn(Collections.singleton(expected));
+        when(this.stats.getSessions()).thenReturn(Collections.singleton(expected));
 
         Set<String> result = this.adapter.getAllSessions();
 
@@ -365,43 +341,24 @@ public class DistributableSessionManagerTestCase {
 
     @Test
     public void getSessionByIdentifier() {
-        Batcher<Batch> batcher = mock(Batcher.class);
-        Batch batch1 = mock(Batch.class);
-        Batch batch2 = mock(Batch.class);
-        ImmutableSession session = mock(ImmutableSession.class);
-        ImmutableSessionMetaData metaData = mock(ImmutableSessionMetaData.class);
+        Session<Map<String, Object>> session = mock(Session.class);
+        SessionMetaData metaData = mock(SessionMetaData.class);
         String id = "ABC123";
 
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch1, batch2);
-        when(this.manager.readSession(id)).thenReturn(session);
-        when(session.getMetaData()).thenReturn(metaData);
-        when(metaData.isNew()).thenReturn(false);
-
-        io.undertow.server.session.Session result = this.adapter.getSession(id);
-
-        Assert.assertSame(id, result.getId());
-
-        verify(batch1).close();
-        verify(batch2).close();
-    }
-
-    @Test
-    public void getSessionByIdentifierNotExists() {
-        Batcher<Batch> batcher = mock(Batcher.class);
-        Batch batch = mock(Batch.class);
-        String id = "ABC123";
-
-        when(this.manager.getBatcher()).thenReturn(batcher);
-        when(batcher.createBatch()).thenReturn(batch);
-        when(this.manager.readSession(id)).thenReturn(null);
+        doReturn(session).when(this.manager).getDetachedSession(id);
+        doReturn(id).when(session).getId();
+        doReturn(metaData).when(session).getMetaData();
+        doReturn(false).when(session).isValid();
 
         io.undertow.server.session.Session result = this.adapter.getSession(id);
 
         Assert.assertNull(result);
 
-        verify(batch).close();
-        reset(batch);
+        doReturn(true).when(session).isValid();
+
+        result = this.adapter.getSession(id);
+
+        Assert.assertSame(id, result.getId());
     }
 
     @Test

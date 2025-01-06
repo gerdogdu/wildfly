@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.component;
@@ -29,7 +12,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -66,13 +48,10 @@ import org.jboss.invocation.InterceptorFactoryContext;
 import org.jboss.invocation.Interceptors;
 import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.modules.Module;
-import org.jboss.msc.value.CachedValue;
-import org.jboss.msc.value.ConstructedValue;
-import org.jboss.msc.value.Value;
 
 /**
  * A {@link ViewConfigurator} which sets up the Jakarta Enterprise Beans view with the relevant {@link Interceptor}s
- * which will carry out invocation on the container-interceptor(s) applicable for an Jakarta Enterprise Beans, during an Jakarta Enterprise Beans method invocation
+ * which will carry out invocation on the container-interceptor(s) applicable for a Jakarta Enterprise Beans bean, during a Jakarta Enterprise Beans method invocation
  *
  * @author Jaikiran Pai
  */
@@ -302,16 +281,20 @@ public class EJBContainerInterceptorsViewConfigurator implements ViewConfigurato
         }
 
         private InterceptorFactory createInterceptorFactoryForContainerInterceptor(final Method method, final Constructor interceptorConstructor) {
-            // The managed reference is going to be ConstructedValue, using the container-interceptor's constructor
-            final ConstructedValue interceptorInstanceValue = new ConstructedValue(interceptorConstructor, Collections.<Value<?>>emptyList());
             // we *don't* create multiple instances of the container-interceptor class, but we just reuse a single instance and it's *not*
             // tied to the Jakarta Enterprise Beans component instance lifecycle.
-            final CachedValue cachedInterceptorInstanceValue = new CachedValue(interceptorInstanceValue);
-            // ultimately create the managed reference which is backed by the CachedValue
-            final ManagedReference interceptorInstanceRef = new ValueManagedReference(cachedInterceptorInstanceValue);
+            final ManagedReference interceptorInstanceRef = new ValueManagedReference(newInstance(interceptorConstructor));
             // return the ContainerInterceptorMethodInterceptorFactory which is responsible for creating an Interceptor
             // which can invoke the container-interceptor's around-invoke/around-timeout methods
             return new ContainerInterceptorMethodInterceptorFactory(interceptorInstanceRef, method);
+        }
+    }
+
+    private static Object newInstance(final Constructor ctor) {
+        try {
+            return ctor.newInstance(new Object[] {});
+        } catch (Exception e) {
+            throw new IllegalStateException(e.getMessage(), e);
         }
     }
 

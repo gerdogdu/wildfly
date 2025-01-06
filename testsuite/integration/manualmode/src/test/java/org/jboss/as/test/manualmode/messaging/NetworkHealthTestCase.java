@@ -1,25 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.manualmode.messaging;
+
+import static org.jboss.as.controller.client.helpers.Operations.isSuccessfulOutcome;
 
 import java.io.IOException;
 import org.jboss.arquillian.container.test.api.RunAsClient;
@@ -27,14 +12,13 @@ import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.as.cli.Util;
 import org.jboss.as.controller.client.helpers.Operations;
 
-import static org.jboss.as.controller.client.helpers.Operations.isSuccessfulOutcome;
-
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.apache.activemq.artemis.core.server.NetworkHealthCheck;
 import org.jboss.arquillian.container.test.api.ContainerController;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.as.arquillian.container.ManagementClient;
@@ -46,6 +30,7 @@ import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.jboss.as.test.shared.TimeoutUtil;
 import org.jboss.as.test.shared.util.LoggingUtil;
 import org.jboss.dmr.ModelNode;
+import org.jboss.logging.Logger;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -59,6 +44,8 @@ import org.junit.runner.RunWith;
 @RunAsClient()
 @RunWith(Arquillian.class)
 public class NetworkHealthTestCase {
+
+    private static Logger log = Logger.getLogger(NetworkHealthTestCase.class.getName());
 
     private static final String DEFAULT_FULL_JBOSSAS = "default-full-jbossas";
     private static final String IP_ADDRESS = "192.0.2.0";
@@ -80,6 +67,13 @@ public class NetworkHealthTestCase {
 
     @After
     public void tearDown() throws Exception {
+        try {
+            JMSOperations jmsOperations = JMSOperationsProvider.getInstance(managementClient.getControllerClient());
+            revertTestChanges(jmsOperations.getServerAddress());
+        } catch (Exception e) {
+            // don't fail, let's try to do the rest of cleanup
+            log.warn("Failed to revert test changes", e);
+        }
         loggerSetup.tearDown(managementClient, DEFAULT_FULL_JBOSSAS);
         managementClient.close();
         container.stop(DEFAULT_FULL_JBOSSAS);
@@ -93,11 +87,19 @@ public class NetworkHealthTestCase {
     @Test
     public void testNetworkUnHealthyNetwork() throws Exception {
         JMSOperations jmsOperations = JMSOperationsProvider.getInstance(managementClient.getControllerClient());
-        //Windows fix required until ARTEMIS-3799 is in
-        ModelNode op = Operations.createWriteAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping6-command", "ping -6 -n 1 -w %d %s");
+
+        ModelNode op;
         if(TestSuiteEnvironment.isWindows()) {
+            // The default ping commands in the AttributeDefinitions are meant for *nix based OSs and don't work,
+            // on Windows, so on Windows use the default *Artemis* values (from their NetworkHealthCheck class).
+            // The values of the Artemis defaults vary at runtime based on the OS, so we'll get the ones they think are best for Windows.
+            // Doing this also serves to test their current values (vs us hard coding something here).
+            op = Operations.createWriteAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping-command", NetworkHealthCheck.IPV4_DEFAULT_COMMAND);
             executeOperationForSuccess(managementClient, op);
-        }
+            op = Operations.createWriteAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping6-command", NetworkHealthCheck.IPV6_DEFAULT_COMMAND);
+            executeOperationForSuccess(managementClient, op);
+        } // else .... for non-Windows for the ping commands we leave the config as-is and test the default AD values
+
         op = Operations.createWriteAttributeOperation(jmsOperations.getServerAddress(), "network-check-list", IP_ADDRESS);
         executeOperationForSuccess(managementClient, op);
         op = Operations.createWriteAttributeOperation(jmsOperations.getServerAddress(), "network-check-period", 1000);
@@ -139,17 +141,6 @@ public class NetworkHealthTestCase {
         Assert.assertFalse("Log contains ActiveMQ ping error log message: [AMQ202002]",
                 LoggingUtil.hasLogMessage(managementClient, "artemis-log", "AMQ202002", restartLine, (line) -> line.contains(IP_ADDRESS)));
         Assert.assertTrue("Broker should be running", isBrokerActive(jmsOperations, managementClient));
-
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-list");
-        executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-period");
-        executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-timeout");
-        executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping-command");
-        executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping6-command");
-        executeOperationForSuccess(managementClient, op);
     }
 
     /**
@@ -179,15 +170,19 @@ public class NetworkHealthTestCase {
                         (line) -> (line.contains(" AMQ202007") && line.contains(IP_ADDRESS) && line.contains("java.io.IOException")) || line.contains("AMQ201001")));
 
         Assert.assertFalse("Broker should be stopped", isBrokerActive(jmsOperations, managementClient));
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-list");
+    }
+
+    private void revertTestChanges(ModelNode serverAddress) throws IOException, MgmtOperationException {
+        ModelNode op;
+        op = Operations.createUndefineAttributeOperation(serverAddress, "network-check-list");
         executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-period");
+        op = Operations.createUndefineAttributeOperation(serverAddress, "network-check-period");
         executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-timeout");
+        op = Operations.createUndefineAttributeOperation(serverAddress, "network-check-timeout");
         executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping-command");
+        op = Operations.createUndefineAttributeOperation(serverAddress, "network-check-ping-command");
         executeOperationForSuccess(managementClient, op);
-        op = Operations.createUndefineAttributeOperation(jmsOperations.getServerAddress(), "network-check-ping6-command");
+        op = Operations.createUndefineAttributeOperation(serverAddress, "network-check-ping6-command");
         executeOperationForSuccess(managementClient, op);
     }
 

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.remote;
@@ -40,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.ejb.EJBException;
+import jakarta.ejb.EJBException;
 
 import org.jboss.as.ee.component.Component;
 import org.jboss.as.ee.component.ComponentIsStoppedException;
@@ -78,16 +61,18 @@ import org.jboss.ejb.server.ModuleAvailabilityListener;
 import org.jboss.ejb.server.Request;
 import org.jboss.ejb.server.SessionOpenRequest;
 import org.jboss.invocation.InterceptorContext;
-import org.wildfly.clustering.Registration;
-import org.wildfly.clustering.group.Group;
-import org.wildfly.clustering.registry.Registry;
-import org.wildfly.clustering.registry.RegistryListener;
+import org.wildfly.clustering.server.Group;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.server.Registration;
+import org.wildfly.clustering.server.registry.Registry;
+import org.wildfly.clustering.server.registry.RegistryListener;
 import org.wildfly.common.annotation.NotNull;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
+ * @author <a href="mailto:jbaesner@redhat.com">Joerg Baesner</a>
  */
 final class AssociationImpl implements Association, AutoCloseable {
 
@@ -102,10 +87,10 @@ final class AssociationImpl implements Association, AutoCloseable {
     private final Map<Integer, ClusterTopologyRegistrar> clusterTopologyRegistrars;
     private volatile Executor executor;
 
-    AssociationImpl(final DeploymentRepository deploymentRepository, final List<Map.Entry<ProtocolSocketBinding, Registry<String, List<ClientMapping>>>> clientMappingRegistries) {
+    AssociationImpl(final DeploymentRepository deploymentRepository, final List<Map.Entry<ProtocolSocketBinding, Registry<GroupMember, String, List<ClientMapping>>>> clientMappingRegistries) {
         this.deploymentRepository = deploymentRepository;
         this.clusterTopologyRegistrars = clientMappingRegistries.isEmpty() ? Collections.emptyMap() : new HashMap<>(clientMappingRegistries.size());
-        for (Map.Entry<ProtocolSocketBinding, Registry<String, List<ClientMapping>>> entry : clientMappingRegistries) {
+        for (Map.Entry<ProtocolSocketBinding, Registry<GroupMember, String, List<ClientMapping>>> entry : clientMappingRegistries) {
             this.clusterTopologyRegistrars.put(entry.getKey().getSocketBinding().getSocketAddress().getPort(), new ClusterTopologyRegistrar(entry.getValue()));
         }
     }
@@ -480,16 +465,16 @@ final class AssociationImpl implements Association, AutoCloseable {
 
     private static final class ClusterTopologyRegistrar implements RegistryListener<String, List<ClientMapping>> {
         private final Set<ClusterTopologyListener> clusterTopologyListeners = ConcurrentHashMap.newKeySet();
-        private final Registry<String, List<ClientMapping>> clientMappingRegistry;
+        private final Registry<GroupMember, String, List<ClientMapping>> clientMappingRegistry;
         private final Registration listenerRegistration;
 
-        ClusterTopologyRegistrar(Registry<String, List<ClientMapping>> clientMappingRegistry) {
+        ClusterTopologyRegistrar(Registry<GroupMember, String, List<ClientMapping>> clientMappingRegistry) {
             this.clientMappingRegistry = clientMappingRegistry;
             this.listenerRegistration = clientMappingRegistry.register(this);
         }
 
         @Override
-        public void addedEntries(Map<String, List<ClientMapping>> added) {
+        public void added(Map<String, List<ClientMapping>> added) {
             ClusterTopologyListener.ClusterInfo info = getClusterInfo(added);
             for (ClusterTopologyListener listener : this.clusterTopologyListeners) {// Synchronize each listener to ensure that the initial topology was set before processing new entries
                 synchronized (listener) {
@@ -499,12 +484,12 @@ final class AssociationImpl implements Association, AutoCloseable {
         }
 
         @Override
-        public void updatedEntries(Map<String, List<ClientMapping>> updated) {
-            this.addedEntries(updated);
+        public void updated(Map<String, List<ClientMapping>> updated) {
+            this.added(updated);
         }
 
         @Override
-        public void removedEntries(Map<String, List<ClientMapping>> removed) {
+        public void removed(Map<String, List<ClientMapping>> removed) {
             List<ClusterTopologyListener.ClusterRemovalInfo> removals = Collections.singletonList(new ClusterTopologyListener.ClusterRemovalInfo(this.clientMappingRegistry.getGroup().getName(), new ArrayList<>(removed.keySet())));
             for (ClusterTopologyListener listener : this.clusterTopologyListeners) {// Synchronize each listener to ensure that the initial topology was set before processing removed entries
                 synchronized (listener) {
@@ -527,7 +512,7 @@ final class AssociationImpl implements Association, AutoCloseable {
             this.clusterTopologyListeners.clear();
         }
 
-        Group getGroup() {
+        Group<GroupMember> getGroup() {
             return this.clientMappingRegistry.getGroup();
         }
 
@@ -642,6 +627,9 @@ final class AssociationImpl implements Association, AutoCloseable {
         for(String key : returnKeys) {
             if(interceptorContext.getContextData().containsKey(key)) {
                 contextDataHolder.put(key, interceptorContext.getContextData().get(key));
+            } else {
+                // need to remove the attachment, as the ContextData value for this key got removed
+                content.getAttachments().remove(key);
             }
         }
     }
@@ -674,7 +662,7 @@ final class AssociationImpl implements Association, AutoCloseable {
     }
 
     private static Affinity getStrongAffinity(final StatefulSessionComponent statefulSessionComponent) {
-        return statefulSessionComponent.getCache().getStrictAffinity();
+        return statefulSessionComponent.getCache().getStrongAffinity();
     }
 
     private static Affinity getWeakAffinity(final StatefulSessionComponent statefulSessionComponent, final StatefulEJBLocator<?> statefulEJBLocator) {

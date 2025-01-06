@@ -1,3 +1,8 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.clustering.infinispan.subsystem;
 
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OUTCOME;
@@ -85,7 +90,7 @@ public class OperationsTestCase extends OperationTestCaseBase {
         String subsystemXml = getSubsystemXml();
         KernelServices servicesA = this.createKernelServicesBuilder().setSubsystemXml(subsystemXml).build();
 
-        // read the distributed cache jdbc-store datasource attribute
+        // read the distributed cache mixed-keyed-jdbc-store datasource attribute
         ModelNode result = servicesA.executeOperation(getJDBCCacheStoreReadOperation("maximal", DistributedCacheResourceDefinition.WILDCARD_PATH.getKey(), "dist", JDBCStoreResourceDefinition.Attribute.DATA_SOURCE));
         Assert.assertEquals(result.toString(), SUCCESS, result.get(OUTCOME).asString());
         Assert.assertEquals("ExampleDS", result.get(RESULT).asString());

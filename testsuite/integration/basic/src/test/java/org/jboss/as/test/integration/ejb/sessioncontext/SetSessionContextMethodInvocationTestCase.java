@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ejb.sessioncontext;
@@ -35,8 +18,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Tests that bean implementing the {@link javax.ejb.SessionBean} interface has its
- * {@link javax.ejb.SessionBean#setSessionContext(javax.ejb.SessionContext)} method invoked.
+ * Tests that bean implementing the {@link jakarta.ejb.SessionBean} interface has its
+ * {@link jakarta.ejb.SessionBean#setSessionContext(jakarta.ejb.SessionContext)} method invoked.
  * <p/>
  * User: Jaikiran Pai
  */
@@ -59,34 +42,34 @@ public class SetSessionContextMethodInvocationTestCase {
     }
 
     /**
-     * Tests that {@link javax.ejb.SessionBean#setSessionContext(javax.ejb.SessionContext)} was invoked on a stateless
-     * session bean, implementing the {@link javax.ejb.SessionBean} interface
+     * Tests that {@link jakarta.ejb.SessionBean#setSessionContext(jakarta.ejb.SessionContext)} was invoked on a stateless
+     * session bean, implementing the {@link jakarta.ejb.SessionBean} interface
      *
      * @throws Exception
      */
     @Test
     public void testSetSessionContextOnSLSB() throws Exception {
         final SLSBImplementingSessionBean slsb = lookup(SLSBImplementingSessionBean.class);
-        Assert.assertTrue("setSessionContext(SessionContext) method was not invoked on a stateless bean implementing javax.ejb.SessionBean",
+        Assert.assertTrue("setSessionContext(SessionContext) method was not invoked on a stateless bean implementing jakarta.ejb.SessionBean",
                 slsb.wasSetSessionContextMethodInvoked());
     }
 
     /**
-     * Tests that {@link javax.ejb.SessionBean#setSessionContext(javax.ejb.SessionContext)} was invoked on a stateful
-     * session bean, implementing the {@link javax.ejb.SessionBean} interface
+     * Tests that {@link jakarta.ejb.SessionBean#setSessionContext(jakarta.ejb.SessionContext)} was invoked on a stateful
+     * session bean, implementing the {@link jakarta.ejb.SessionBean} interface
      *
      * @throws Exception
      */
     @Test
     public void testSetSessionContextOnSFSB() throws Exception {
         final SFSBImplementingSessionBean sfsb = lookup(SFSBImplementingSessionBean.class);
-        Assert.assertTrue("setSessionContext(SessionContext) method was not invoked on a stateful bean implementing javax.ejb.SessionBean",
+        Assert.assertTrue("setSessionContext(SessionContext) method was not invoked on a stateful bean implementing jakarta.ejb.SessionBean",
                 sfsb.wasSetSessionContextMethodInvoked());
     }
 
 
     /**
-     * Tests that a {@link javax.ejb.SessionContext} is injected into a stateless bean, via the @Resource annotation
+     * Tests that a {@link jakarta.ejb.SessionContext} is injected into a stateless bean, via the @Resource annotation
      *
      * @throws Exception
      */
@@ -97,7 +80,7 @@ public class SetSessionContextMethodInvocationTestCase {
     }
 
     /**
-     * Tests that a {@link javax.ejb.SessionContext} is injected into a stateful bean, via the @Resource annotation
+     * Tests that a {@link jakarta.ejb.SessionContext} is injected into a stateful bean, via the @Resource annotation
      *
      * @throws Exception
      */
@@ -108,7 +91,7 @@ public class SetSessionContextMethodInvocationTestCase {
     }
 
     /**
-     * Testing whether correct exception is called on {@link javax.ejb.SessionContext#wasCancelCalled()} is returned. Supposing IllegalStateException.
+     * Testing whether correct exception is called on {@link jakarta.ejb.SessionContext#wasCancelCalled()} is returned. Supposing IllegalStateException.
      */
     @Test
     public void testWasCancelledCalled() throws Exception {

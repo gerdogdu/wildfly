@@ -1,9 +1,14 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.wildfly.test.integration.weld.builtinBeans;
 
-import javax.annotation.Resource;
-import javax.annotation.security.RunAs;
-import javax.ejb.EJBContext;
-import javax.ejb.Stateless;
+import jakarta.annotation.Resource;
+import jakarta.annotation.security.RunAs;
+import jakarta.ejb.EJBContext;
+import jakarta.ejb.Stateless;
 
 import org.jboss.ejb3.annotation.RunAsPrincipal;
 

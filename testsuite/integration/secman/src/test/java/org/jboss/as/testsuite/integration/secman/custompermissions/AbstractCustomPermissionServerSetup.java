@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.testsuite.integration.secman.custompermissions;
 
@@ -29,19 +12,25 @@ import org.jboss.as.arquillian.api.ServerSetupTask;
 import org.jboss.as.arquillian.container.ManagementClient;
 import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.test.integration.management.ManagementOperations;
-import org.jboss.as.test.module.util.TestModule;
+import org.jboss.as.test.module.util.ModuleBuilder;
 import org.jboss.as.test.shared.ServerReload;
 import org.jboss.dmr.ModelNode;
 
 public abstract class AbstractCustomPermissionServerSetup implements ServerSetupTask {
 
-    private TestModule module;
+    private final String moduleName;
+    private Runnable moduleCleanup;
     private List<ModelNode> backupList = new ArrayList<>();
+
+    protected AbstractCustomPermissionServerSetup(final String moduleName) {
+        this.moduleName = moduleName;
+    }
 
     @Override
     public void setup(ManagementClient managementClient, String containerId) throws Exception {
-        this.module = Utils.createTestModule("moduleperm.jar", "org.jboss.test", GrantCustomPermissionModuleMinimumPermissionTestCase.class
-                .getResource("module.xml").getFile(), CustomPermission.class);
+        this.moduleCleanup = ModuleBuilder.of(moduleName, "moduleperm.jar")
+                .addClass(CustomPermission.class)
+                .build();
 
         if (writeMinimumPermissions()) {
             backupMinimumPermissions(managementClient);
@@ -58,8 +47,8 @@ public abstract class AbstractCustomPermissionServerSetup implements ServerSetup
             operation.get("name").set("minimum-permissions");
             ModelNode customPermission = new ModelNode();
             customPermission.get("class").set(new ModelNode(CustomPermission.class.getName()));
-            customPermission.get("name").set(new ModelNode("org.jboss.test"));
-            customPermission.get("module").set(new ModelNode("org.jboss.test"));
+            customPermission.get("name").set(new ModelNode(moduleName));
+            customPermission.get("module").set(new ModelNode(moduleName));
 
             operation.get("value").set(Arrays.asList(customPermission));
 
@@ -94,7 +83,7 @@ public abstract class AbstractCustomPermissionServerSetup implements ServerSetup
 
     @Override
     public void tearDown(ManagementClient managementClient, String containerId) throws Exception {
-        this.module.remove();
+        this.moduleCleanup.run();
 
         //restore minimum permissions
         if (writeMinimumPermissions()) {

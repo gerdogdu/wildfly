@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.logging;
@@ -28,6 +11,7 @@ import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -43,7 +27,6 @@ import org.jboss.as.ee.component.ComponentConfiguration;
 import org.jboss.as.ee.component.ComponentInstance;
 import org.jboss.as.ee.component.ComponentIsStoppedException;
 import org.jboss.as.ee.component.InjectionSource;
-import org.jboss.as.ee.concurrent.ConcurrentContext;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.jandex.AnnotationTarget;
@@ -70,7 +53,7 @@ public interface EeLogger extends BasicLogger {
     /**
      * A logger with a category of the package name.
      */
-    EeLogger ROOT_LOGGER = Logger.getMessageLogger(EeLogger.class, "org.jboss.as.ee");
+    EeLogger ROOT_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), EeLogger.class, "org.jboss.as.ee");
 
 //    /**
 //     * Logs a warning message indicating the transaction datasource, represented by the {@code className} parameter,
@@ -206,17 +189,21 @@ public interface EeLogger extends BasicLogger {
     @Message(id = 14, value = "%s in subdeployment ignored. jboss-ejb-client.xml is only parsed for top level deployments.")
     void subdeploymentIgnored(String pathName);
 
-    //@Message(id = 15, value = "Transaction started in EE Concurrent invocation left open, starting rollback to prevent leak.")
-    //void rollbackOfTransactionStartedInEEConcurrentInvocation();
+    @LogMessage(level = WARN)
+    @Message(id = 15, value = "Transaction started in EE Concurrent invocation left open, starting rollback to prevent leak.")
+    void rollbackOfTransactionStartedInEEConcurrentInvocation();
 
-    //@Message(id = 16, value = "Failed to rollback transaction.")
-    //void failedToRollbackTransaction(@Cause Throwable cause);
+    @LogMessage(level = WARN)
+    @Message(id = 16, value = "Failed to rollback transaction.")
+    void failedToRollbackTransaction(@Cause Throwable cause);
 
-    //@Message(id = 17, value = "Failed to suspend transaction.")
-    //void failedToSuspendTransaction(@Cause Throwable cause);
+    @LogMessage(level = WARN)
+    @Message(id = 17, value = "Failed to suspend transaction.")
+    void failedToSuspendTransaction(@Cause Throwable cause);
 
-    //@Message(id = 18, value = "System error while checking for transaction leak in EE Concurrent invocation.")
-    //void systemErrorWhileCheckingForTransactionLeak(@Cause Throwable cause);
+    @LogMessage(level = WARN)
+    @Message(id = 18, value = "System error while checking for transaction leak in EE Concurrent invocation.")
+    void systemErrorWhileCheckingForTransactionLeak(@Cause Throwable cause);
 
     /**
      * Creates an exception indicating the alternate deployment descriptor specified for the module file could not be
@@ -1057,10 +1044,10 @@ public interface EeLogger extends BasicLogger {
     IOException serializationMustBeHandledByTheFactory();
 
     @Message(id = 104, value = "The EE Concurrent Context %s already has a factory named %s")
-    IllegalArgumentException factoryAlreadyExists(ConcurrentContext concurrentContext, String factoryName);
+    IllegalArgumentException factoryAlreadyExists(String concurrentContext, String factoryName);
 
     @Message(id = 105, value = "EE Concurrent Context %s does not has a factory named %s")
-    IOException factoryNotFound(ConcurrentContext concurrentContext, String factoryName);
+    IOException factoryNotFound(String concurrentContext, String factoryName);
 
     @Message(id = 106, value = "EE Concurrent Context %s service not installed.")
     IOException concurrentContextServiceNotInstalled(ServiceName serviceName);
@@ -1083,8 +1070,8 @@ public interface EeLogger extends BasicLogger {
     DeploymentUnitProcessingException aroundInvokeAnnotationUsedTooManyTimes(DotName className, int numberOfAnnotatedMethods);
 
     @LogMessage(level = ERROR)
-    @Message(id = 110, value = "Failed to run scheduled task")
-    void failedToRunTask(@Cause Exception e);
+    @Message(id = 110, value = "Failed to run scheduled task: %s")
+    void failedToRunTask(Object delegate, @Cause Exception e);
 
     @Message(id = 111, value = "Cannot run scheduled task %s as container is suspended")
     IllegalStateException cannotRunScheduledTask(Object delegate);
@@ -1215,4 +1202,35 @@ public interface EeLogger extends BasicLogger {
             "specifications. The conflicting class is %s. Solutions include providing an alternate name for the component " +
             "or renaming the class.")
     void duplicateJndiBindingFound(String componentName, String jndiName, Class clazz);
+
+    @Message(id = 134, value = "Multiple uses of ContextServiceDefinition.ALL_REMAINING")
+    IllegalStateException multipleUsesOfAllRemaining();
+
+    @LogMessage(level = WARN)
+    @Message(id = 135, value = "Failed to resume transaction.")
+    void failedToResumeTransaction(@Cause Throwable cause);
+
+    @Message(id = 136, value = "Failed to run scheduled task: %s")
+    RuntimeException failureWhileRunningTask(Object delegate,@Cause Exception e);
+
+    @Message(id = 137, value = "Error equals() cannot be called before resolve()")
+    RuntimeException errorEqualsCannotBeCalledBeforeResolve();
+
+    @Message(id = 138, value = "hungTaskTerminationPeriod is not > 0")
+    IllegalArgumentException hungTaskTerminationPeriodIsNotBiggerThanZero();
+
+    @Message(id = 139, value = "Cannot add a remoting receiver which references a null/empty outbound connection")
+    IllegalArgumentException cannotAddRemotingReceiver();
+
+    @Message(id = 140, value="Cannot add a HTTP connection which references a null/empty URI")
+    IllegalArgumentException cannotAddHTTPConnection();
+
+    @Message(id = 141, value="Running with a SecurityManager enabled is not allowed in a Jakarta EE 11 or later environment")
+    OperationFailedException securityManagerNotAllowed();
+
+    @Message(id = 142, value = "Failed to load Jakarta Concurrency implementation")
+    RuntimeException failedToLoadConcurrencyImplementation(@Cause Throwable cause);
+
+    @Message(id = 143, value = "Lifecycle operation not supported")
+    IllegalStateException lifecycleOperationNotSupported();
 }

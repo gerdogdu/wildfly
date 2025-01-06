@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -11,15 +16,15 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
     </parent>
 
     <!-- ********************************************************************************** -->
-    <!-- ************************* Manual-mode Integration Tests ************************** -->
+    <!-- ********* Manual-mode Integration Tests for base (EE etc) functionality ********** -->
     <!-- ********************************************************************************** -->
     <artifactId>wildfly-ts-integ-manualmode</artifactId>
 
-    <name>WildFly Test Suite: Integration - Manual Mode Tests</name>
+    <name>WildFly Test Suite: Integration - Manual Mode Tests -- Base</name>
 
     <properties>
         <jbossas.ts.integ.dir>${basedir}/..</jbossas.ts.integ.dir>
@@ -28,43 +33,210 @@
         <!-- Byteman -->
         <byteman.host>127.0.0.1</byteman.host>
         <byteman.port>17091</byteman.port>
-        <!-- JVM args -->
-        <microprofile.server.jvm.args>${server.jvm.args} -Djboss.node.name=microprofile</microprofile.server.jvm.args>
+
+        <oidc.jboss.home>${project.build.directory}/stability-preview</oidc.jboss.home>
+        <multichannel.jboss.home>${project.build.directory}/wildfly-multi-channel</multichannel.jboss.home>
+        <channel.provisioning.phase>process-test-resources</channel.provisioning.phase>
     </properties>
 
     <dependencies>
         <!-- These seem to be required first so that jbossws-cxf-client ends up on the class path first. Also required for Java 11 -->
         <dependency>
-            <groupId>org.jboss.ws.cxf</groupId>
-            <artifactId>jbossws-cxf-client</artifactId>
+            <groupId>jakarta.activation</groupId>
+            <artifactId>jakarta.activation-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>wildfly-client-all</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Required for Java 11 -->
-        <dependency>
-            <groupId>com.sun.activation</groupId>
-            <artifactId>jakarta.activation</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Required for Java 11 -->
-        <dependency>
-            <groupId>javax.jws</groupId>
-            <artifactId>jsr181-api</artifactId>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- The following are required at for JAXB on Java 11 -->
         <dependency>
-            <groupId>org.jboss.logmanager</groupId>
-            <artifactId>log4j-jboss-logmanager</artifactId>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.json</groupId>
+            <artifactId>jakarta.json-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.resource</groupId>
+            <artifactId>jakarta.resource-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.spec.jakarta.xml.ws</groupId>
+            <artifactId>jboss-jakarta-xml-ws-api_4.0_spec</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jgroups</groupId>
+            <artifactId>jgroups</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-naming-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-commons</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss</groupId>
+            <artifactId>jboss-ejb-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.ejb3</groupId>
+            <artifactId>jboss-ejb3-ext-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.ironjacamar</groupId>
+            <artifactId>ironjacamar-core-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-cli</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-test-runner</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-testsuite-shared</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-model-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-http-oidc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus-utils</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Required for the DistributedResourceAdapter1 the getDwm() has to return DistributedWorkManagerImpl otherwise
+             the tests fail for some reason. Changing the return type to DistributedWorkManager seems to cause issues -->
+        <dependency>
+            <groupId>org.jboss.ironjacamar</groupId>
+            <artifactId>ironjacamar-core-impl</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.ironjacamar</groupId>
+            <artifactId>ironjacamar-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.interceptor</groupId>
+            <artifactId>jakarta.interceptor-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.jms</groupId>
+            <artifactId>jakarta.jms-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.byteman</groupId>
+            <artifactId>byteman-submit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Runtime-only dependencies -->
+        <dependency>
+            <groupId>com.fasterxml.woodstox</groupId>
+            <artifactId>woodstox-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.istack</groupId>
+            <artifactId>istack-commons-runtime</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-core-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-bindings-soap</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -88,19 +260,28 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.apache.cxf</groupId>
+            <artifactId>cxf-rt-wsdl</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.ws.xmlschema</groupId>
             <artifactId>xmlschema-core</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- End JAXB Java 11 Requirements -->
         <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
+            <groupId>org.eclipse.angus</groupId>
+            <artifactId>angus-activation</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss</groupId>
-            <artifactId>jboss-ejb-client</artifactId>
+            <groupId>org.eclipse.parsson</groupId>
+            <artifactId>parsson</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -109,67 +290,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.ejb3</groupId>
-            <artifactId>jboss-ejb3-ext-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.ironjacamar</groupId>
-            <artifactId>ironjacamar-core-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-cli</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Required for the DistributedResourceAdapter1 the getDwm() has to return DistributedWorkManagerImpl otherwise
-             the tests fail for some reason. Changing the return type to DistributedWorkManager seems to cause issues -->
-        <dependency>
-            <groupId>org.jboss.ironjacamar</groupId>
-            <artifactId>ironjacamar-core-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.ironjacamar</groupId>
-            <artifactId>ironjacamar-jdbc</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.spec.javax.interceptor</groupId>
-            <artifactId>jboss-interceptors-api_1.2_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.spec.javax.jms</groupId>
-            <artifactId>jboss-jms-api_2.0_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${ee.maven.groupId}</groupId>
-            <artifactId>wildfly-naming</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Required for MicroProfile Tests -->
-        <dependency>
-            <groupId>org.eclipse.microprofile.health</groupId>
-            <artifactId>microprofile-health-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Required for Java 11 -->
-        <dependency>
-            <groupId>org.jboss.spec.javax.xml.ws</groupId>
-            <artifactId>jboss-jaxws-api_2.3_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.jboss.byteman</groupId>
             <artifactId>byteman</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.byteman</groupId>
-            <artifactId>byteman-submit</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -182,56 +304,52 @@
             <artifactId>byteman-bmunit</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Jakarta RESTful Web Services Client implementation -->
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-client</artifactId>
+            <groupId>org.jboss.narayana.jts</groupId>
+            <artifactId>narayana-jts-idlj</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-client-api</artifactId>
+            <groupId>org.jboss.spec.jakarta.xml.soap</groupId>
+            <artifactId>jboss-saaj-api_3.0_spec</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-core</artifactId>
+            <groupId>org.jboss.ws.cxf</groupId>
+            <artifactId>jbossws-cxf-client</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-core-spi</artifactId>
+            <groupId>org.wildfly.discovery</groupId>
+            <artifactId>wildfly-discovery-client</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-api</artifactId>
+            <groupId>org.wildfly.transaction</groupId>
+            <artifactId>wildfly-transaction-client</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-jackson2-provider</artifactId>
-        </dependency>
-        <!-- OpenTelemetry test needs -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.reactivestreams</groupId>
-            <artifactId>reactive-streams</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.opentelemetry</groupId>
-            <artifactId>opentelemetry-context</artifactId>
+            <groupId>wsdl4j</groupId>
+            <artifactId>wsdl4j</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>wildfly-client-all</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.channels</groupId>
+            <artifactId>wildfly-ee</artifactId>
+            <version>${ee.maven.version}</version>
+            <type>yaml</type>
+            <classifier>manifest</classifier>
+        </dependency>
+        <dependency>
+            <groupId>${ee.maven.groupId}</groupId>
+            <artifactId>wildfly-ee-feature-pack-product-conf</artifactId>
+            <version>100000.0.1.Final-SNAPSHOT</version>
         </dependency>
     </dependencies>
 
@@ -286,8 +404,110 @@
                             </system-properties>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>multi-channel-provisioning</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${channel.provisioning.phase}</phase>
+                        <configuration>
+                            <provisioning-dir>${project.build.directory}/wildfly-multi-channel</provisioning-dir>
+                            <record-provisioning-state>false</record-provisioning-state>
+                            <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                            <offline-provisioning>false</offline-provisioning>
+                            <overwrite-provisioned-server>true</overwrite-provisioned-server>
+                            <galleon-options>
+                                <jboss-maven-dist>false</jboss-maven-dist>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                                <!-- TODO needing to add this seems not user-friendly -->
+                                <ignore-not-excluded-layers>true</ignore-not-excluded-layers>
+                            </galleon-options>
+                            <channels>
+                                <channel>
+                                    <manifest>
+                                        <groupId>${channels.maven.groupId}</groupId>
+                                        <artifactId>wildfly-ee</artifactId>
+                                        <version>${ee.maven.version}</version>
+                                    </manifest>
+                                </channel>
+                                <channel>
+                                    <manifest>
+                                        <url>${project.baseUri}/target/test-classes/product-conf-override-manifest.yaml</url>
+                                    </manifest>
+                                </channel>
+                            </channels>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>${ee.maven.groupId}</groupId>
+                                    <artifactId>wildfly-ee-galleon-pack</artifactId>
+                                    <version>${ee.maven.version}</version>
+                                </feature-pack>
+                            </feature-packs>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <!-- galleon-maven-plugin installation provisioning is vulnerable to leftover files in the target
+                     folder from previous builds, so always clean even if the clean lifecycle is not invoked -->
+                <artifactId>maven-clean-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>clean-wildfly-without-channel</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                            <filesets>
+                                <fileset>
+                                    <directory>${project.build.directory}/wildfly-without-channel</directory>
+                                    <follow-symlinks>false</follow-symlinks>
+                                    <use-default-excludes>false</use-default-excludes>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jboss.galleon</groupId>
+                <artifactId>galleon-maven-plugin</artifactId>
+                <executions>
+                    <!-- Provision an installation not using a channel to check that
+                         channel-based provisioning provides the same results as provisioning
+                         from the version included in the feature pack. -->
+                    <execution>
+                        <id>channel-provisioning-comparison</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${channel.provisioning.phase}</phase>
+                        <configuration>
+                            <install-dir>${project.build.directory}/wildfly-without-channel</install-dir>
+                            <record-state>true</record-state>
+                            <log-time>${galleon.log.time}</log-time>
+                            <offline>true</offline>
+                            <plugin-options>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                            </plugin-options>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>${ee.maven.groupId}</groupId>
+                                    <artifactId>wildfly-ee-galleon-pack</artifactId>
+                                    <version>${ee.maven.version}</version>
+                                    <included-packages>
+                                        <name>docs.examples.configs</name>
+                                    </included-packages>
+                                </feature-pack>
+                            </feature-packs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!-- Generate the keystores and truststore needed for the manualmode tests -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -352,7 +572,6 @@
                         <byteman.port>${byteman.port}</byteman.port>
                         <jvm.args>${jvm.args.ip.server} ${modular.jdk.args} -Dmaven.repo.local=${settings.localRepository}</jvm.args>
                         <server.jvm2.args>${surefire.system.args} ${jvm.args.ip} -Djboss.bind.address=${node1} -Djboss.bind.address.management=${node1} -Djboss.bind.address.unsecure=${node1} -Dnode0=${node0} -Dnode1=${node1} ${modular.jdk.args}</server.jvm2.args>
-                        <microprofile.server.jvm.args>${microprofile.server.jvm.args}</microprofile.server.jvm.args>
                         <arquillian.launch>manual-mode</arquillian.launch>
                         <jboss.config.file.name>standalone-ha.xml</jboss.config.file.name>
                         <ryuk.container.timeout>60</ryuk.container.timeout>
@@ -368,6 +587,10 @@
                         <node2>${node2}</node2>
                         <node3>${node3}</node3>
                         <mcast>${mcast}</mcast>
+                        <multichannel.jboss.home>${multichannel.jboss.home}</multichannel.jboss.home>
+                        <oidc.jboss.home>${oidc.jboss.home}</oidc.jboss.home>
+                        <ee.dist.output.dir>ee-dist/target/${server.output.dir.prefix}-${server.output.dir.version}</ee.dist.output.dir>
+                        <build.output.dir>${wildfly.build.output.dir}</build.output.dir>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -425,45 +648,54 @@
                                     <goal>execute-commands</goal>
                                 </goals>
                             </execution>
+                            <execution>
+                                <id>channel-provisioning-comparison</id>
+                                <phase>none</phase>
+                            </execution>
                         </executions>
                     </plugin>
                     <plugin>
-		        <groupId>org.apache.maven.plugins</groupId>
-		        <artifactId>maven-antrun-plugin</artifactId>
-		        <executions>
-		            <execution>
-		                <phase>none</phase>
-		                <goals>
-		                    <goal>run</goal>
-		                </goals>
-		            </execution>
-		        </executions>
-		    </plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>none</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
         <profile>
-            <id>disable.microprofile.profile</id>
+            <id>external.wildfly.channels</id>
             <activation>
                 <property>
-                    <name>disable.microprofile.tests</name>
+                    <name>external.wildfly.channels</name>
                 </property>
             </activation>
-            <build>
-                <plugins>
-                    <!-- Surefire. -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-surefire-plugin</artifactId>
-                        <configuration>
-                            <excludes>
-		                            <exclude>org/wildfly/test/manual/management/MPScriptTestCase.java</exclude>
-		                            <exclude>org/wildfly/test/manual/microprofile/**/*TestCase.java</exclude>
-                            </excludes>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <!-- Disable channel-provisioning executions to avoid interference between external settings and the test -->
+                <channel.provisioning.phase>none</channel.provisioning.phase>
+                <!-- Stop arquillian blowing up on a non-existent dir for an arquillian.xml config -->
+                <multichannel.jboss.home>${project.build.directory}/wildfly</multichannel.jboss.home>
+            </properties>
+        </profile>
+        <profile>
+            <id>internal.wildfly.channels</id>
+            <activation>
+                <property>
+                    <name>internal.wildfly.channels</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Disable channel-provisioning executions to avoid interference between external settings and the test -->
+                <channel.provisioning.phase>none</channel.provisioning.phase>
+                <!-- Stop arquillian blowing up on a non-existent dir for an arquillian.xml config -->
+                <multichannel.jboss.home>${project.build.directory}/wildfly</multichannel.jboss.home>
+            </properties>
         </profile>
     </profiles>
 </project>

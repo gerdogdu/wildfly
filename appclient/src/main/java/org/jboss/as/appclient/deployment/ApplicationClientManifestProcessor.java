@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.appclient.deployment;
 
@@ -62,23 +45,24 @@ public class ApplicationClientManifestProcessor implements DeploymentUnitProcess
             if (main != null) {
                 String mainClass = main.getValue("Main-Class");
                 if (mainClass != null && !mainClass.isEmpty()) {
+                    final Class<?> clazz;
                     try {
-                        final Class<?> clazz = module.getClassLoader().loadClass(mainClass);
-                        deploymentUnit.putAttachment(AppClientAttachments.MAIN_CLASS, clazz);
-                        final ApplicationClientComponentDescription description = new ApplicationClientComponentDescription(clazz.getName(), moduleDescription, deploymentUnit.getServiceName());
-                        moduleDescription.addComponent(description);
-                        deploymentUnit.putAttachment(AppClientAttachments.APPLICATION_CLIENT_COMPONENT, description);
-
-                        final DeploymentDescriptorEnvironment environment = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.MODULE_DEPLOYMENT_DESCRIPTOR_ENVIRONMENT);
-                        if (environment != null) {
-                            DescriptorEnvironmentLifecycleMethodProcessor.handleMethods(environment, moduleDescription, mainClass);
-                        }
-                    } catch (ClassNotFoundException e) {
+                        clazz = module.getClassLoader().loadClass(mainClass);
+                    } catch (Throwable e) {
                         throw AppClientLogger.ROOT_LOGGER.cannotLoadAppClientMainClass(e);
                     }
+                    deploymentUnit.putAttachment(AppClientAttachments.MAIN_CLASS, clazz);
+                    final ApplicationClientComponentDescription description = new ApplicationClientComponentDescription(clazz.getName(), moduleDescription, deploymentUnit.getServiceName());
+                    moduleDescription.addComponent(description);
+                    deploymentUnit.putAttachment(AppClientAttachments.APPLICATION_CLIENT_COMPONENT, description);
 
+                    final DeploymentDescriptorEnvironment environment = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.MODULE_DEPLOYMENT_DESCRIPTOR_ENVIRONMENT);
+                    if (environment != null) {
+                        DescriptorEnvironmentLifecycleMethodProcessor.handleMethods(environment, moduleDescription, mainClass);
+                    }
                 }
             }
         }
     }
 }
+

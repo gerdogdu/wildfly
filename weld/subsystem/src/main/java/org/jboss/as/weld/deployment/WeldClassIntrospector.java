@@ -1,3 +1,8 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.weld.deployment;
 
 import java.util.HashSet;
@@ -8,11 +13,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import javax.enterprise.context.spi.CreationalContext;
-import javax.enterprise.inject.Any;
-import javax.enterprise.inject.spi.Bean;
-import javax.enterprise.inject.spi.BeanManager;
-import javax.enterprise.inject.spi.InjectionTarget;
+import jakarta.enterprise.context.spi.CreationalContext;
+import jakarta.enterprise.inject.Any;
+import jakarta.enterprise.inject.spi.Bean;
+import jakarta.enterprise.inject.spi.BeanManager;
+import jakarta.enterprise.inject.spi.InjectionTarget;
 
 import org.jboss.as.ee.component.EEClassIntrospector;
 import org.jboss.as.naming.ManagedReference;
@@ -76,13 +81,15 @@ public class WeldClassIntrospector implements EEClassIntrospector, Service {
                 Object instance;
                 BasicInjectionTarget target = injectionTarget instanceof BasicInjectionTarget ? (BasicInjectionTarget) injectionTarget: null;
                 if(target != null && target.getBean() != null) {
+                    // instance is a bean, Weld will trigger injection and post construct as part of bean creation
                     instance = beanManager.getReference(target.getBean(), target.getAnnotatedType().getBaseType(), context);
                 } else {
+                    // instance is not a bean, invoke produce/inject/postConstruct manually
                     instance = injectionTarget.produce(context);
+                    injectionTarget.inject(instance, context);
+                    injectionTarget.postConstruct(instance);
                 }
 
-                injectionTarget.inject(instance, context);
-                injectionTarget.postConstruct(instance);
                 return new WeldManagedReference(injectionTarget, context, instance);
             }
         };

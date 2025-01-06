@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.clustering.cluster.group;
@@ -31,10 +14,11 @@ import org.jboss.as.test.clustering.cluster.AbstractClusteringTestCase;
 import org.jboss.as.test.clustering.cluster.group.bean.ClusterTopology;
 import org.jboss.as.test.clustering.cluster.group.bean.ClusterTopologyRetriever;
 import org.jboss.as.test.clustering.cluster.group.bean.ClusterTopologyRetrieverBean;
+import org.jboss.as.test.clustering.cluster.group.bean.legacy.LegacyClusterTopologyRetrieverBean;
 import org.jboss.as.test.clustering.ejb.EJBDirectory;
 import org.jboss.as.test.clustering.ejb.RemoteEJBDirectory;
 import org.jboss.as.test.shared.TimeoutUtil;
-import org.jboss.as.test.shared.integration.ejb.security.PermissionUtils;
+import org.jboss.as.test.shared.PermissionUtils;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
@@ -42,7 +26,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Integration test for the listener facility of a {@link Group}.
+ * Integration test for the listener facility of a {@link LegacyGroup}.
  * @author Paul Ferraro
  */
 @RunWith(Arquillian.class)
@@ -64,7 +48,8 @@ public class GroupListenerTestCase extends AbstractClusteringTestCase {
 
     private static Archive<?> createDeployment() {
         WebArchive war = ShrinkWrap.create(WebArchive.class, MODULE_NAME + ".war");
-        war.addPackage(ClusterTopologyRetriever.class.getPackage());
+        war.addPackage(ClusterTopologyRetrieverBean.class.getPackage());
+        war.addPackage(LegacyClusterTopologyRetrieverBean.class.getPackage());
         war.setWebXML(GroupListenerTestCase.class.getPackage(), "web.xml");
         war.addAsManifestResource(PermissionUtils.createPermissionsXmlAsset(new RuntimePermission("getClassLoader")), "permissions.xml");
         return war;
@@ -72,8 +57,17 @@ public class GroupListenerTestCase extends AbstractClusteringTestCase {
 
     @Test
     public void test() throws Exception {
+        this.test(ClusterTopologyRetrieverBean.class);
+    }
+
+    @Test
+    public void legacy() throws Exception {
+        this.test(LegacyClusterTopologyRetrieverBean.class);
+    }
+
+    public void test(Class<? extends ClusterTopologyRetriever> beanClass) throws Exception {
         try (EJBDirectory directory = new RemoteEJBDirectory(MODULE_NAME)) {
-            ClusterTopologyRetriever bean = directory.lookupStateless(ClusterTopologyRetrieverBean.class, ClusterTopologyRetriever.class);
+            ClusterTopologyRetriever bean = directory.lookupStateless(LegacyClusterTopologyRetrieverBean.class, ClusterTopologyRetriever.class);
 
             ClusterTopology topology = bean.getClusterTopology();
             assertEquals(topology.getCurrentMembers().toString(), 2, topology.getCurrentMembers().size());

@@ -1,28 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.messaging.mgmt;
 
-import static javax.jms.Session.AUTO_ACKNOWLEDGE;
+import static jakarta.jms.Session.AUTO_ACKNOWLEDGE;
 import static org.jboss.as.controller.operations.common.Util.getEmptyOperation;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -30,16 +13,16 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.StringReader;
 
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.Session;
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
+import jakarta.jms.Connection;
+import jakarta.jms.ConnectionFactory;
+import jakarta.jms.Message;
+import jakarta.jms.MessageConsumer;
+import jakarta.jms.MessageProducer;
+import jakarta.jms.Queue;
+import jakarta.jms.Session;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonReader;
 import javax.naming.Context;
 
 import org.jboss.arquillian.container.test.api.RunAsClient;
@@ -513,9 +496,12 @@ public class JMSQueueManagementTestCase {
 
         MessageConsumer consumer = session.createConsumer(queue);
 
+        // Sanity check that there are messages to clean up when the queue is removed
         ModelNode result = execute(getQueueOperation("count-messages"), true);
         Assert.assertTrue(result.isDefined());
-        Assert.assertEquals(1, result.asInt());
+        // WFLY-19519 See issue description for possible reasons why the message count is on rare occasions 2
+        //Assert.assertEquals(1, result.asInt());
+        Assert.assertTrue(result.asInt() > 0);
 
         // remove the queue
         adminSupport.removeJmsQueue(getQueueName());

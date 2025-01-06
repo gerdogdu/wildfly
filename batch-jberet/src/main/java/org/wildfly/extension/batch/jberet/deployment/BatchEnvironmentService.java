@@ -1,29 +1,14 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.batch.jberet.deployment;
 
 import java.util.Properties;
-import javax.transaction.TransactionManager;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import jakarta.transaction.TransactionManager;
 
 import org.jberet.repository.JobRepository;
 import org.jberet.spi.ArtifactFactory;
@@ -32,11 +17,12 @@ import org.jberet.spi.JobExecutor;
 import org.jberet.spi.JobTask;
 import org.jberet.spi.JobXmlResolver;
 import org.jboss.as.naming.context.NamespaceContextSelector;
-import org.jboss.msc.service.Service;
+import org.jboss.logging.MDC;
+import org.jboss.logging.NDC;
+import org.jboss.msc.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
-import org.jboss.msc.value.InjectedValue;
 import org.wildfly.extension.batch.jberet.BatchConfiguration;
 import org.wildfly.extension.batch.jberet._private.BatchLogger;
 import org.wildfly.extension.requestcontroller.ControlPoint;
@@ -48,16 +34,17 @@ import org.wildfly.transaction.client.ContextTransactionManager;
 
 /**
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
-public class BatchEnvironmentService implements Service<SecurityAwareBatchEnvironment> {
+public class BatchEnvironmentService implements Service {
 
     private static final Properties PROPS = new Properties();
-
-    private final InjectedValue<WildFlyArtifactFactory> artifactFactoryInjector = new InjectedValue<>();
-    private final InjectedValue<JobExecutor> jobExecutorInjector = new InjectedValue<>();
-    private final InjectedValue<RequestController> requestControllerInjector = new InjectedValue<>();
-    private final InjectedValue<JobRepository> jobRepositoryInjector = new InjectedValue<>();
-    private final InjectedValue<BatchConfiguration> batchConfigurationInjector = new InjectedValue<>();
+    private final Consumer<SecurityAwareBatchEnvironment> batchEnvironmentConsumer;
+    private final Supplier<WildFlyArtifactFactory> artifactFactorySupplier;
+    private final Supplier<JobExecutor> jobExecutorSupplier;
+    private final Supplier<RequestController> requestControllerSupplier;
+    private final Supplier<JobRepository> jobRepositorySupplier;
+    private final Supplier<BatchConfiguration> batchConfigurationSupplier;
 
     private final ClassLoader classLoader;
     private final JobXmlResolver jobXmlResolver;
@@ -66,10 +53,22 @@ public class BatchEnvironmentService implements Service<SecurityAwareBatchEnviro
     private SecurityAwareBatchEnvironment batchEnvironment = null;
     private volatile ControlPoint controlPoint;
 
-    public BatchEnvironmentService(final ClassLoader classLoader,
+    public BatchEnvironmentService(final Consumer<SecurityAwareBatchEnvironment> batchEnvironmentConsumer,
+                                   final Supplier<WildFlyArtifactFactory> artifactFactorySupplier,
+                                   final Supplier<JobExecutor> jobExecutorSupplier,
+                                   final Supplier<RequestController> requestControllerSupplier,
+                                   final Supplier<JobRepository> jobRepositorySupplier,
+                                   final Supplier<BatchConfiguration> batchConfigurationSupplier,
+                                   final ClassLoader classLoader,
                                    final JobXmlResolver jobXmlResolver,
                                    final String deploymentName,
                                    final NamespaceContextSelector namespaceContextSelector) {
+        this.batchEnvironmentConsumer = batchEnvironmentConsumer;
+        this.artifactFactorySupplier = artifactFactorySupplier;
+        this.jobExecutorSupplier = jobExecutorSupplier;
+        this.requestControllerSupplier = requestControllerSupplier;
+        this.jobRepositorySupplier = jobRepositorySupplier;
+        this.batchConfigurationSupplier = batchConfigurationSupplier;
         this.classLoader = classLoader;
         this.jobXmlResolver = jobXmlResolver;
         this.deploymentName = deploymentName;
@@ -79,63 +78,40 @@ public class BatchEnvironmentService implements Service<SecurityAwareBatchEnviro
     @Override
     public synchronized void start(final StartContext context) throws StartException {
         BatchLogger.LOGGER.debugf("Creating batch environment; %s", classLoader);
-        final BatchConfiguration batchConfiguration = batchConfigurationInjector.getValue();
+        final BatchConfiguration batchConfiguration = batchConfigurationSupplier.get();
         // Find the job executor to use
-        JobExecutor jobExecutor = jobExecutorInjector.getOptionalValue();
+        JobExecutor jobExecutor = jobExecutorSupplier != null ? jobExecutorSupplier.get() : null;
         if (jobExecutor == null) {
             jobExecutor = batchConfiguration.getDefaultJobExecutor();
         }
         // Find the job repository to use
-        JobRepository jobRepository = jobRepositoryInjector.getOptionalValue();
+        JobRepository jobRepository = jobRepositorySupplier != null ? jobRepositorySupplier.get() : null;
         if (jobRepository == null) {
             jobRepository = batchConfiguration.getDefaultJobRepository();
         }
 
-        this.batchEnvironment = new WildFlyBatchEnvironment(artifactFactoryInjector.getValue(),
+        this.batchEnvironment = new WildFlyBatchEnvironment(artifactFactorySupplier.get(),
                 jobExecutor, ContextTransactionManager.getInstance(),
                 jobRepository, jobXmlResolver);
 
-        final RequestController requestController = requestControllerInjector.getOptionalValue();
+        final RequestController requestController = requestControllerSupplier != null ? requestControllerSupplier.get() : null;
         if (requestController != null) {
             // Create the entry point
             controlPoint = requestController.getControlPoint(deploymentName, "batch-executor-service");
         } else {
             controlPoint = null;
         }
+        batchEnvironmentConsumer.accept(batchEnvironment);
     }
 
     @Override
     public synchronized void stop(final StopContext context) {
+        batchEnvironmentConsumer.accept(null);
         BatchLogger.LOGGER.debugf("Removing batch environment; %s", classLoader);
         batchEnvironment = null;
         if (controlPoint != null) {
-            requestControllerInjector.getValue().removeControlPoint(controlPoint);
+            requestControllerSupplier.get().removeControlPoint(controlPoint);
         }
-    }
-
-    @Override
-    public synchronized SecurityAwareBatchEnvironment getValue() throws IllegalStateException, IllegalArgumentException {
-        return batchEnvironment;
-    }
-
-    public InjectedValue<WildFlyArtifactFactory> getArtifactFactoryInjector() {
-        return artifactFactoryInjector;
-    }
-
-    public InjectedValue<JobExecutor> getJobExecutorInjector() {
-        return jobExecutorInjector;
-    }
-
-    public InjectedValue<RequestController> getRequestControllerInjector() {
-        return requestControllerInjector;
-    }
-
-    public InjectedValue<JobRepository> getJobRepositoryInjector() {
-        return jobRepositoryInjector;
-    }
-
-    public InjectedValue<BatchConfiguration> getBatchConfigurationInjector() {
-        return batchConfigurationInjector;
     }
 
     private class WildFlyBatchEnvironment implements BatchEnvironment, SecurityAwareBatchEnvironment {
@@ -227,7 +203,7 @@ public class BatchEnvironmentService implements Service<SecurityAwareBatchEnviro
 
         @Override
         public SecurityDomain getSecurityDomain() {
-            return batchConfigurationInjector.getValue().getSecurityDomain();
+            return batchConfigurationSupplier.get().getSecurityDomain();
         }
 
         private ContextHandle createContextHandle() {
@@ -236,7 +212,8 @@ public class BatchEnvironmentService implements Service<SecurityAwareBatchEnviro
             final ClassLoaderContextHandle classLoaderContextHandle = (tccl == null ? new ClassLoaderContextHandle(classLoader) : new ClassLoaderContextHandle(tccl));
             // Class loader handle must be first so the TCCL is set before the other handles execute
             return new ContextHandle.ChainedContextHandle(classLoaderContextHandle, new NamespaceContextHandle(namespaceContextSelector),
-                     artifactFactory.createContextHandle(), new ConcurrentContextHandle());
+                     artifactFactory.createContextHandle(), new ConcurrentContextHandle(),
+                    new DiagnosticContextHandle(MDC.getMap(), NDC.get()));
         }
     }
 }

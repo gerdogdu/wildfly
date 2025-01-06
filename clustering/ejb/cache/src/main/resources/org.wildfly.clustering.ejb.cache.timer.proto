@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package org.wildfly.clustering.ejb.cache.timer;
+
+import "java.lang.proto";
+import "java.time.proto";
+import "java.util.proto";
+import "org.wildfly.clustering.server.offset.proto";
+import "org.wildfly.clustering.marshalling.proto";
+
+// IDs: 345-349
+
+/**
+ * @TypeId(345)
+ */
+message IntervalTimerMetaDataEntry {
+	org.wildfly.clustering.marshalling.ByteBufferMarshalledValue	info	= 1;
+	java.time.Instant	start	= 2;
+	java.time.Duration	lastTimeout	= 3;
+	java.time.Duration	interval	= 4;
+}
+
+/**
+ * @TypeId(346)
+ */
+message ScheduleTimerMetaDataEntry {
+	org.wildfly.clustering.marshalling.ByteBufferMarshalledValue	info	= 1;
+	java.time.Instant	start	= 2;
+	java.time.Duration	lastTimeout	= 3;
+	string	timeoutMatcher	= 4;
+	java.util.Date	expressionStart	= 5;
+	java.util.Date	expressionEnd	= 6;
+	string	expressionYear	= 7;
+	string	expressionMonth	= 8;
+	string	expressionDayOfMonth	= 9;
+	string	expressionDayOfWeek	= 10;
+	string	expressionZone	= 11;
+	string	expressionHour	= 12;
+	string	expressionMinute	= 13;
+	string	expressionSecond	= 14;
+}
+
+/**
+ * @TypeId(347)
+ */
+message TimerMetaDataEntryFunction {
+	org.wildfly.clustering.server.offset.DurationOffset	lastTimeoutOffset	= 1;
+}
+
+/**
+ * @TypeId(348)
+ */
+message TimeoutDescriptor {
+	string	methodName	= 1;
+	uint32	parameters	= 2;
+}
+
+/**
+ * @TypeId(349)
+ */
+message TimerIndex {
+	string	className	= 1;
+	string	methodName	= 2;
+	uint32	parameters	= 3;
+	uint32	index	= 4;
+}

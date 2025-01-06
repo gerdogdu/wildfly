@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.jgroups.subsystem;
@@ -25,29 +8,30 @@ package org.jboss.as.clustering.jgroups.subsystem;
 import java.util.function.UnaryOperator;
 
 import org.jboss.as.clustering.controller.ResourceDescriptor;
-import org.jboss.as.clustering.controller.ResourceServiceConfiguratorFactory;
 import org.jboss.as.controller.PathElement;
 import org.jgroups.Global;
+import org.jgroups.stack.Protocol;
+import org.wildfly.subsystem.service.ResourceServiceConfigurator;
 
 /**
  * @author Paul Ferraro
  */
-public class GenericProtocolResourceDefinition extends ProtocolResourceDefinition {
+public class GenericProtocolResourceDefinition extends ProtocolResourceDefinition<Protocol> {
 
     public static PathElement pathElement(String name) {
         return ProtocolResourceDefinition.pathElement(Global.PREFIX + name);
     }
 
-    GenericProtocolResourceDefinition(UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfiguratorFactory parentServiceConfiguratorFactory) {
-        this(WILDCARD_PATH, configurator, parentServiceConfiguratorFactory);
+    GenericProtocolResourceDefinition(UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfigurator parentServiceConfigurator) {
+        this(WILDCARD_PATH, configurator, parentServiceConfigurator);
     }
 
-    GenericProtocolResourceDefinition(String name, JGroupsModel deprecation, UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfiguratorFactory parentServiceConfiguratorFactory) {
-        this(pathElement(name), configurator, parentServiceConfiguratorFactory);
+    GenericProtocolResourceDefinition(String name, JGroupsSubsystemModel deprecation, UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfigurator parentServiceConfigurator) {
+        this(pathElement(name), configurator, parentServiceConfigurator);
         this.setDeprecated(deprecation.getVersion());
     }
 
-    private GenericProtocolResourceDefinition(PathElement path, UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfiguratorFactory parentServiceConfiguratorFactory) {
-        super(path, configurator, ProtocolConfigurationServiceConfigurator::new, parentServiceConfiguratorFactory);
+    private GenericProtocolResourceDefinition(PathElement path, UnaryOperator<ResourceDescriptor> configurator, ResourceServiceConfigurator parentServiceConfigurator) {
+        super(path, configurator, parentServiceConfigurator);
     }
 }

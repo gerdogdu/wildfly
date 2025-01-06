@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.clustering.cluster.singleton.partition;
@@ -28,7 +11,6 @@ import static org.jboss.as.test.clustering.cluster.AbstractClusteringTestCase.NO
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import org.jboss.as.clustering.controller.ServiceValueCaptorServiceConfigurator;
 import org.jboss.as.test.clustering.cluster.singleton.service.NodeServiceExecutorRegistry;
 import org.jboss.as.test.clustering.cluster.singleton.service.SingletonElectionListenerService;
 import org.jboss.msc.service.ServiceActivator;
@@ -65,8 +47,8 @@ public class SingletonServiceActivator implements ServiceActivator {
         };
         builder.setInstance(new ChildTargetService(installer)).install();
 
-        new ServiceValueCaptorServiceConfigurator<>(NodeServiceExecutorRegistry.INSTANCE.add(SERVICE_A_NAME)).build(context.getServiceTarget()).install();
-        new ServiceValueCaptorServiceConfigurator<>(NodeServiceExecutorRegistry.INSTANCE.add(SERVICE_B_NAME)).build(context.getServiceTarget()).install();
+        NodeServiceExecutorRegistry.INSTANCE.capture(SERVICE_A_NAME).install(context.getServiceTarget());
+        NodeServiceExecutorRegistry.INSTANCE.capture(SERVICE_B_NAME).install(context.getServiceTarget());
     }
 
     private static void install(ServiceTarget target, SingletonServiceConfiguratorFactory factory, ServiceName name, String preferredNode) {

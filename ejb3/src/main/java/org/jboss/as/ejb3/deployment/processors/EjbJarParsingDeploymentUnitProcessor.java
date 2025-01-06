@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.deployment.processors;
@@ -42,9 +25,8 @@ import org.jboss.as.ee.structure.SpecDescriptorPropertyReplacement;
 import org.jboss.as.ejb3.cache.EJBBoundCacheParser;
 import org.jboss.as.ejb3.clustering.ClusteringSchema;
 import org.jboss.as.ejb3.clustering.EJBBoundClusteringMetaDataParser;
-import org.jboss.as.ejb3.deliveryactive.parser.EJBBoundMdbDeliveryMetaDataParser;
-import org.jboss.as.ejb3.deliveryactive.parser.EJBBoundMdbDeliveryMetaDataParser11;
-import org.jboss.as.ejb3.deliveryactive.parser.EJBBoundMdbDeliveryMetaDataParser12;
+import org.jboss.as.ejb3.delivery.parser.EJBBoundMdbDeliveryMetaDataParser;
+import org.jboss.as.ejb3.delivery.parser.EjbBoundMdbDeliveryMetaDataSchema;
 import org.jboss.as.ejb3.deployment.EjbDeploymentAttachmentKeys;
 import org.jboss.as.ejb3.deployment.EjbJarDescription;
 import org.jboss.as.ejb3.interceptor.ContainerInterceptorsParser;
@@ -53,8 +35,10 @@ import org.jboss.as.ejb3.pool.EJBBoundPoolParser;
 import org.jboss.as.ejb3.resourceadapterbinding.parser.EJBBoundResourceAdapterBindingMetaDataParser;
 import org.jboss.as.ejb3.security.parser.EJBBoundSecurityMetaDataParser;
 import org.jboss.as.ejb3.security.parser.EJBBoundSecurityMetaDataParser11;
+import org.jboss.as.ejb3.security.parser.EJBBoundSecurityMetaDataParser20;
 import org.jboss.as.ejb3.security.parser.SecurityRoleMetaDataParser;
 import org.jboss.as.ejb3.timerservice.TimerServiceMetaDataParser;
+import org.jboss.as.ejb3.timerservice.TimerServiceMetaDataSchema;
 import org.jboss.as.server.deployment.Attachments;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
@@ -156,7 +140,7 @@ public class EjbJarParsingDeploymentUnitProcessor implements DeploymentUnitProce
         if (ejbJarMetaData.isMetadataComplete()) {
             MetadataCompleteMarker.setMetadataComplete(deploymentUnit, true);
         }
-        if (!ejbJarMetaData.isEJB3x()) {
+        if (!ejbJarMetaData.isEJB3x() && !ejbJarMetaData.isEJB40()) {
             //EJB spec 20.5.1, we do not process annotations for older deployments
             MetadataCompleteMarker.setMetadataComplete(deploymentUnit, true);
         }
@@ -304,26 +288,45 @@ public class EjbJarParsingDeploymentUnitProcessor implements DeploymentUnitProce
     static Map<String, AbstractMetaDataParser<?>> createJbossEjbJarParsers() {
         Map<String, AbstractMetaDataParser<?>> parsers = new HashMap<String, AbstractMetaDataParser<?>>();
         for (ClusteringSchema schema : EnumSet.allOf(ClusteringSchema.class)) {
-            parsers.put(schema.getNamespaceUri(), new EJBBoundClusteringMetaDataParser(schema));
+            parsers.put(schema.getNamespace().getUri(), new EJBBoundClusteringMetaDataParser(schema));
         }
         parsers.put(EJBBoundSecurityMetaDataParser.LEGACY_NAMESPACE_URI, EJBBoundSecurityMetaDataParser.INSTANCE);
         parsers.put(EJBBoundSecurityMetaDataParser.NAMESPACE_URI_1_0, EJBBoundSecurityMetaDataParser.INSTANCE);
         parsers.put(EJBBoundSecurityMetaDataParser11.NAMESPACE_URI_1_1, EJBBoundSecurityMetaDataParser11.INSTANCE);
+        parsers.put(EJBBoundSecurityMetaDataParser20.NAMESPACE_URI_2_0, EJBBoundSecurityMetaDataParser20.INSTANCE);
+
         parsers.put(SecurityRoleMetaDataParser.LEGACY_NAMESPACE_URI, SecurityRoleMetaDataParser.INSTANCE);
-        parsers.put(SecurityRoleMetaDataParser.NAMESPACE_URI, SecurityRoleMetaDataParser.INSTANCE);
+        parsers.put(SecurityRoleMetaDataParser.NAMESPACE_URI_1_0, SecurityRoleMetaDataParser.INSTANCE);
+        parsers.put(SecurityRoleMetaDataParser.NAMESPACE_URI_2_0, SecurityRoleMetaDataParser.INSTANCE);
+
         parsers.put(EJBBoundResourceAdapterBindingMetaDataParser.LEGACY_NAMESPACE_URI, EJBBoundResourceAdapterBindingMetaDataParser.INSTANCE);
-        parsers.put(EJBBoundResourceAdapterBindingMetaDataParser.NAMESPACE_URI, EJBBoundResourceAdapterBindingMetaDataParser.INSTANCE);
-        parsers.put(EJBBoundMdbDeliveryMetaDataParser.NAMESPACE_URI_1_0, EJBBoundMdbDeliveryMetaDataParser.INSTANCE);
-        parsers.put(EJBBoundMdbDeliveryMetaDataParser11.NAMESPACE_URI_1_1, EJBBoundMdbDeliveryMetaDataParser11.INSTANCE);
-        parsers.put(EJBBoundMdbDeliveryMetaDataParser12.NAMESPACE_URI_1_2, EJBBoundMdbDeliveryMetaDataParser12.INSTANCE);
+        parsers.put(EJBBoundResourceAdapterBindingMetaDataParser.NAMESPACE_URI_1_0, EJBBoundResourceAdapterBindingMetaDataParser.INSTANCE);
+        parsers.put(EJBBoundResourceAdapterBindingMetaDataParser.NAMESPACE_URI_2_0, EJBBoundResourceAdapterBindingMetaDataParser.INSTANCE);
+
+        for (EjbBoundMdbDeliveryMetaDataSchema schema : EnumSet.allOf(EjbBoundMdbDeliveryMetaDataSchema.class)) {
+            parsers.put(schema.getNamespace().getUri(), new EJBBoundMdbDeliveryMetaDataParser(schema));
+        }
+
         parsers.put("urn:iiop", new IIOPMetaDataParser());
         parsers.put("urn:iiop:1.0", new IIOPMetaDataParser());
+        parsers.put("urn:iiop:2.0", new IIOPMetaDataParser());
+
         parsers.put("urn:trans-timeout", new TransactionTimeoutMetaDataParser());
         parsers.put("urn:trans-timeout:1.0", new TransactionTimeoutMetaDataParser());
-        parsers.put(EJBBoundPoolParser.NAMESPACE_URI, new EJBBoundPoolParser());
-        parsers.put(EJBBoundCacheParser.NAMESPACE_URI, new EJBBoundCacheParser());
+        parsers.put("urn:trans-timeout:2.0", new TransactionTimeoutMetaDataParser());
+
+        parsers.put(EJBBoundPoolParser.NAMESPACE_URI_1_0, new EJBBoundPoolParser());
+        parsers.put(EJBBoundPoolParser.NAMESPACE_URI_2_0, new EJBBoundPoolParser());
+
+        parsers.put(EJBBoundCacheParser.NAMESPACE_URI_1_0, new EJBBoundCacheParser());
+        parsers.put(EJBBoundCacheParser.NAMESPACE_URI_2_0, new EJBBoundCacheParser());
+
         parsers.put(ContainerInterceptorsParser.NAMESPACE_URI_1_0, ContainerInterceptorsParser.INSTANCE);
-        parsers.put(TimerServiceMetaDataParser.NAMESPACE_URI, TimerServiceMetaDataParser.INSTANCE);
+        parsers.put(ContainerInterceptorsParser.NAMESPACE_URI_2_0, ContainerInterceptorsParser.INSTANCE);
+
+        for (TimerServiceMetaDataSchema schema : EnumSet.allOf(TimerServiceMetaDataSchema.class)) {
+            parsers.put(schema.getNamespace().getUri(), new TimerServiceMetaDataParser(schema));
+        }
         return parsers;
     }
 }

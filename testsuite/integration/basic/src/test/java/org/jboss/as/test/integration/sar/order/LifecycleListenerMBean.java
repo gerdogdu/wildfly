@@ -1,41 +1,51 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021 Red Hat, Inc., and individual contributors
- * as indicated by the @author tags.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.sar.order;
 
+import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 public interface LifecycleListenerMBean {
 
-    void mbeanCreated(String id);
+    void mbeanEvent(String id, String event);
 
-    void mbeanStarted(String id);
+    List<Tuple> getAllEvents();
 
-    void mbeanStopped(String id);
+    final class Tuple implements Serializable {
 
-    void mbeanDestroyed(String id);
+        private static final long serialVersionUID = 1L;
 
-    List<String> getCreates();
+        final String id;
+        final String method;
 
-    List<String> getStarts();
+        public Tuple(String id, String method) {
+            this.id = id;
+            this.method = method;
+        }
 
-    List<String> getStops();
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Tuple tuple = (Tuple) o;
+            return Objects.equals(id, tuple.id) && Objects.equals(method, tuple.method);
+        }
 
-    List<String> getDestroys();
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, method);
+        }
 
+        @Override
+        public String toString() {
+            return "Tuple{" +
+                    "id='" + id + '\'' +
+                    ", method='" + method + '\'' +
+                    '}';
+        }
+    }
 }

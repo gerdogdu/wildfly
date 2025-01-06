@@ -13,14 +13,14 @@ https://wildfly.org
 * Modular Design
 * Unified Configuration and Management
 
-And of course Jakarta EE!
+And of course Jakarta EE and MicroProfile!
 
 Building
 -------------------
 
 Prerequisites:
 
-* JDK 11 or newer - check `java -version`
+* JDK 17 or newer - check `java -version`
 * Maven 3.6.0 or newer - check `mvn -v`
 * On *nix systems, make sure that the maximum number of open files for the user running the build is at least 4096
   (check `ulimit -n`) or more, depending on what other i/o intensive processes the user is running.
@@ -66,9 +66,7 @@ Documentation
 
 Contributing
 ------------------
-* Git Setup: https://github.com/wildfly/wildfly/blob/main/docs/src/main/asciidoc/_hacking/github_setup.adoc
-* Contributing: https://github.com/wildfly/wildfly/blob/main/docs/src/main/asciidoc/_hacking/contributing.adoc
-* Pull request standard: https://github.com/wildfly/wildfly/blob/main/docs/src/main/asciidoc/_hacking/pullrequest_standards.adoc
+Please see the instructions available in the [contribution guide](CONTRIBUTING.md).
 
 Build vs. Dist directories
 --------------------------
@@ -102,14 +100,14 @@ To run all the tests
 Using Eclipse
 -------------
 1. Install the latest version of eclipse
-2. Make sure Xmx in eclipse.ini is at least 1280M, and it's using Java 11
+2. Make sure Xmx in eclipse.ini is at least 1280M, and it's using JDK 17
 3. Launch eclipse and install the m2e plugin, make sure it uses your repo configs
    (get it from: http://www.eclipse.org/m2e/
    or install "Maven Integration for Eclipse" from the Eclipse Marketplace)
 4. In eclipse preferences Java->Compiler->Errors/Warnings->Deprecated and restricted
    set forbidden reference to WARNING
 5. In eclipse preferences Java->Code Style, import the cleanup, templates, and
-   formatter configs in [ide-configs/eclipse](https://github.com/wildfly/wildfly-core/tree/master/ide-configs) in the wildfly-core repository.
+   formatter configs in [ide-configs/eclipse](https://github.com/wildfly/wildfly-core/tree/main/ide-configs) in the wildfly-core repository.
 6. In eclipse preferences Java->Editor->Save Actions enable "Additional Actions",
    and deselect all actions except for "Remove trailing whitespace"
 7. Use import on the root pom, which will pull in all modules
@@ -117,5 +115,5 @@ Using Eclipse
 
 License
 -------
-* [GNU Lesser General Public License Version 2.1](http://www.gnu.org/licenses/lgpl-2.1-standalone.html)
+* [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 

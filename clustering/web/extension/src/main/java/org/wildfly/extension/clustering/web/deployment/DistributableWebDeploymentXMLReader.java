@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.web.deployment;
@@ -31,17 +14,14 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 
 import org.jboss.as.controller.parsing.ParseUtils;
-import org.jboss.as.server.deployment.DeploymentUnit;
-import org.jboss.as.server.deployment.jbossallxml.JBossAllXMLParser;
 import org.jboss.staxmapper.XMLElementReader;
 import org.jboss.staxmapper.XMLExtendedStreamReader;
-import org.wildfly.clustering.web.infinispan.session.InfinispanSessionManagementConfiguration;
-import org.wildfly.clustering.web.session.DistributableSessionManagementConfiguration;
-import org.wildfly.extension.clustering.web.routing.LocalRouteLocatorServiceConfiguratorFactory;
-import org.wildfly.extension.clustering.web.routing.NullRouteLocatorServiceConfiguratorFactory;
-import org.wildfly.extension.clustering.web.routing.RouteLocatorServiceConfiguratorFactory;
-import org.wildfly.extension.clustering.web.routing.infinispan.PrimaryOwnerRouteLocatorServiceConfiguratorFactory;
-import org.wildfly.extension.clustering.web.routing.infinispan.RankedRouteLocatorServiceConfiguratorFactory;
+import org.wildfly.clustering.web.service.routing.RouteLocatorProvider;
+import org.wildfly.common.function.Functions;
+import org.wildfly.extension.clustering.web.routing.LocalRouteLocatorProvider;
+import org.wildfly.extension.clustering.web.routing.NullRouteLocatorProvider;
+import org.wildfly.extension.clustering.web.routing.infinispan.PrimaryOwnerRouteLocatorProvider;
+import org.wildfly.extension.clustering.web.routing.infinispan.RankedRouteLocatorProvider;
 import org.wildfly.extension.clustering.web.session.hotrod.HotRodSessionManagementProvider;
 import org.wildfly.extension.clustering.web.session.infinispan.InfinispanSessionManagementProvider;
 
@@ -49,7 +29,7 @@ import org.wildfly.extension.clustering.web.session.infinispan.InfinispanSession
  * Parser for both jboss-all.xml distributable-web namespace parsing its standalone deployment descriptor counterpart.
  * @author Paul Ferraro
  */
-public class DistributableWebDeploymentXMLReader implements XMLElementReader<MutableDistributableDeploymentConfiguration>, JBossAllXMLParser<DistributableWebDeploymentConfiguration> {
+public class DistributableWebDeploymentXMLReader implements XMLElementReader<MutableDistributableWebDeploymentConfiguration> {
 
     private static final String SESSION_MANAGEMENT = "session-management";
     private static final String NAME = "name";
@@ -68,6 +48,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
     private static final String DELIMITER = "delimiter";
     private static final String MAX_ROUTES = "max-routes";
     private static final String IMMUTABLE_CLASS = "immutable-class";
+    private static final String EXPIRATION_THREAD_POOL_SIZE = "expiration-thread-pool-size";
 
     private final DistributableWebDeploymentSchema schema;
 
@@ -76,14 +57,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
     }
 
     @Override
-    public DistributableWebDeploymentConfiguration parse(XMLExtendedStreamReader reader, DeploymentUnit unit) throws XMLStreamException {
-        MutableDistributableDeploymentConfiguration configuration = new MutableDistributableDeploymentConfiguration(unit);
-        this.readElement(reader, configuration);
-        return configuration;
-    }
-
-    @Override
-    public void readElement(XMLExtendedStreamReader reader, MutableDistributableDeploymentConfiguration configuration) throws XMLStreamException {
+    public void readElement(XMLExtendedStreamReader reader, MutableDistributableWebDeploymentConfiguration configuration) throws XMLStreamException {
         ParseUtils.requireNoAttributes(reader);
 
         Set<String> names = new TreeSet<>();
@@ -102,14 +76,14 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
             }
             case HOTROD_SESSION_MANAGEMENT: {
                 MutableHotRodSessionManagementConfiguration config = new MutableHotRodSessionManagementConfiguration(configuration);
-                configuration.setSessionManagement(new HotRodSessionManagementProvider(config));
-                this.readHotRodSessionManagement(reader, config);
+                RouteLocatorProvider provider = this.readHotRodSessionManagement(reader, config);
+                configuration.setSessionManagementProvider(new HotRodSessionManagementProvider(config, config, Functions.constantSupplier(provider)));
                 break;
             }
             case INFINISPAN_SESSION_MANAGEMENT: {
                 MutableInfinispanSessionManagementConfiguration config = new MutableInfinispanSessionManagementConfiguration(configuration);
-                RouteLocatorServiceConfiguratorFactory<InfinispanSessionManagementConfiguration<DeploymentUnit>> factory = this.readInfinispanSessionManagement(reader, config, configuration);
-                configuration.setSessionManagement(new InfinispanSessionManagementProvider(config, factory));
+                RouteLocatorProvider provider = this.readInfinispanSessionManagement(reader, config, configuration);
+                configuration.setSessionManagementProvider(new InfinispanSessionManagementProvider(config, config, Functions.constantSupplier(provider)));
                 break;
             }
             default: {
@@ -122,7 +96,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
         }
     }
 
-    private void readSessionManagement(XMLExtendedStreamReader reader, MutableDistributableDeploymentConfiguration configuration) throws XMLStreamException {
+    private void readSessionManagement(XMLExtendedStreamReader reader, MutableDistributableWebDeploymentConfiguration configuration) throws XMLStreamException {
 
         for (int i = 0; i < reader.getAttributeCount(); ++i) {
             String name = reader.getAttributeLocalName(i);
@@ -169,7 +143,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
         }
     }
 
-    private RouteLocatorServiceConfiguratorFactory<InfinispanSessionManagementConfiguration<DeploymentUnit>> readInfinispanSessionManagement(XMLExtendedStreamReader reader, MutableInfinispanSessionManagementConfiguration configuration, Consumer<String> accumulator) throws XMLStreamException {
+    private RouteLocatorProvider readInfinispanSessionManagement(XMLExtendedStreamReader reader, MutableInfinispanSessionManagementConfiguration configuration, Consumer<String> accumulator) throws XMLStreamException {
 
         Set<String> required = new TreeSet<>(Arrays.asList(CACHE_CONTAINER, GRANULARITY));
 
@@ -197,21 +171,21 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
             ParseUtils.requireAttributes(reader, required.toArray(new String[required.size()]));
         }
 
-        RouteLocatorServiceConfiguratorFactory<InfinispanSessionManagementConfiguration<DeploymentUnit>> affinityFactory = this.readInfinispanAffinity(reader);
+        RouteLocatorProvider affinityFactory = this.readInfinispanAffinity(reader);
 
         this.readImmutability(reader, accumulator);
 
         return affinityFactory;
     }
 
-    private RouteLocatorServiceConfiguratorFactory<InfinispanSessionManagementConfiguration<DeploymentUnit>> readInfinispanAffinity(XMLExtendedStreamReader reader) throws XMLStreamException {
+    private RouteLocatorProvider readInfinispanAffinity(XMLExtendedStreamReader reader) throws XMLStreamException {
         if (!reader.hasNext() || reader.nextTag() == XMLStreamConstants.END_ELEMENT) {
             throw ParseUtils.missingRequiredElement(reader, new TreeSet<>(Arrays.asList(NO_AFFINITY, LOCAL_AFFINITY, PRIMARY_OWNER_AFFINITY)));
         }
         switch (reader.getLocalName()) {
             case PRIMARY_OWNER_AFFINITY: {
                 ParseUtils.requireNoContent(reader);
-                return new PrimaryOwnerRouteLocatorServiceConfiguratorFactory<>();
+                return new PrimaryOwnerRouteLocatorProvider();
             }
             case RANKED_AFFINITY: {
                 if (this.schema.since(DistributableWebDeploymentSchema.VERSION_2_0)) {
@@ -225,7 +199,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
                                 break;
                             }
                             case MAX_ROUTES: {
-                                config.setMaxRoutes(Integer.parseInt(value));
+                                config.setMaxMembers(Integer.parseInt(value));
                                 break;
                             }
                             default: {
@@ -234,7 +208,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
                         }
                     }
                     ParseUtils.requireNoContent(reader);
-                    return new RankedRouteLocatorServiceConfiguratorFactory<>(config);
+                    return new RankedRouteLocatorProvider(config);
                 }
             }
             default: {
@@ -243,7 +217,7 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
         }
     }
 
-    private RouteLocatorServiceConfiguratorFactory<DistributableSessionManagementConfiguration<DeploymentUnit>> readHotRodSessionManagement(XMLExtendedStreamReader reader, MutableHotRodSessionManagementConfiguration configuration) throws XMLStreamException {
+    private RouteLocatorProvider readHotRodSessionManagement(XMLExtendedStreamReader reader, MutableHotRodSessionManagementConfiguration configuration) throws XMLStreamException {
 
         Set<String> required = new TreeSet<>(Arrays.asList(REMOTE_CACHE_CONTAINER, GRANULARITY));
 
@@ -260,6 +234,11 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
                 case CACHE_CONFIGURATION: {
                     configuration.setConfigurationName(value);
                     break;
+                }
+                case EXPIRATION_THREAD_POOL_SIZE: {
+                    if (this.schema.since(DistributableWebDeploymentSchema.VERSION_4_0)) {
+                        break;
+                    }
                 }
                 default: {
                     this.readSessionManagementAttribute(reader, i, configuration);
@@ -279,18 +258,18 @@ public class DistributableWebDeploymentXMLReader implements XMLElementReader<Mut
     }
 
     @SuppressWarnings("static-method")
-    private <C> RouteLocatorServiceConfiguratorFactory<C> readAffinity(XMLExtendedStreamReader reader) throws XMLStreamException {
+    private RouteLocatorProvider readAffinity(XMLExtendedStreamReader reader) throws XMLStreamException {
 
         switch (reader.getLocalName()) {
             case NO_AFFINITY: {
                 ParseUtils.requireNoAttributes(reader);
                 ParseUtils.requireNoContent(reader);
-                return new NullRouteLocatorServiceConfiguratorFactory<>();
+                return new NullRouteLocatorProvider();
             }
             case LOCAL_AFFINITY: {
                 ParseUtils.requireNoAttributes(reader);
                 ParseUtils.requireNoContent(reader);
-                return new LocalRouteLocatorServiceConfiguratorFactory<>();
+                return new LocalRouteLocatorProvider();
             }
             default: {
                 throw ParseUtils.unexpectedElement(reader);

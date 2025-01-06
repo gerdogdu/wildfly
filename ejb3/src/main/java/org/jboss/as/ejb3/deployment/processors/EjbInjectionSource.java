@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.deployment.processors;
@@ -26,6 +9,7 @@ import static org.jboss.as.ee.component.Attachments.EE_APPLICATION_DESCRIPTION;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.jboss.as.ee.component.ComponentView;
 import org.jboss.as.ee.component.EEApplicationDescription;
@@ -48,7 +32,6 @@ import org.jboss.modules.Module;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.value.Value;
 
 /**
  * Implementation of {@link InjectionSource} responsible for finding a specific bean instance with a bean name and interface.
@@ -145,9 +128,9 @@ public class EjbInjectionSource extends InjectionSource {
                             final EJBComponentDescription componentDescription = (EJBComponentDescription) description.getComponentDescription();
                             final EEModuleDescription moduleDescription = componentDescription.getModuleDescription();
                             final String earApplicationName = moduleDescription.getEarApplicationName();
-                            final Value<ClassLoader> viewClassLoader = new Value<ClassLoader>() {
+                            final Supplier<ClassLoader> viewClassLoader = new Supplier<>() {
                                 @Override
-                                public ClassLoader getValue() throws IllegalStateException, IllegalArgumentException {
+                                public ClassLoader get() throws IllegalStateException, IllegalArgumentException {
                                     final Module module = deploymentUnit.getAttachment(Attachments.MODULE);
                                     return module != null ? module.getClassLoader() : null;
                                 }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.batch.jberet.thread.pool;
@@ -30,6 +13,8 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.jberet.spi.JobExecutor;
 import org.jboss.as.controller.OperationContext;
@@ -61,6 +46,7 @@ import org.wildfly.extension.batch.jberet._private.Capabilities;
  * A resource definition for the batch thread pool.
  *
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public class BatchThreadPoolResourceDefinition extends SimpleResourceDefinition {
 
@@ -100,10 +86,12 @@ public class BatchThreadPoolResourceDefinition extends SimpleResourceDefinition 
             super.performRuntime(context, operation, model);
             final String name = context.getCurrentAddressValue();
             final ServiceTarget target = context.getServiceTarget();
-            final JobExecutorService service = new JobExecutorService();
-            final ServiceBuilder<?> serviceBuilder = target.addService(context.getCapabilityServiceName(Capabilities.THREAD_POOL_CAPABILITY.getName(), name, JobExecutor.class),
-                    service);
-            serviceBuilder.addDependency(serviceNameBase.append(name), ManagedJBossThreadPoolExecutorService.class, service.getThreadPoolInjector());
+            final ServiceName serviceName = context.getCapabilityServiceName(Capabilities.THREAD_POOL_CAPABILITY.getName(), name, JobExecutor.class);
+            final ServiceBuilder<?> serviceBuilder = target.addService(serviceName);
+            final Consumer<JobExecutor> jobExecutorConsumer = serviceBuilder.provides(serviceName);
+            final Supplier<ManagedJBossThreadPoolExecutorService> threadPoolSupplier = serviceBuilder.requires(serviceNameBase.append(name));
+            final JobExecutorService service = new JobExecutorService(jobExecutorConsumer, threadPoolSupplier);
+            serviceBuilder.setInstance(service);
             serviceBuilder.install();
         }
     }

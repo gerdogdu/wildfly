@@ -1,51 +1,46 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.infinispan.subsystem;
 
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+
+import org.infinispan.commons.executors.ExecutorFactory;
+import org.infinispan.commons.executors.ThreadPoolExecutorFactory;
+import org.infinispan.configuration.global.ThreadPoolConfigurationBuilder;
 import org.jboss.as.clustering.controller.Attribute;
 import org.jboss.as.clustering.controller.ResourceDefinitionProvider;
 import org.jboss.as.clustering.controller.ResourceDescriptor;
-import org.jboss.as.clustering.controller.ResourceServiceConfigurator;
-import org.jboss.as.clustering.controller.ResourceServiceConfiguratorFactory;
-import org.jboss.as.clustering.controller.SimpleResourceRegistration;
+import org.jboss.as.clustering.controller.SimpleResourceRegistrar;
 import org.jboss.as.clustering.controller.ResourceServiceHandler;
 import org.jboss.as.clustering.controller.SimpleAttribute;
-import org.jboss.as.clustering.controller.SimpleResourceServiceHandler;
 import org.jboss.as.clustering.controller.validation.IntRangeValidatorBuilder;
 import org.jboss.as.clustering.controller.validation.LongRangeValidatorBuilder;
 import org.jboss.as.clustering.controller.validation.ParameterValidatorBuilder;
-import org.jboss.as.controller.PathAddress;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.ResourceDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
+import org.jboss.as.controller.capability.UnaryCapabilityNameResolver;
 import org.jboss.as.controller.client.helpers.MeasurementUnit;
 import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
-import org.jboss.msc.service.ServiceName;
+import org.wildfly.clustering.context.DefaultThreadFactory;
+import org.wildfly.subsystem.resource.operation.ResourceOperationRuntimeHandler;
+import org.wildfly.subsystem.service.ResourceServiceConfigurator;
+import org.wildfly.subsystem.service.ResourceServiceInstaller;
+import org.wildfly.subsystem.service.capability.CapabilityServiceInstaller;
 
 /**
  * Scheduled thread pool resource definitions for Infinispan subsystem.
@@ -55,7 +50,7 @@ import org.jboss.msc.service.ServiceName;
  *
  * @author Radoslav Husar
  */
-public enum ScheduledThreadPoolResourceDefinition implements ResourceDefinitionProvider, ScheduledThreadPoolDefinition, ResourceServiceConfiguratorFactory {
+public enum ScheduledThreadPoolResourceDefinition implements ResourceDefinitionProvider, ScheduledThreadPoolDefinition, ThreadPoolServiceDescriptor, ResourceServiceConfigurator {
 
     EXPIRATION("expiration", 1, 60000), // called eviction prior to Infinispan 8
     ;
@@ -69,14 +64,16 @@ public enum ScheduledThreadPoolResourceDefinition implements ResourceDefinitionP
     private final PathElement path;
     private final Attribute minThreads;
     private final Attribute keepAliveTime;
+    private final RuntimeCapability<Void> capability;
 
     ScheduledThreadPoolResourceDefinition(String name, int defaultMinThreads, long defaultKeepaliveTime) {
         this.path = pathElement(name);
         this.minThreads = new SimpleAttribute(createBuilder("min-threads", ModelType.INT, new ModelNode(defaultMinThreads), new IntRangeValidatorBuilder().min(0), null).build());
         this.keepAliveTime = new SimpleAttribute(createBuilder("keepalive-time", ModelType.LONG, new ModelNode(defaultKeepaliveTime), new LongRangeValidatorBuilder().min(0), null).build());
+        this.capability = RuntimeCapability.Builder.of(this).setDynamicNameMapper(UnaryCapabilityNameResolver.PARENT).build();
     }
 
-    private static SimpleAttributeDefinitionBuilder createBuilder(String name, ModelType type, ModelNode defaultValue, ParameterValidatorBuilder validatorBuilder, InfinispanModel deprecation) {
+    private static SimpleAttributeDefinitionBuilder createBuilder(String name, ModelType type, ModelNode defaultValue, ParameterValidatorBuilder validatorBuilder, InfinispanSubsystemModel deprecation) {
         SimpleAttributeDefinitionBuilder builder = new SimpleAttributeDefinitionBuilder(name, type)
                 .setAllowExpression(true)
                 .setRequired(false)
@@ -95,18 +92,40 @@ public enum ScheduledThreadPoolResourceDefinition implements ResourceDefinitionP
         ResourceDescriptor descriptor = new ResourceDescriptor(resolver)
                 .addAttributes(this.minThreads, this.keepAliveTime)
                 ;
-        ResourceServiceHandler handler = new SimpleResourceServiceHandler(this);
-        new SimpleResourceRegistration(descriptor, handler).register(registration);
+        ResourceOperationRuntimeHandler handler = ResourceOperationRuntimeHandler.configureService(this);
+        new SimpleResourceRegistrar(descriptor, ResourceServiceHandler.of(handler)).register(registration);
     }
 
     @Override
-    public ResourceServiceConfigurator createServiceConfigurator(PathAddress address) {
-        return new ScheduledThreadPoolServiceConfigurator(this, address);
+    public ResourceServiceInstaller configure(OperationContext context, ModelNode model) throws OperationFailedException {
+
+        int minThreads = this.minThreads.resolveModelAttribute(context, model).asInt();
+        long keepAliveTime = this.keepAliveTime.resolveModelAttribute(context, model).asLong();
+
+        ThreadPoolExecutorFactory<?> factory = new ThreadPoolExecutorFactory<ScheduledExecutorService>() {
+            @Override
+            public ScheduledExecutorService createExecutor(ThreadFactory factory) {
+                // Use fixed size, based on maxThreads
+                ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(minThreads, new DefaultThreadFactory(factory, ExecutorFactory.class.getClassLoader()));
+                executor.setKeepAliveTime(keepAliveTime, TimeUnit.MILLISECONDS);
+                executor.setRemoveOnCancelPolicy(true);
+                executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+                return executor;
+            }
+
+            @Override
+            public void validate() {
+                // Do nothing
+            }
+        };
+        return CapabilityServiceInstaller.builder(this.capability, new ThreadPoolConfigurationBuilder(null).threadPoolFactory(factory).create())
+                .asActive()
+                .build();
     }
 
     @Override
-    public ServiceName getServiceName(PathAddress containerAddress) {
-        return CacheContainerResourceDefinition.Capability.CONFIGURATION.getServiceName(containerAddress).append(this.getPathElement().getKeyValuePair());
+    public PathElement getPathElement() {
+        return this.path;
     }
 
     @Override
@@ -117,10 +136,5 @@ public enum ScheduledThreadPoolResourceDefinition implements ResourceDefinitionP
     @Override
     public Attribute getKeepAliveTime() {
         return this.keepAliveTime;
-    }
-
-    @Override
-    public PathElement getPathElement() {
-        return this.path;
     }
 }

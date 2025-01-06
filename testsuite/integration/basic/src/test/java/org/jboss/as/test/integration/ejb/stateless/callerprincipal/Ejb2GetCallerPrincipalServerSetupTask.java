@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ejb.stateless.callerprincipal;
 
@@ -31,7 +14,6 @@ import org.jboss.dmr.ModelNode;
 
 import java.util.List;
 
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ALLOW_RESOURCE_SERVICE_RESTART;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OPERATION_HEADERS;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ROLLBACK_ON_RUNTIME_FAILURE;
@@ -49,16 +31,12 @@ public class Ejb2GetCallerPrincipalServerSetupTask extends SnapshotRestoreSetupT
 
     @Override
     public void doSetup(ManagementClient managementClient, String containerId) throws Exception {
-        // /subsystem=ejb3/application-security-domain=other:add(security-domain=ApplicationDomain)
-        ModelNode addEjbDomain = createOpNode("subsystem=ejb3/application-security-domain=other", ADD);
-        addEjbDomain.get("security-domain").set("ApplicationDomain");
-
         // /subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=sasl-authentication-factory, value=application-sasl-authentication)
         ModelNode updateRemotingConnector = createOpNode("subsystem=remoting/http-connector=http-remoting-connector", WRITE_ATTRIBUTE_OPERATION);
         updateRemotingConnector.get(ClientConstants.NAME).set("sasl-authentication-factory");
         updateRemotingConnector.get(ClientConstants.VALUE).set("application-sasl-authentication");
 
-        ModelNode updateOp = Util.createCompositeOperation(List.of(addEjbDomain, updateRemotingConnector));
+        ModelNode updateOp = Util.createCompositeOperation(List.of(updateRemotingConnector));
         updateOp.get(OPERATION_HEADERS, ROLLBACK_ON_RUNTIME_FAILURE).set(false);
         updateOp.get(OPERATION_HEADERS, ALLOW_RESOURCE_SERVICE_RESTART).set(true);
         CoreUtils.applyUpdate(updateOp, managementClient.getControllerClient());

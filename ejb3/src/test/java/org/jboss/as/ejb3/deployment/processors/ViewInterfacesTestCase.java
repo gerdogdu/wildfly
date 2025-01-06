@@ -1,8 +1,13 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.ejb3.deployment.processors;
 
 import groovy.lang.MetaClass;
 import java.util.Set;
-import javax.jms.MessageListener;
+import jakarta.jms.MessageListener;
 import org.junit.Assert;
 import org.junit.Test;
 

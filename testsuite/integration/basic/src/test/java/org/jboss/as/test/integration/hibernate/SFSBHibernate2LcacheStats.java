@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.hibernate;
@@ -28,11 +11,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
-import javax.ejb.Stateful;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
-import javax.ejb.TransactionManagement;
-import javax.ejb.TransactionManagementType;
+import jakarta.ejb.Stateful;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.ejb.TransactionAttributeType;
+import jakarta.ejb.TransactionManagement;
+import jakarta.ejb.TransactionManagementType;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -63,8 +46,7 @@ public class SFSBHibernate2LcacheStats {
         try {
 
             // prepare the configuration
-            Configuration configuration = new Configuration().setProperty(AvailableSettings.USE_NEW_ID_GENERATOR_MAPPINGS,
-                    "true");
+            Configuration configuration = new Configuration();
             configuration.getProperties().put(AvailableSettings.JTA_PLATFORM, JBossAppServerJtaPlatform.class);
             configuration.getProperties().put(AvailableSettings.TRANSACTION_COORDINATOR_STRATEGY, "jta");
             configuration.setProperty(Environment.HBM2DDL_AUTO, "create-drop");
@@ -154,7 +136,7 @@ public class SFSBHibernate2LcacheStats {
 
     // fetch statistics after eviction of collection from cache
     public Statistics getStatisticsAfterEviction() {
-        sessionFactory.getCache().evictCollection(
+        sessionFactory.getCache().evictCollectionData(
                 org.jboss.as.test.integration.hibernate.Planet.class.getName() + ".satellites", new Integer(1));
         Statistics sessionStats = sessionFactory.getStatistics();
         return sessionStats;

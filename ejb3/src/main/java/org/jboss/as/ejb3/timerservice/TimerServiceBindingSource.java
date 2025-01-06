@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.timerservice;
@@ -37,7 +20,7 @@ import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
 
 /**
- * An {@link InjectionSource} which returns a {@link ManagedReference reference} to a {@link javax.ejb.TimerService}
+ * An {@link InjectionSource} which returns a {@link ManagedReference reference} to a {@link jakarta.ejb.TimerService}
  * <p/>
  * @author Jaikiran Pai
  */
@@ -51,7 +34,7 @@ public class TimerServiceBindingSource extends InjectionSource {
     }
 
     /**
-     * {@link ManagedReferenceFactory} for returning a {@link ManagedReference} to a {@link javax.ejb.TimerService}
+     * {@link ManagedReferenceFactory} for returning a {@link ManagedReference} to a {@link jakarta.ejb.TimerService}
      */
     private static class TimerServiceManagedReferenceFactory implements ContextListManagedReferenceFactory {
 
@@ -64,12 +47,12 @@ public class TimerServiceBindingSource extends InjectionSource {
 
         @Override
         public String getInstanceClassName() {
-            return javax.ejb.TimerService.class.getName();
+            return jakarta.ejb.TimerService.class.getName();
         }
     }
 
     /**
-     * A {@link ManagedReference} to a {@link javax.ejb.TimerService}
+     * A {@link ManagedReference} to a {@link jakarta.ejb.TimerService}
      */
     private static class TimerServiceManagedReference implements ManagedReference {
 

@@ -1,25 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-  ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2017, Red Hat, Inc., and individual contributors
-  ~ as indicated by the @author tags. See the copyright.txt file in the
-  ~ distribution for a full listing of individual contributors.
-  ~
-  ~ This is free software; you can redistribute it and/or modify it
-  ~ under the terms of the GNU Lesser General Public License as
-  ~ published by the Free Software Foundation; either version 2.1 of
-  ~ the License, or (at your option) any later version.
-  ~
-  ~ This software is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  ~ Lesser General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU Lesser General Public
-  ~ License along with this software; if not, write to the Free
-  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -34,7 +17,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -56,21 +39,45 @@
              Remove pinning with WFLY-15867 upgrading org.xipki.pki tests
              and change to org.bouncycastle:*-jdk18on -->
         <version.org.bouncycastle>1.69</version.org.bouncycastle>
-        <version.org.hsqldb.hsqldb>2.5.0</version.org.hsqldb.hsqldb>
         <version.org.mock-server.mockserver>5.6.1</version.org.mock-server.mockserver>
         <version.org.mock-server.mockserver-netty>5.6.1</version.org.mock-server.mockserver-netty>
         <version.org.xipki.pki.ocsp-server>3.0.0</version.org.xipki.pki.ocsp-server>
         <version.javax.xml.bind.jaxb-api>2.4.0-b180830.0359</version.javax.xml.bind.jaxb-api>
         <version.org.glassfish.jaxb.jaxb-runtime>2.4.0-b180830.0438</version.org.glassfish.jaxb.jaxb-runtime>
-        <server.jvm.args>-Dmaven.repo.local=${settings.localRepository} -Djboss.bind.address=${node0} -Djboss.bind.address.management=${node0} ${surefire.system.args} ${jvm.args.ip.server} ${jvm.args.other} ${jvm.args.timeouts} ${extra.server.jvm.args}</server.jvm.args>
+        <version.org.apache.kerby>2.0.3</version.org.apache.kerby>
 
         <maven.local.repo>${settings.localRepository}</maven.local.repo>
+        <modular.jdk.testsuite.args>${modular.jdk.args} --add-opens=java.base/sun.security.x509=ALL-UNNAMED --add-opens=java.base/sun.security.util=ALL-UNNAMED</modular.jdk.testsuite.args>
+        <embedded.server.stability>community</embedded.server.stability>
+
+        <!-- Allow profile-driven control over whether we reuse forks when running tests -->
+        <surefire.reuse.forks>true</surefire.reuse.forks>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.authentication</groupId>
+            <artifactId>jakarta.authentication-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.batch</groupId>
+            <artifactId>jakarta.batch-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.jms</groupId>
+            <artifactId>jakarta.jms-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -79,13 +86,93 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security.jakarta</groupId>
+            <artifactId>jakarta-authentication</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.directory.server</groupId>
+            <artifactId>apacheds-test-framework</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-server-api-all</artifactId>
+            <version>${version.org.apache.kerby}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-simplekdc</artifactId>
+            <version>${version.org.apache.kerby}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.directory.server</groupId>
+            <artifactId>apacheds-interceptor-kerberos</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.syslog4j</groupId>
+          <artifactId>syslog4j</artifactId>
+          <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss</groupId>
+            <artifactId>jboss-ejb-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- This is not ideal, however the BatchPermission is used which does indicate this might be an issue -->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>wildfly-batch-jberet</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.activemq</groupId>
-            <artifactId>artemis-jms-client</artifactId>
+            <artifactId>artemis-core-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-jakarta-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-selector</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.transaction</groupId>
+            <artifactId>wildfly-transaction-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -149,21 +236,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.activemq</groupId>
-            <artifactId>artemis-core-client</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.activemq</groupId>
-            <artifactId>artemis-selector</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss</groupId>
-            <artifactId>jboss-ejb-client</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.jboss.arquillian.junit</groupId>
             <artifactId>arquillian-junit-container</artifactId>
             <scope>test</scope>
@@ -179,21 +251,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jboss.spec.javax.batch</groupId>
-            <artifactId>jboss-batch-api_1.0_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.spec.javax.security.auth.message</groupId>
-            <artifactId>jboss-jaspi-api_1.1_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.spec.javax.jms</groupId>
-            <artifactId>jboss-jms-api_2.0_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-discovery</artifactId>
             <scope>test</scope>
@@ -203,37 +260,23 @@
             <artifactId>wildfly-cli</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-elytron-integration</artifactId>
-            <scope>test</scope>
-        </dependency>
         <!-- Required for Java 11 -->
-        <dependency>
-            <groupId>org.jboss.spec.javax.xml.bind</groupId>
-            <artifactId>jboss-jaxb-api_2.3_spec</artifactId>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.wildfly.arquillian</groupId>
             <artifactId>wildfly-arquillian-container-managed</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- This is not ideal, however the BatchPermission is used which does indicate this might be an issue -->
+
+
+        <!-- Jakarta RESTful Web Services Client implementation -->
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>wildfly-batch-jberet</artifactId>
+            <groupId>org.wildfly.security.jakarta</groupId>
+            <artifactId>jakarta-client-resteasy</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Jakarta RESTful Web Services Client implementation -->
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-client</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-client-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -292,13 +335,6 @@
         </dependency>
 
         <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-            <version>${version.javax.xml.bind.jaxb-api}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
             <version>${version.org.glassfish.jaxb.jaxb-runtime}</version>
@@ -321,13 +357,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.hsqldb</groupId>
-            <artifactId>hsqldb</artifactId>
-            <version>${version.org.hsqldb.hsqldb}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>com.github.fge</groupId>
             <artifactId>jackson-coreutils</artifactId>
         </dependency>
@@ -337,11 +366,35 @@
              which is part of wildfly-testsuite-shared module, contains implementation of BouncyCastle provider based
              on older version of BouncyCastle. -->
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>${ee.maven.groupId}</groupId>
             <artifactId>wildfly-testsuite-shared</artifactId>
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>failureaccess</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-testsuite-shared</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.activation</groupId>
+            <artifactId>jakarta.activation-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TODO confirm if this is needed -->
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-naming-client</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -368,14 +421,14 @@
                 </dependencies>
                 <executions>
                     <execution>
-                        <phase>process-test-resources</phase>
+                        <phase>process-test-classes</phase>
                         <id>clean-jcetest-keystore</id>
                         <goals>
                             <goal>clean</goal>
                         </goals>
                     </execution>
                     <execution>
-                        <phase>process-test-resources</phase>
+                        <phase>process-test-classes</phase>
                         <id>genkey-jcetest-keystore</id>
                         <goals>
                             <goal>generateSecretKey</goal>
@@ -396,11 +449,41 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <version>${version.org.wildfly.plugin}</version>
+                <executions>
+                    <execution>
+                        <phase>process-test-classes</phase>
+                        <goals>
+                            <goal>execute-commands</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <offline>true</offline>
+                    <scripts>
+                        <script>enable-embedded-messaging.cli</script>
+                        <script>modify-elytron-config.cli</script>
+                    </scripts>
+                    <jboss-home>${wildfly.dir}</jboss-home>
+                    <stdout>${project.build.directory}/wildfly-plugin.log</stdout>
+                    <java-opts>${modular.jdk.args}</java-opts>
+                    <system-properties>
+                        <public.ip>${node0}</public.ip>
+                        <management.ip>${node0}</management.ip>
+                        <maven.repo.local>${settings.localRepository}</maven.repo.local>
+                        <module.path>${wildfly.dir}/modules</module.path>
+                        <embedded.stability>${embedded.server.stability}</embedded.stability>
+                    </system-properties>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skip>true</skip>
-                    <reuseForks>false</reuseForks>
+                    <reuseForks>${surefire.reuse.forks}</reuseForks>
                     <environmentVariables>
                         <JBOSS_HOME>${wildfly.dir}</JBOSS_HOME>
                     </environmentVariables>
@@ -409,8 +492,8 @@
                         <jboss.server.config.file.name>standalone-full.xml</jboss.server.config.file.name>
                         <jboss.inst>${wildfly.dir}</jboss.inst>
                         <module.path>${wildfly.dir}/modules</module.path>
-                        <server.jvm.args>${server.jvm.args}</server.jvm.args>
                         <node0>${node0}</node0>
+                        <embedded.stability>${embedded.server.stability}</embedded.stability>
                     </systemPropertyVariables>
                     <argLine>${surefire.system.args} ${jvm.args.ip.client}</argLine>
                 </configuration>
@@ -495,8 +578,20 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.jboss.galleon</groupId>
-                        <artifactId>galleon-maven-plugin</artifactId>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <version>${version.org.wildfly.plugin}</version>
+                        <configuration>
+                            <overwrite-provisioned-server>true</overwrite-provisioned-server>
+                            <record-provisioning-state>false</record-provisioning-state>
+                            <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                            <offline-provisioning>${galleon.offline}</offline-provisioning>
+                            <galleon-options>
+                                <jboss-maven-dist/>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                                <optional-packages>passive+</optional-packages>
+                            </galleon-options>
+                        </configuration>
                         <executions>
                             <execution>
                                 <id>server-provisioning</id>
@@ -505,10 +600,7 @@
                                 </goals>
                                 <phase>generate-test-resources</phase>
                                 <configuration>
-                                    <install-dir>${project.build.directory}/${wildfly.instance.name}</install-dir>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <offline>${galleon.offline}</offline>
+                                    <provisioning-dir>${project.build.directory}/${wildfly.instance.name}</provisioning-dir>
                                     <feature-packs>
                                         <feature-pack>
                                             <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
@@ -516,10 +608,11 @@
                                             <version>${testsuite.ee.galleon.pack.version}</version>
                                             <excluded-packages>
                                                 <name>product.conf</name>
-                                                <name>docs</name>
-                                                <name>docs.licenses.merge</name>
                                             </excluded-packages>
                                             <inherit-configs>false</inherit-configs>
+                                            <!-- We must provision all packages, the test executes a CLI script
+                                                 that adds the embedded broker that requires some modules -->
+                                            <inherit-packages>true</inherit-packages>
                                             <included-configs>
                                                 <config>
                                                     <model>standalone</model>
@@ -532,10 +625,6 @@
                                             </included-configs>
                                         </feature-pack>
                                     </feature-packs>
-                                    <plugin-options>
-                                        <jboss-maven-dist/>
-                                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                                    </plugin-options>
                                 </configuration>
                             </execution>
                         </executions>
@@ -576,7 +665,7 @@
             <id>adjust-server-config</id>
             <activation>
                 <property>
-                    <name>!skipTests</name>
+                    <name>skipTests</name>
                 </property>
             </activation>
             <build>
@@ -587,10 +676,7 @@
                         <version>${version.org.wildfly.plugin}</version>
                         <executions>
                             <execution>
-                                <!-- run in test-compile instead of process-test-resources
-                                     as getting correct execution order of different process-test-resources
-                                     executions has proven problematic when different profiles are used. -->
-                                <phase>test-compile</phase>
+                                <phase>none</phase>
                                 <goals>
                                     <goal>execute-commands</goal>
                                 </goals>
@@ -599,7 +685,6 @@
                         <configuration>
                             <offline>true</offline>
                             <scripts>
-                                <script>enable-elytron.cli</script>
                                 <script>modify-elytron-config.cli</script>
                             </scripts>
                             <jboss-home>${wildfly.dir}</jboss-home>
@@ -646,8 +731,49 @@
                     </plugin>
                     <!-- Instead provision slimmed installations -->
                     <plugin>
-                        <groupId>org.jboss.galleon</groupId>
-                        <artifactId>galleon-maven-plugin</artifactId>
+                        <groupId>org.wildfly.glow</groupId>
+                        <artifactId>wildfly-glow-arquillian-plugin</artifactId>
+                        <configuration>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
+                                    <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
+                                    <version>${testsuite.ee.galleon.pack.version}</version>
+                                </feature-pack>
+                            </feature-packs>
+                            <config-name>standalone-full.xml</config-name>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>scan</id>
+                                <goals>
+                                    <goal>scan</goal>
+                                </goals>
+                                <phase>test-compile</phase>
+                                <configuration>
+                                    <expected-errors>
+                                        <error>jakarta.naming.Context or InitialContext lookup. Enable verbose output to see the locations.</error>
+                                    </expected-errors>
+                                    <expected-discovery>[batch-jberet, cdi, datasources, ee-integration, ee-security, ejb, ejb-lite, elytron, h2-datasource, h2-driver, naming, servlet, undertow, undertow-https]==>ee-core-profile-server,batch-jberet,ee-security,ejb,h2-datasource,undertow-https</expected-discovery>
+                                    <add-ons>
+                                        <add-on>h2-database</add-on>
+                                        <add-on>ssl</add-on>
+                                    </add-ons>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <version>${version.org.wildfly.plugin}</version>
+                        <configuration>
+                            <!-- Do not configure messaging as some layers do not include messaging -->
+                            <scripts combine.children="override">
+                                <script>modify-elytron-config.cli</script>
+                            </scripts>
+                            <overwrite-provisioned-server>true</overwrite-provisioned-server>
+                        </configuration>
                         <executions>
                             <!-- Disable the standard provisioning -->
                             <execution>
@@ -660,51 +786,21 @@
                                 <goals>
                                     <goal>provision</goal>
                                 </goals>
-                                <phase>generate-test-resources</phase>
+                                <phase>test-compile</phase>
                                 <configuration>
-                                    <install-dir>${project.build.directory}/${wildfly.instance.name}</install-dir>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <offline>${galleon.offline}</offline>
-                                    <plugin-options>
+                                    <provisioning-dir>${project.build.directory}/${wildfly.instance.name}</provisioning-dir>
+                                    <record-provisioning-state>false</record-provisioning-state>
+                                    <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                                    <offline-provisioning>${galleon.offline}</offline-provisioning>
+                                    <galleon-options>
                                         <jboss-maven-dist/>
                                         <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
                                         <optional-packages>passive+</optional-packages>
-                                    </plugin-options>
-                                    <feature-packs>
-                                        <feature-pack>
-                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                            <version>${testsuite.ee.galleon.pack.version}</version>
-                                            <inherit-configs>false</inherit-configs>
-                                            <inherit-packages>false</inherit-packages>
-                                        </feature-pack>
-                                    </feature-packs>
-                                    <configurations>
-                                        <config>
-                                            <model>standalone</model>
-                                            <name>standalone-full.xml</name>
-                                            <layers>
-                                                <layer>cloud-server</layer>
-                                                <layer>undertow-https</layer>
-                                                <layer>h2-default-datasource</layer>
-                                            </layers>
-                                        </config>
-                                    </configurations>
+                                    </galleon-options>
+                                    <provisioning-file>target/glow-scan/provisioning.xml</provisioning-file>
                                 </configuration>
                             </execution>
                         </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.wildfly.plugins</groupId>
-                        <artifactId>wildfly-maven-plugin</artifactId>
-                        <version>${version.org.wildfly.plugin}</version>
-                        <configuration>
-                            <!-- Disable the standard enable-elytron.cli script as it's  already provisioned -->
-                            <scripts combine.children="override">
-                                <script>modify-elytron-config.cli</script>
-                            </scripts>
-                        </configuration>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -768,6 +864,15 @@
                     <name>ts.bootable</name>
                 </property>
             </activation>
+            <properties>
+                <!-- This sets the same value as the default.
+                     It's here just in case we decide to change the default
+                     but still want to reuse forks for bootable  
+                     because WFCORE-7097 is unresolved.
+                     TODO get rid of this and the property if we don't need
+                     separate control of this for different profiles. -->
+                <surefire.reuse.forks>true</surefire.reuse.forks>
+            </properties>
             <dependencies>
                 <dependency>
                     <groupId>org.wildfly.arquillian</groupId>
@@ -791,6 +896,38 @@
                         </executions>
                     </plugin>
                     <plugin>
+                        <groupId>org.wildfly.glow</groupId>
+                        <artifactId>wildfly-glow-arquillian-plugin</artifactId>
+                        <configuration>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
+                                    <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
+                                    <version>${testsuite.ee.galleon.pack.version}</version>
+                                </feature-pack>
+                            </feature-packs>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>scan</id>
+                                <goals>
+                                    <goal>scan</goal>
+                                </goals>
+                                <phase>test-compile</phase>
+                                <configuration>
+                                    <expected-errors>
+                                        <error>jakarta.naming.Context or InitialContext lookup. Enable verbose output to see the locations.</error>
+                                    </expected-errors>
+                                    <expected-discovery>[batch-jberet, cdi, datasources, ee-integration, ee-security, ejb, ejb-lite, elytron, h2-datasource, h2-driver, naming, servlet, undertow, undertow-https]==>ee-core-profile-server,batch-jberet,ee-security,ejb,h2-datasource,undertow-https</expected-discovery>
+                                    <add-ons>
+                                        <add-on>h2-database</add-on>
+                                        <add-on>ssl</add-on>
+                                    </add-ons>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
                         <groupId>org.wildfly.plugins</groupId>
                         <artifactId>wildfly-maven-plugin</artifactId>
                         <version>${version.org.wildfly.plugin}</version>
@@ -801,65 +938,37 @@
                                 </goals>
                                 <phase>none</phase>
                             </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jboss.galleon</groupId>
-                        <artifactId>galleon-maven-plugin</artifactId>
-                        <executions>
                             <!-- Disable the default provisioning -->
                             <execution>
                                 <id>server-provisioning</id>
                                 <goals>
-                                    <goal>provisioning</goal>
+                                    <goal>provision</goal>
                                 </goals>
                                 <phase>none</phase>
                             </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.wildfly.plugins</groupId>
-                        <artifactId>wildfly-jar-maven-plugin</artifactId>
-                        <version>${version.org.wildfly.jar.plugin}</version>
-                        <executions>
-                            <!-- Provision a server with the core functionality we will provide in OpenShift images -->
                             <execution>
                                 <id>bootable-jar-packaging</id>
                                 <goals>
                                     <goal>package</goal>
                                 </goals>
-                                <phase>process-test-resources</phase>
+                                <phase>process-test-classes</phase>
                                 <configuration>
-                                    <output-file-name>test-wildfly.jar</output-file-name>
-                                    <hollowJar>true</hollowJar>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <offline>true</offline>
+                                    <bootableJar>true</bootableJar>
+                                    <skipDeployment>true</skipDeployment>
+                                    <bootableJarName>test-wildfly.jar</bootableJarName>
                                     <!-- content that is installed in wildfly home -->
                                     <extra-server-content-dirs>${wildfly.dir}</extra-server-content-dirs>
-                                    <plugin-options>
-                                        <jboss-maven-dist/>
-                                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                                    </plugin-options>
-                                    <cli-sessions>
+                                    <packaging-scripts>
                                         <cli-session>
-                                            <script-files>
+                                            <javaOpts>
+                                                <opt>-Dmaven.repo.local=${maven.repo.local}</opt>
+                                            </javaOpts>
+                                            <scripts>
                                                 <script>modify-elytron-config-bootable.cli</script>
-                                            </script-files>
+                                            </scripts>
                                         </cli-session>
-                                    </cli-sessions>
-                                    <feature-packs>
-                                        <feature-pack>
-                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                            <version>${testsuite.ee.galleon.pack.version}</version>
-                                        </feature-pack>
-                                    </feature-packs>
-                                    <layers>
-                                        <layer>cloud-server</layer>
-                                        <layer>undertow-https</layer>
-                                        <layer>h2-default-datasource</layer>
-                                    </layers>
+                                    </packaging-scripts>
+                                    <provisioning-file>target/glow-scan/provisioning.xml</provisioning-file>
                                 </configuration>
                             </execution>
                         </executions>
@@ -927,14 +1036,15 @@
 
         <!-- Test against WildFly Preview dist -->
         <profile>
-            <id>ee9.profile</id>
+            <id>preview.profile</id>
             <activation>
                 <property>
-                    <name>ts.ee9</name>
+                    <name>ts.preview</name>
                 </property>
             </activation>
             <properties>
-                <maven.local.repo>${wildfly.transformed.repo.dir}</maven.local.repo>
+                <maven.local.repo>${settings.localRepository}</maven.local.repo>
+                <embedded.server.stability>preview</embedded.server.stability>
             </properties>
             <build>
                 <plugins>
@@ -943,29 +1053,14 @@
                         <artifactId>wildfly-maven-plugin</artifactId>
                         <version>${version.org.wildfly.plugin}</version>
                         <configuration>
+                            <scripts combine.children="override">
+                                <script>enable-embedded-messaging.cli</script>
+                                <script>modify-elytron-config.cli</script>
+                            </scripts>
                             <system-properties>
-                                <maven.repo.local>${wildfly.transformed.repo.dir}</maven.repo.local>
+                                <maven.repo.local>${settings.localRepository}</maven.repo.local>
                             </system-properties>
                         </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jboss.galleon</groupId>
-                        <artifactId>galleon-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>server-provisioning</id>
-                                <goals>
-                                    <goal>provision</goal>
-                                </goals>
-                                <phase>generate-resources</phase>
-                                <configuration>
-                                    <plugin-options combine.self="append">
-                                        <jboss-jakarta-transform-artifacts>false</jboss-jakarta-transform-artifacts>
-                                        <jboss-maven-provisioning-repo>${maven.local.repo}</jboss-maven-provisioning-repo>
-                                    </plugin-options>
-                                </configuration>
-                            </execution>
-                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -976,11 +1071,6 @@
                                 <id>default-test</id>
                                 <phase>test</phase>
                                 <configuration>
-                                    <systemPropertyVariables>
-                                        <server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir}</server.jvm.args>
-                                    </systemPropertyVariables>
-                                    <!-- These include a module to be used which currently uses javax and is not transformed -->
-                                    <excludedGroups>org.jboss.as.test.shared.categories.RequiresTransformedClass</excludedGroups>
                                 </configuration>
                             </execution>
                             <execution>
@@ -988,7 +1078,7 @@
                                 <phase>test</phase>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir} -Djava.security.properties=${security.properties}</server.jvm.args>
+                                        <server.jvm.args>-Djava.security.properties=${security.properties} ${server.jvm.args}</server.jvm.args>
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
@@ -996,6 +1086,21 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- Test against the wildfly-preview feature pack using layers-->
+        <profile>
+            <id>preview.layers.test.profile</id>
+            <activation>
+                <property>
+                    <name>testsuite.ee.galleon.pack.artifactId</name>
+                    <value>wildfly-preview-feature-pack</value>
+                </property>
+            </activation>
+            <properties>
+                <!-- Use preview stability when running the embedded server for pre-surefire-execution setup work -->
+                <embedded.server.stability>preview</embedded.server.stability>
+            </properties>
         </profile>
     </profiles>
 

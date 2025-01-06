@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -11,7 +16,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
     </parent>
 
     <artifactId>wildfly-ts-preview</artifactId>
@@ -48,15 +53,19 @@
 
         <wildfly.dir>${project.build.directory}/wildfly</wildfly.dir>
 
-        <!-- Use the WildFly Preview dependency set -->
-        <dependency.management.import.artifact>wildfly-ee-9-parent</dependency.management.import.artifact>
+        <!-- Use the WildFly Preview EE dependency set. Child modules that test expansion capabilities can override. -->
+        <dependency.management.import.artifact>wildfly-preview-ee-bom</dependency.management.import.artifact>
+        <dependency.management.import.test.artifact>wildfly-preview-test-bom</dependency.management.import.test.artifact>
+        <container.java.home>${java.home}</container.java.home>
+        
+        <ts.config-as.copy-mgmt-users.phase>generate-test-resources</ts.config-as.copy-mgmt-users.phase>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>${full.maven.groupId}</groupId>
-                <artifactId>wildfly-ee-9-parent</artifactId>
+                <groupId>org.wildfly</groupId>
+                <artifactId>wildfly-preview-test-expansion-bom</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -66,7 +75,7 @@
 
     <dependencies>
 
-        <!-- Dependencies specific to the integration tests. -->
+        <!-- Common ARQ related dependencies. -->
         <dependency>
             <groupId>org.jboss.arquillian.junit</groupId>
             <artifactId>arquillian-junit-container</artifactId>
@@ -83,25 +92,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.wildfly</groupId>
-            <artifactId>wildfly-testsuite-shared-jakarta</artifactId>
+            <groupId>org.jboss.shrinkwrap.descriptors</groupId>
+            <artifactId>shrinkwrap-descriptors-impl-javaee</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-core-testsuite-shared</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.inject</groupId>
-                    <artifactId>javax.inject</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.wildfly.arquillian</groupId>
@@ -113,11 +106,6 @@
             <artifactId>wildfly-arquillian-protocol-jmx</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>xom</groupId>
-            <artifactId>xom</artifactId>
-            <scope>test</scope>
-        </dependency>
 
     </dependencies>
 
@@ -125,42 +113,40 @@
 
 
         <profile>
-        <id>basic.integration.tests.profile</id>
+        <id>basic.preview.tests.profile</id>
             <activation>
                 <property>
                     <name>!no.preview.integration.tests</name>
                 </property>
+                <jdk>[17,)</jdk>
             </activation>
             <modules>
                 <module>basic</module>
-                <module>source-transform</module>
-                <!--<module>ws</module>
-                <module>web</module>
-                <module>smoke</module>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-                <module>vdx</module>
-                <module>iiop</module>
-                <module>xts</module>
-                <module>rts</module>
-                <module>rbac</module>
-                <module>clustering</module>
-                <module>multinode</module>
-                <module>manualmode</module>
-                <module>secman</module>
-                <module>legacy</module>
-                <module>legacy-ejb-client</module>
-                <module>elytron</module>
-                <module>elytron-oidc-client</module>-->
+                <module>expansion</module>
             </modules>
         </profile>
 
         <profile>
-            <id>bootablejar.ee9.profile</id>
+            <id>preview.profile</id>
+            <activation><property><name>ts.preview</name></property></activation>
+            <properties>
+                <dependency.management.import.artifact>wildfly-preview-expansion-bom</dependency.management.import.artifact>
+                <dependency.management.import.test.artifact>wildfly-preview-test-expansion-bom</dependency.management.import.test.artifact>
+            </properties>
+            <modules>
+                <module>basic</module>
+                <module>expansion</module>
+                <module>manualmode</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>bootablejar.preview.profile</id>
             <activation>
                 <property>
-                    <name>ts.bootable.ee9</name>
+                    <name>ts.bootable.preview</name>
                 </property>
+                <jdk>[17,)</jdk>
             </activation>
             <properties>
                 <!-- Re-enable the default surefire execution -->
@@ -168,6 +154,7 @@
             </properties>
             <modules>
                 <module>basic</module>
+                <module>expansion</module>
                 <!--<module>clustering</module>
                 <module>microprofile</module>
                 <module>microprofile-tck</module>
@@ -177,131 +164,46 @@
 
         <!-- Run all tests on -DallTests. -->
         <profile>
-            <id>ts.integ.allGroups</id>
-            <activation><property><name>allTests</name></property></activation>
+            <id>ts.preview.allGroups</id>
+            <activation>
+                <property><name>allTests</name></property>
+                <jdk>[17,)</jdk>
+            </activation>
             <modules>
                 <module>basic</module>
-                <module>source-transform</module>
-                <!--<module>ws</module>
-                <module>web</module>
-                <module>smoke</module>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-                <module>vdx</module>
-                <module>iiop</module>
-                <module>xts</module>
-                <module>rts</module>
-                <module>rbac</module>
-                <module>clustering</module>
-                <module>multinode</module>
+                <module>expansion</module>
                 <module>manualmode</module>
-                <module>secman</module>
-                <module>legacy</module>
-                <module>legacy-ejb-client</module>
-                <module>elytron</module>
-                <module>elytron-oidc-client</module>-->
             </modules>
         </profile>
         <!-- Define ts.integration uber-group. -->
         <profile>
-            <id>ts.integ.allGroupsIntegration</id>
-            <activation><property><name>ts.integration</name></property></activation>
+            <id>ts.preview.allGroupsIntegration</id>
+            <activation>
+                <property><name>ts.integration</name></property>
+                <jdk>[17,)</jdk>
+            </activation>
             <modules>
                 <module>basic</module>
-                <module>source-transform</module>
-                <!--><module>ws</module>
-                <module>web</module>
-                <module>smoke</module>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-                <module>vdx</module>
-                <module>clustering</module>
-                <module>iiop</module>
-                <module>xts</module>
-                <module>rts</module>
-                <module>rbac</module>
-                <module>multinode</module>
+                <module>expansion</module>
                 <module>manualmode</module>
-                <module>secman</module>
-                <module>legacy</module>
-                <module>legacy-ejb-client</module>
-                <module>elytron</module>
-                <module>elytron-oidc-client</module>-->
             </modules>
         </profile>
-
-        <!-- -Dts.smoke
-        <profile>
-            <id>ts.integ.group.smoke</id>
-            <activation><property><name>!ts.noSmoke</name></property></activation>
-            <modules>
-                <module>web</module>
-                <module>smoke</module>
-            </modules>
-        </profile>
-        -->
 
         <!-- -Dts.basic -->
         <profile>
-            <id>ts.integ.group.basic</id>
-            <activation><property><name>ts.basic</name></property></activation>
+            <id>ts.preview.group.basic</id>
+            <activation>
+                <property><name>ts.basic</name></property>
+                <jdk>[17,)</jdk>
+            </activation>
             <modules>
                 <!--<module>ws</module>-->
                 <module>basic</module>
+                <module>expansion</module>
             </modules>
         </profile>
 
-        <!-- -Dts.clustering
-        <profile>
-            <id>ts.integ.group.clustering</id>
-            <activation><property><name>ts.clustering</name></property></activation>
-            <modules>
-                <module>clustering</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.iiop
-        <profile>
-            <id>ts.integ.group.iiop</id>
-            <activation><property><name>ts.iiop</name></property></activation>
-            <modules>
-                <module>iiop</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.xts
-        <profile>
-            <id>ts.integ.group.xts</id>
-            <activation><property><name>ts.xts</name></property></activation>
-            <modules>
-                <module>xts</module>
-            </modules>
-        </profile>
-         -->
-
-        <!-- -Dts.rts
-        <profile>
-            <id>ts.integ.group.rts</id>
-            <activation><property><name>ts.rts</name></property></activation>
-            <modules>
-                <module>rts</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.multinode
-        <profile>
-            <id>ts.integ.group.multinode</id>
-            <activation><property><name>ts.multinode</name></property></activation>
-            <modules>
-                <module>multinode</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.manualmode
+        <!-- -Dts.manualmode. -->
         <profile>
             <id>ts.integ.group.manualmode</id>
             <activation><property><name>ts.manualmode</name></property></activation>
@@ -309,129 +211,19 @@
                 <module>manualmode</module>
             </modules>
         </profile>
-        -->
 
-        <!-- -Dts.rbac
+        <!-- -Dts.layers -->
         <profile>
-            <id>ts.integ.group.rbac</id>
-            <activation><property><name>ts.rbac</name></property></activation>
-            <modules>
-                <module>rbac</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.secman
-        <profile>
-            <id>ts.integ.group.secman</id>
-            <activation><property><name>ts.secman</name></property></activation>
-            <modules>
-                <module>secman</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.layers
-        <profile>
-            <id>ts.integ.group.layers</id>
-            <activation><property><name>ts.layers</name></property></activation>
-            <modules>
-                <module>basic</module>
-                <module>elytron</module>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-                <module>clustering</module>
-                <module>ws</module>
-                <module>elytron-oidc-client</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.standalone.microprofile
-        <profile>
-            <id>ts.integ.group.standalone.microprofile</id>
-            <activation><property><name>ts.standalone.microprofile</name></property></activation>
-            <modules>
-                <module>basic</module>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-                <module>clustering</module>
-                <module>elytron-oidc-client</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.legacy
-        <profile>
-            <id>ts.integ.group.legacy</id>
-            <activation><property><name>ts.legacy</name></property></activation>
-            <modules>
-                <module>legacy</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.legacy.ejb.client
-        <profile>
-            <id>ts.integ.group.legacy.ejb.client</id>
-            <activation><property><name>ts.legacy.ejb.client</name></property></activation>
-            <modules>
-                <module>legacy-ejb-client</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.microprofile
-        <profile>
-            <id>ts.integ.group.microprofile</id>
-            <activation><property><name>ts.microprofile</name></property></activation>
-            <modules>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.elytron
-        <profile>
-            <id>ts.integ.group.elytron</id>
-            <activation><property><name>ts.elytron</name></property></activation>
-            <modules>
-                <module>elytron</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- -Dts.elytron-oidc-client
-        <profile>
-            <id>ts.integ.group.elytron-oidc-client</id>
-            <activation><property><name>ts.elytron-oidc-client</name></property></activation>
-            <modules>
-                <module>elytron-oidc-client</module>
-            </modules>
-        </profile>
-        -->
-
-        <!-- Test against bootable jar
-        <profile>
-            <id>bootablejar.ee9.profile</id>
+            <id>ts.preview.group.layers</id>
             <activation>
-                <property>
-                    <name>ts.bootable.ee9</name>
-                </property>
+                <property><name>ts.layers</name></property>
+                <jdk>[17,)</jdk>
             </activation>
-            <properties>
-                <surefire.default-test.phase>test</surefire.default-test.phase>
-            </properties>
             <modules>
                 <module>basic</module>
-                <module>clustering</module>
-                <module>microprofile</module>
-                <module>microprofile-tck</module>
-                <module>elytron-oidc-client</module>
+                <module>expansion</module>
             </modules>
         </profile>
-        -->
 
     </profiles>
 
@@ -447,7 +239,7 @@
                     <skip>true</skip>
                 </configuration>
             </plugin>
-			
+
             <!-- General plugin configuration for all integration tests -->
 
             <!-- Resources plugin. -->
@@ -458,7 +250,7 @@
                     <!-- Copy users and roles config from shared resources. -->
                     <execution>
                         <id>ts.config-as.copy-mgmt-users</id>
-                        <phase>generate-test-resources</phase>
+                        <phase>${ts.config-as.copy-mgmt-users.phase}</phase>
                         <goals><goal>copy-resources</goal></goals>
                         <inherited>true</inherited>
                         <configuration>
@@ -481,8 +273,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${ts.skipTests}</skipTests>
-                    <!-- Prevent test and server output appearing in console. -->
-                    <redirectTestOutputToFile>${testLogToFile}</redirectTestOutputToFile>
                     <enableAssertions>true</enableAssertions>
                  
                     <!-- Forked process timeout -->
@@ -515,6 +305,7 @@
                         <server.jvm.args>${server.jvm.args}</server.jvm.args>
                         <cli.jvm.args>${modular.jdk.args} -Dmaven.repo.local=${settings.localRepository}</cli.jvm.args>
                         <modular.jdk.args>${modular.jdk.args}</modular.jdk.args>
+                        <container.java.home>${container.java.home}</container.java.home>
                     </systemPropertyVariables>
 
                 </configuration>

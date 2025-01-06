@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ee.injection.resource.superclass;
 
@@ -46,7 +29,7 @@ public class SuperClassInjectionTestCase {
     @Deployment
     public static Archive<?> deployment() {
         WebArchive war = ShrinkWrap.create(WebArchive.class, "multiple-bindings-superclass.war");
-        war.addClasses(Bean1.class, Bean2.class, SuperClassInjectionTestCase.class, SuperBean.class, SimpleManagedBean.class);
+        war.addClasses(Bean1.class, Bean2.class, SuperClassInjectionTestCase.class, SuperBean.class, SimpleStatelessBean.class);
         war.addAsWebInfResource(SuperClassInjectionTestCase.class.getPackage(), "web.xml", "web.xml");
         return war;
     }
@@ -54,8 +37,8 @@ public class SuperClassInjectionTestCase {
     @Test
     public void testCorrectBinding() throws NamingException {
         InitialContext context = new InitialContext();
-        Object result = context.lookup("java:module/env/" + SuperBean.class.getName() + "/simpleManagedBean");
-        Assert.assertTrue(result instanceof SimpleManagedBean);
+        Object result = context.lookup("java:module/env/" + SuperBean.class.getName() + "/simpleStatelessBean");
+        Assert.assertTrue(result instanceof SimpleStatelessBean);
     }
 
 
@@ -63,14 +46,14 @@ public class SuperClassInjectionTestCase {
     public void testSubClass1Injected() throws NamingException {
         InitialContext context = new InitialContext();
         Bean1 result = (Bean1) context.lookup("java:module/bean1");
-        Assert.assertTrue(result.getBean() instanceof SimpleManagedBean);
+        Assert.assertTrue(result.getBean() instanceof SimpleStatelessBean);
     }
 
     @Test
     public void testSubClass2Injected() throws NamingException {
         InitialContext context = new InitialContext();
         Bean2 result = (Bean2) context.lookup("java:module/bean2");
-        Assert.assertTrue(result.getBean() instanceof SimpleManagedBean);
+        Assert.assertTrue(result.getBean() instanceof SimpleStatelessBean);
     }
 
     //AS7-6500

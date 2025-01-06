@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jaxrs.deployment;
@@ -60,7 +43,6 @@ import static org.jboss.as.jaxrs.JaxrsSubsystemDefinition.RESTEASY_VALIDATOR;
 import org.jboss.as.server.deployment.module.ResourceRoot;
 import org.jboss.as.weld.WeldCapability;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoader;
 import org.jboss.modules.filter.PathFilters;
 import org.jboss.vfs.VirtualFile;
@@ -72,12 +54,14 @@ import org.jboss.vfs.VirtualFile;
  */
 public class JaxrsDependencyProcessor implements DeploymentUnitProcessor {
 
-    private static final String CLIENT_BUILDER = "META-INF/services/javax.ws.rs.client.ClientBuilder";
+    private static final String CLIENT_BUILDER = "META-INF/services/jakarta.ws.rs.client.ClientBuilder";
+
+    @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         final ModuleSpecification moduleSpecification = deploymentUnit.getAttachment(Attachments.MODULE_SPECIFICATION);
 
-        boolean deploymentBundlesClientBuilder = isClientBuilderInDeployment(deploymentUnit);
+        final boolean deploymentBundlesClientBuilder = isClientBuilderInDeployment(deploymentUnit);
 
         final ModuleLoader moduleLoader = Module.getBootModuleLoader();
         addDependency(moduleSpecification, moduleLoader, JAXRS_API, false, false);
@@ -87,7 +71,6 @@ public class JaxrsDependencyProcessor implements DeploymentUnitProcessor {
         //we need to add these from all deployments, as they could be using the Jakarta RESTful Web Services client
 
         addDependency(moduleSpecification, moduleLoader, RESTEASY_ATOM, true, false);
-        addDependency(moduleSpecification, moduleLoader, RESTEASY_VALIDATOR, true, false);
         addDependency(moduleSpecification, moduleLoader, RESTEASY_CLIENT, true, deploymentBundlesClientBuilder);
         addDependency(moduleSpecification, moduleLoader, RESTEASY_CLIENT_API, true, deploymentBundlesClientBuilder);
         addDependency(moduleSpecification, moduleLoader, RESTEASY_CORE, true, deploymentBundlesClientBuilder);
@@ -102,14 +85,22 @@ public class JaxrsDependencyProcessor implements DeploymentUnitProcessor {
         addDependency(moduleSpecification, moduleLoader, RESTEASY_CRYPTO, true, false);
         addDependency(moduleSpecification, moduleLoader, JACKSON_DATATYPE_JDK8, true, false);
         addDependency(moduleSpecification, moduleLoader, JACKSON_DATATYPE_JSR310, true, false);
-        addDependency(moduleSpecification, moduleLoader, MP_REST_CLIENT, true, false);
 
         final CapabilityServiceSupport support = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
         if (support.hasCapability(WELD_CAPABILITY_NAME)) {
-            final WeldCapability api = support.getOptionalCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class).get();
-            if (api.isPartOfWeldDeployment(deploymentUnit)) {
+            final WeldCapability api = support.getOptionalCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class).orElse(null);
+            if (api != null && api.isPartOfWeldDeployment(deploymentUnit)) {
                 addDependency(moduleSpecification, moduleLoader, RESTEASY_CDI, true, false);
             }
+        }
+        if (support.hasCapability("org.wildfly.microprofile.config")) {
+            addDependency(moduleSpecification, moduleLoader, MP_REST_CLIENT, true, false);
+            addDependency(moduleSpecification, moduleLoader, "org.jboss.resteasy.microprofile.config", true, false);
+        }
+        // If bean-validation is available, add the support for the resteasy-validator
+        if (support.hasCapability("org.wildfly.bean-validation")) {
+            final ModuleDependency dep = new ModuleDependency(moduleLoader, RESTEASY_VALIDATOR, true, true, true, false);
+            moduleSpecification.addSystemDependency(dep);
         }
     }
 
@@ -128,9 +119,9 @@ public class JaxrsDependencyProcessor implements DeploymentUnitProcessor {
     }
 
     private void addDependency(ModuleSpecification moduleSpecification, ModuleLoader moduleLoader,
-                               ModuleIdentifier moduleIdentifier, boolean optional, boolean deploymentBundelesClientBuilder) {
+                               String moduleIdentifier, boolean optional, boolean deploymentBundlesClientBuilder) {
         ModuleDependency dependency = new ModuleDependency(moduleLoader, moduleIdentifier, optional, false, true, false);
-        if(deploymentBundelesClientBuilder) {
+        if(deploymentBundlesClientBuilder) {
             dependency.addImportFilter(PathFilters.is(CLIENT_BUILDER), false);
         }
         moduleSpecification.addSystemDependency(dependency);

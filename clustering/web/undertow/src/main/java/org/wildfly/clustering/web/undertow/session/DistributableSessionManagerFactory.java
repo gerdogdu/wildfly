@@ -1,44 +1,27 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.web.undertow.session;
 
-import java.security.PrivilegedAction;
+import java.time.Duration;
 import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import javax.servlet.ServletContext;
+import jakarta.servlet.ServletContext;
 
-import org.wildfly.clustering.ee.Batch;
-import org.wildfly.clustering.ee.BatchContext;
-import org.wildfly.clustering.ee.Batcher;
-import org.wildfly.clustering.ee.Recordable;
+import org.wildfly.clustering.cache.batch.BatchContextualizerFactory;
+import org.wildfly.clustering.context.Contextualizer;
+import org.wildfly.clustering.context.ContextualizerFactory;
+import org.wildfly.clustering.session.ImmutableSession;
+import org.wildfly.clustering.session.SessionManager;
+import org.wildfly.clustering.session.SessionManagerConfiguration;
+import org.wildfly.clustering.session.SessionManagerFactory;
 import org.wildfly.clustering.web.container.SessionManagerFactoryConfiguration;
-import org.wildfly.clustering.web.session.ImmutableSessionMetaData;
-import org.wildfly.clustering.web.session.SessionExpirationListener;
-import org.wildfly.clustering.web.session.SessionManager;
-import org.wildfly.clustering.web.session.SessionManagerConfiguration;
-import org.wildfly.clustering.web.session.SessionManagerFactory;
 import org.wildfly.clustering.web.undertow.IdentifierFactoryAdapter;
-import org.wildfly.security.manager.WildFlySecurityManager;
+import org.wildfly.common.function.ExceptionBiFunction;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.session.SessionListeners;
@@ -51,13 +34,12 @@ import io.undertow.servlet.api.ThreadSetupHandler;
  * @author Paul Ferraro
  */
 public class DistributableSessionManagerFactory implements io.undertow.servlet.api.SessionManagerFactory {
-    private static final String ALLOW_ORPHAN_SESSION_PROPERTY = "jboss.web.allow-orphan-session";
+    private static final ContextualizerFactory BATCH_CONTEXTUALIZER_FACTORY = ServiceLoader.load(BatchContextualizerFactory.class, BatchContextualizerFactory.class.getClassLoader()).findFirst().orElseThrow();
 
-    private final SessionManagerFactory<ServletContext, Map<String, Object>, Batch> factory;
+    private final SessionManagerFactory<ServletContext, Map<String, Object>> factory;
     private final SessionManagerFactoryConfiguration config;
-    private final SessionListeners listeners = new SessionListeners();
 
-    public DistributableSessionManagerFactory(SessionManagerFactory<ServletContext, Map<String, Object>, Batch> factory, SessionManagerFactoryConfiguration config) {
+    public DistributableSessionManagerFactory(SessionManagerFactory<ServletContext, Map<String, Object>> factory, SessionManagerFactoryConfiguration config) {
         this.factory = factory;
         this.config = config;
     }
@@ -66,12 +48,14 @@ public class DistributableSessionManagerFactory implements io.undertow.servlet.a
     public io.undertow.server.session.SessionManager createSessionManager(final Deployment deployment) {
         DeploymentInfo info = deployment.getDeploymentInfo();
         boolean statisticsEnabled = info.getMetricsCollector() != null;
-        RecordableInactiveSessionStatistics inactiveSessionStatistics = statisticsEnabled ? new RecordableInactiveSessionStatistics() : null;
+        RecordableInactiveSessionStatistics inactiveSessionStatistics = statisticsEnabled ? new DistributableInactiveSessionStatistics() : null;
         Supplier<String> factory = new IdentifierFactoryAdapter(info.getSessionIdGenerator());
-        SessionExpirationListener expirationListener = new UndertowSessionExpirationListener(deployment, this.listeners);
-        SessionManagerConfiguration<ServletContext> configuration = new SessionManagerConfiguration<ServletContext>() {
+        // Session listeners are application-specific
+        SessionListeners listeners = new SessionListeners();
+        Consumer<ImmutableSession> expirationListener = new UndertowSessionExpirationListener(deployment, listeners, inactiveSessionStatistics);
+        SessionManagerConfiguration<ServletContext> configuration = new SessionManagerConfiguration<>() {
             @Override
-            public ServletContext getServletContext() {
+            public ServletContext getContext() {
                 return deployment.getServletContext();
             }
 
@@ -81,33 +65,31 @@ public class DistributableSessionManagerFactory implements io.undertow.servlet.a
             }
 
             @Override
-            public SessionExpirationListener getExpirationListener() {
+            public Consumer<ImmutableSession> getExpirationListener() {
                 return expirationListener;
             }
 
             @Override
-            public Recordable<ImmutableSessionMetaData> getInactiveSessionRecorder() {
-                return inactiveSessionStatistics;
+            public Duration getTimeout() {
+                return Duration.ofMinutes(this.getContext().getSessionTimeout());
             }
         };
-        SessionManager<Map<String, Object>, Batch> manager = this.factory.createSessionManager(configuration);
-        Batcher<Batch> batcher = manager.getBatcher();
+        SessionManager<Map<String, Object>> manager = this.factory.createSessionManager(configuration);
+        Contextualizer contextualizer = BATCH_CONTEXTUALIZER_FACTORY.createContextualizer(deployment.getServletContext().getClassLoader());
         info.addThreadSetupAction(new ThreadSetupHandler() {
             @Override
             public <T, C> Action<T, C> create(Action<T, C> action) {
-                return new Action<T, C>() {
+                ExceptionBiFunction<HttpServerExchange, C, T, Exception> actionCaller = action::call;
+                ExceptionBiFunction<HttpServerExchange, C, T, Exception> contextualActionCaller = contextualizer.contextualize(actionCaller);
+                return new Action<>() {
                     @Override
                     public T call(HttpServerExchange exchange, C context) throws Exception {
-                        Batch batch = batcher.suspendBatch();
-                        try (BatchContext ctx = batcher.resumeBatch(batch)) {
-                            return action.call(exchange, context);
-                        }
+                        return contextualActionCaller.apply(exchange, context);
                     }
                 };
             }
         });
-        SessionListeners listeners = this.listeners;
-        RecordableSessionManagerStatistics statistics = (inactiveSessionStatistics != null) ? new DistributableSessionManagerStatistics(manager, inactiveSessionStatistics, this.config.getMaxActiveSessions()) : null;
+        RecordableSessionManagerStatistics statistics = (inactiveSessionStatistics != null) ? new DistributableSessionManagerStatistics(manager.getStatistics(), inactiveSessionStatistics, this.config.getMaxActiveSessions()) : null;
         io.undertow.server.session.SessionManager result = new DistributableSessionManager(new DistributableSessionManagerConfiguration() {
             @Override
             public String getDeploymentName() {
@@ -115,7 +97,7 @@ public class DistributableSessionManagerFactory implements io.undertow.servlet.a
             }
 
             @Override
-            public SessionManager<Map<String, Object>, Batch> getSessionManager() {
+            public SessionManager<Map<String, Object>> getSessionManager() {
                 return manager;
             }
 
@@ -127,17 +109,6 @@ public class DistributableSessionManagerFactory implements io.undertow.servlet.a
             @Override
             public RecordableSessionManagerStatistics getStatistics() {
                 return statistics;
-            }
-
-            @Override
-            public boolean isOrphanSessionAllowed() {
-                // TODO Configure via DeploymentInfo
-                return WildFlySecurityManager.doUnchecked(new PrivilegedAction<Boolean>() {
-                    @Override
-                    public Boolean run() {
-                        return Boolean.getBoolean(ALLOW_ORPHAN_SESSION_PROPERTY);
-                    }
-                });
             }
         });
         result.setDefaultSessionTimeout((int) this.config.getDefaultSessionTimeout().getSeconds());

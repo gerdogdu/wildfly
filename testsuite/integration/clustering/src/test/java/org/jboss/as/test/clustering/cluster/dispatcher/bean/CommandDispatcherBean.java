@@ -1,49 +1,33 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.clustering.cluster.dispatcher.bean;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.ejb.EJB;
-import javax.ejb.Local;
-import javax.ejb.Singleton;
-import javax.ejb.Startup;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.ejb.EJB;
+import jakarta.ejb.Local;
+import jakarta.ejb.Singleton;
+import jakarta.ejb.Startup;
 
-import org.wildfly.clustering.dispatcher.Command;
-import org.wildfly.clustering.dispatcher.CommandDispatcher;
-import org.wildfly.clustering.dispatcher.CommandDispatcherException;
-import org.wildfly.clustering.dispatcher.CommandDispatcherFactory;
-import org.wildfly.clustering.group.Node;
+import org.wildfly.clustering.server.dispatcher.Command;
+import org.wildfly.clustering.server.dispatcher.CommandDispatcher;
+import org.wildfly.clustering.server.dispatcher.CommandDispatcherFactory;
+import org.wildfly.clustering.server.GroupMember;
 
 @Singleton
 @Startup
 @Local(CommandDispatcher.class)
-public class CommandDispatcherBean implements CommandDispatcher<Node> {
+public class CommandDispatcherBean implements CommandDispatcher<GroupMember, GroupMember> {
     @EJB
-    private CommandDispatcherFactory factory;
-    private CommandDispatcher<Node> dispatcher;
+    private CommandDispatcherFactory<GroupMember> factory;
+    private CommandDispatcher<GroupMember, GroupMember> dispatcher;
 
     @PostConstruct
     public void init() {
@@ -56,13 +40,13 @@ public class CommandDispatcherBean implements CommandDispatcher<Node> {
     }
 
     @Override
-    public <R> CompletionStage<R> executeOnMember(Command<R, ? super Node> command, Node member) throws CommandDispatcherException {
-        return this.dispatcher.executeOnMember(command, member);
+    public <R, E extends Exception> CompletionStage<R> dispatchToMember(Command<R, ? super GroupMember, E> command, GroupMember member) throws IOException {
+        return this.dispatcher.dispatchToMember(command, member);
     }
 
     @Override
-    public <R> Map<Node, CompletionStage<R>> executeOnGroup(Command<R, ? super Node> command, Node... excludedMembers) throws CommandDispatcherException {
-        return this.dispatcher.executeOnGroup(command, excludedMembers);
+    public <R, E extends Exception> Map<GroupMember, CompletionStage<R>> dispatchToGroup(Command<R, ? super GroupMember, E> command, Set<GroupMember> excluding) throws IOException {
+        return this.dispatcher.dispatchToGroup(command, excluding);
     }
 
     @Override
@@ -71,7 +55,7 @@ public class CommandDispatcherBean implements CommandDispatcher<Node> {
     }
 
     @Override
-    public Node getContext() {
+    public GroupMember getContext() {
         return this.factory.getGroup().getLocalMember();
     }
 }

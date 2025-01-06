@@ -1,38 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.txbridge.fromjta;
 
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
-
-import java.io.File;
-import java.io.FilePermission;
-import java.lang.reflect.ReflectPermission;
-import java.util.PropertyPermission;
-
 import javax.naming.InitialContext;
-import javax.transaction.UserTransaction;
+import jakarta.transaction.UserTransaction;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.as.test.txbridge.fromjta.service.FirstServiceAT;
@@ -40,7 +15,6 @@ import org.jboss.as.test.xts.util.DeploymentHelper;
 import org.jboss.logging.Logger;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
-import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -75,30 +49,10 @@ public class BridgeFromJTATestCase {
 
     @Deployment(name = DEPLOYMENT)
     public static Archive<?> createDeployment() {
-        final WebArchive archive = DeploymentHelper.getInstance().getWebArchiveWithPermissions("test")
+        return DeploymentHelper.getInstance().getWebArchiveWithPermissions("test")
             .addPackages(true, BridgeFromJTATestCase.class.getPackage())
             .addAsManifestResource(new StringAsset(ManifestMF), "MANIFEST.MF")
             .addAsWebInfResource(new StringAsset(persistentXml), "classes/META-INF/persistence.xml" );
-            if (SystemUtils.JAVA_VENDOR.startsWith("IBM")) {
-                archive.addAsManifestResource(
-                    createPermissionsXmlAsset(
-                            //This is not catastrophic if absent
-                            //$JAVA_HOME/jre/conf/jaxm.properties
-                            //$JAVA_HOME/jre/lib/jaxws.properties
-                            //$JAVA_HOME/jre/conf/jaxws.properties
-                            new FilePermission(System.getenv().get("JAVA_HOME") + File.separator + "jre" + File.separator
-                                    + "conf" + File.separator + "jaxm.properties", "read"),
-                            new FilePermission(System.getenv().get("JAVA_HOME") + File.separator + "jre" + File.separator
-                                    + "conf" + File.separator + "jaxws.properties", "read"),
-                            new FilePermission(System.getenv().get("JAVA_HOME") + File.separator + "jre" + File.separator
-                                    + "lib" + File.separator + "jaxws.properties", "read"),
-                            new PropertyPermission("arquillian.debug", "read"),
-                            new ReflectPermission("suppressAccessChecks"),
-                            new RuntimePermission("accessDeclaredMembers"),
-                            new RuntimePermission("accessClassInPackage.com.sun.org.apache.xerces.internal.jaxp")),
-                    "permissions.xml");
-            }
-        return archive;
     }
 
     @Before

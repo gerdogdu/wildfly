@@ -1,30 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright (c) 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ejb.view.basic;
 
 import java.io.Externalizable;
 import java.io.Serializable;
 
-import javax.ejb.EJBException;
+import jakarta.ejb.EJBException;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NameNotFoundException;
@@ -122,7 +105,7 @@ public class BusinessViewAnnotationProcessorTestCase {
 
 
     /**
-     * Tests that if a bean has a {@link javax.ejb.Remote} annotation without any specific value and if the bean implements n (valid) interfaces, then all those n (valid) interfaces are considered
+     * Tests that if a bean has a {@link jakarta.ejb.Remote} annotation without any specific value and if the bean implements n (valid) interfaces, then all those n (valid) interfaces are considered
      * as remote business interfaces
      *
      * @throws Exception
@@ -157,7 +140,7 @@ public class BusinessViewAnnotationProcessorTestCase {
     }
 
     /**
-     * Tests that if a bean has a {@link javax.ejb.Local} annotation without any specific value and if the bean implements n (valid) interfaces, then all those n (valid) interfaces are considered
+     * Tests that if a bean has a {@link jakarta.ejb.Local} annotation without any specific value and if the bean implements n (valid) interfaces, then all those n (valid) interfaces are considered
      * as local business interfaces
      *
      * @throws Exception

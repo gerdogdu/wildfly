@@ -1,25 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2021, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.jsf.deployment;
+
+import static org.jboss.as.weld.Capabilities.WELD_CAPABILITY_NAME;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -27,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import org.jboss.as.controller.capability.CapabilityServiceSupport;
 import org.jboss.as.ee.structure.DeploymentType;
 import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.server.deployment.Attachments;
@@ -37,6 +23,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.server.deployment.annotation.CompositeIndex;
 import org.jboss.as.server.deployment.module.ResourceRoot;
 import org.jboss.as.web.common.WarMetaData;
+import org.jboss.as.weld.WeldCapability;
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
@@ -59,33 +46,33 @@ public class JSFVersionProcessor implements DeploymentUnitProcessor {
     public static final String WAR_BUNDLES_JSF_IMPL_PARAM = "org.jboss.jbossfaces.WAR_BUNDLES_JSF_IMPL";
 
     private static final DotName[] JSF_ANNOTATIONS = {
-            DotName.createSimple("javax.faces.view.facelets.FaceletsResourceResolver"),
-            DotName.createSimple("javax.faces.component.behavior.FacesBehavior"),
-            DotName.createSimple("javax.faces.render.FacesBehaviorRenderer"),
-            DotName.createSimple("javax.faces.component.FacesComponent"),
-            DotName.createSimple("javax.faces.convert.FacesConverter"),
-            DotName.createSimple("javax.faces.annotation.FacesConfig"), // Should actually be check for enabled bean, but difficult to guarantee, see SERVLET_SPEC-79
-            DotName.createSimple("javax.faces.validator.FacesValidator"),
-            DotName.createSimple("javax.faces.event.ListenerFor"),
-            DotName.createSimple("javax.faces.event.ListenersFor"),
-            DotName.createSimple("javax.faces.bean.ManagedBean"),
-            DotName.createSimple("javax.faces.event.NamedEvent"),
-            DotName.createSimple("javax.faces.application.ResourceDependencies"),
-            DotName.createSimple("javax.faces.application.ResourceDependency"),
-            DotName.createSimple("javax.faces.annotation.ManagedProperty")};
+            DotName.createSimple("jakarta.faces.view.facelets.FaceletsResourceResolver"),
+            DotName.createSimple("jakarta.faces.component.behavior.FacesBehavior"),
+            DotName.createSimple("jakarta.faces.render.FacesBehaviorRenderer"),
+            DotName.createSimple("jakarta.faces.component.FacesComponent"),
+            DotName.createSimple("jakarta.faces.convert.FacesConverter"),
+            DotName.createSimple("jakarta.faces.annotation.FacesConfig"), // Should actually be check for enabled bean, but difficult to guarantee, see SERVLET_SPEC-79
+            DotName.createSimple("jakarta.faces.validator.FacesValidator"),
+            DotName.createSimple("jakarta.faces.event.ListenerFor"),
+            DotName.createSimple("jakarta.faces.event.ListenersFor"),
+            DotName.createSimple("jakarta.faces.bean.ManagedBean"),
+            DotName.createSimple("jakarta.faces.event.NamedEvent"),
+            DotName.createSimple("jakarta.faces.application.ResourceDependencies"),
+            DotName.createSimple("jakarta.faces.application.ResourceDependency"),
+            DotName.createSimple("jakarta.faces.annotation.ManagedProperty")};
 
 
     private static final DotName[] JSF_INTERFACES = {
-            DotName.createSimple("javax.faces.convert.Converter"),
-            DotName.createSimple("javax.faces.event.PhaseListener"),
-            DotName.createSimple("javax.faces.render.Renderer"),
-            DotName.createSimple("javax.faces.component.UIComponent"),
-            DotName.createSimple("javax.faces.validator.Validator")};
+            DotName.createSimple("jakarta.faces.convert.Converter"),
+            DotName.createSimple("jakarta.faces.event.PhaseListener"),
+            DotName.createSimple("jakarta.faces.render.Renderer"),
+            DotName.createSimple("jakarta.faces.component.UIComponent"),
+            DotName.createSimple("jakarta.faces.validator.Validator")};
 
     private static final String META_INF_FACES = "META-INF/faces-config.xml";
     private static final String WEB_INF_FACES = "WEB-INF/faces-config.xml";
-    private static final String JAVAX_FACES_WEBAPP_FACES_SERVLET = "javax.faces.webapp.FacesServlet";
-    private static final String CONFIG_FILES = "javax.faces.application.CONFIG_FILES";
+    private static final String JAVAX_FACES_WEBAPP_FACES_SERVLET = "jakarta.faces.webapp.FacesServlet";
+    private static final String CONFIG_FILES = "jakarta.faces.application.CONFIG_FILES";
 
 
     /**
@@ -106,6 +93,15 @@ public class JSFVersionProcessor implements DeploymentUnitProcessor {
         if (!shouldJsfActivate(deploymentUnit, metaData)) {
             JsfVersionMarker.setVersion(deploymentUnit, JsfVersionMarker.NONE);
             return;
+        }
+
+        try {
+            // As per section 5.6 of the spec, mark deployment as requiring CDI.
+            deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT)
+                    .getCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class)
+                    .markAsWeldDeployment(deploymentUnit);
+        } catch (CapabilityServiceSupport.NoSuchCapabilityException e) {
+            throw new DeploymentUnitProcessingException(e);
         }
 
         if (metaData == null) {

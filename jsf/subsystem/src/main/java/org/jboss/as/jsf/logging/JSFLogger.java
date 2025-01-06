@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jsf.logging;
@@ -27,6 +10,7 @@ import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -52,19 +36,19 @@ public interface JSFLogger extends BasicLogger {
     /**
      * A logger with a category of the package name.
      */
-    JSFLogger ROOT_LOGGER = Logger.getMessageLogger(JSFLogger.class, "org.jboss.as.jsf");
+    JSFLogger ROOT_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), JSFLogger.class, "org.jboss.as.jsf");
 
-    @LogMessage(level = WARN)
-    @Message(id = 1, value = "WildFlyConversationAwareViewHandler was improperly initialized. Expected ViewHandler parent.")
-    void viewHandlerImproperlyInitialized();
+//    @LogMessage(level = WARN)
+//    @Message(id = 1, value = "WildFlyConversationAwareViewHandler was improperly initialized. Expected ViewHandler parent.")
+//    void viewHandlerImproperlyInitialized();
 
-    @LogMessage(level = ERROR)
-    @Message(id = 2, value = "Could not load Jakarta Server Faces managed bean class: %s")
-    void managedBeanLoadFail(String managedBean);
+//    @LogMessage(level = ERROR)
+//    @Message(id = 2, value = "Could not load Jakarta Server Faces managed bean class: %s")
+//    void managedBeanLoadFail(String managedBean);
 
-    @LogMessage(level = ERROR)
-    @Message(id = 3, value = "Jakarta Server Faces managed bean class %s has no default constructor")
-    void managedBeanNoDefaultConstructor(String managedBean);
+//    @LogMessage(level = ERROR)
+//    @Message(id = 3, value = "Jakarta Server Faces managed bean class %s has no default constructor")
+//    void managedBeanNoDefaultConstructor(String managedBean);
 
     @LogMessage(level = ERROR)
     @Message(id = 4, value = "Failed to parse %s, Jakarta Server Faces artifacts defined in this file will not be available")
@@ -97,8 +81,8 @@ public interface JSFLogger extends BasicLogger {
 //    @Message(id = 12, value = "Thread local injection container not set")
 //    IllegalStateException noThreadLocalInjectionContainer();
 
-    @Message(id = 13, value = "@ManagedBean is only allowed at class level %s")
-    String invalidManagedBeanAnnotation(AnnotationTarget target);
+//    @Message(id = 13, value = "@ManagedBean is only allowed at class level %s")
+//    String invalidManagedBeanAnnotation(AnnotationTarget target);
 
     @Message(id = 14, value = "Default Jakarta Server Faces implementation slot '%s' is invalid")
     DeploymentUnitProcessingException invalidDefaultJSFImpl(String defaultJsfVersion);

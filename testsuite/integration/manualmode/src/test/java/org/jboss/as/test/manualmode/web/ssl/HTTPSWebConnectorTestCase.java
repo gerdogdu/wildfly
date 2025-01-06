@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.manualmode.web.ssl;
 
@@ -46,7 +29,7 @@ import java.util.Locale;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
@@ -65,7 +48,6 @@ import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.test.categories.CommonCriteria;
 import org.jboss.as.test.integration.security.common.AbstractSecurityDomainsServerSetupTask;
-//import org.jboss.as.test.integration.security.common.AddRoleLoginModule;
 import org.jboss.as.test.integration.security.common.SSLTruststoreUtil;
 import org.jboss.as.test.integration.security.common.SecurityTestConstants;
 import org.jboss.as.test.integration.security.common.SecurityTraceLoggingServerSetupTask;
@@ -80,7 +62,6 @@ import org.jboss.as.test.integration.security.common.servlets.SimpleServlet;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.jboss.dmr.ModelNode;
 import org.jboss.logging.Logger;
-import org.jboss.security.auth.spi.BaseCertLoginModule;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Assume;
@@ -212,7 +193,7 @@ public class HTTPSWebConnectorTestCase {
             assertEquals("Secured page was not reached", SimpleSecuredServlet.RESPONSE_BODY, responseBody);
 
             String principal = makeCallWithHttpClient(printPrincipalUrl, httpClient, HttpServletResponse.SC_OK);
-            assertEquals("Unexpected principal", "cn=client", principal.toLowerCase());
+            assertEquals("Unexpected principal", "cn=client", principal.toLowerCase(Locale.ENGLISH));
 
             responseBody = makeCallWithHttpClient(unsecuredUrl, httpClientUntrusted, HttpServletResponse.SC_OK);
             assertEquals("Secured page was not reached", SimpleServlet.RESPONSE_BODY, responseBody);
@@ -257,7 +238,7 @@ public class HTTPSWebConnectorTestCase {
             makeCallWithHttpClient(printPrincipalUrl, httpClientUntrusted, HttpServletResponse.SC_FORBIDDEN);
 
             final String principal = makeCallWithHttpClient(printPrincipalUrl, httpClient, HttpServletResponse.SC_OK);
-            assertEquals("Unexpected principal", "cn=client", principal.toLowerCase());
+            assertEquals("Unexpected principal", "cn=client", principal.toLowerCase(Locale.ENGLISH));
 
             String responseBody = makeCallWithHttpClient(unsecuredUrl, httpClient, HttpServletResponse.SC_OK);
             assertEquals("Unsecured page was not reached", SimpleSecuredServlet.RESPONSE_BODY, responseBody);
@@ -295,7 +276,7 @@ public class HTTPSWebConnectorTestCase {
             final URL unsecuredUrl = getServletUrl(HTTPS_PORT_VERIFY_TRUE, SimpleServlet.SERVLET_PATH);
 
             String principal = makeCallWithHttpClient(printPrincipalUrl, httpClient, HttpServletResponse.SC_OK);
-            assertEquals("Unexpected principal", "cn=client", principal.toLowerCase());
+            assertEquals("Unexpected principal", "cn=client", principal.toLowerCase(Locale.ENGLISH));
 
             String responseBody = makeCallWithHttpClient(securedUrl, httpClient, HttpServletResponse.SC_OK);
             assertEquals("Secured page was not reached", SimpleSecuredServlet.RESPONSE_BODY, responseBody);
@@ -531,7 +512,7 @@ public class HTTPSWebConnectorTestCase {
             final SecurityDomain sd = new SecurityDomain.Builder()
                     .name(SECURITY_DOMAIN_CERT)
                     .loginModules(
-                            new SecurityModule.Builder().name(BaseCertLoginModule.class.getName())
+                            new SecurityModule.Builder().name("org.jboss.security.auth.spi.BaseCertLoginModule")
                                     .putOption("securityDomain", SECURITY_DOMAIN_JSSE)
                                     .putOption("password-stacking", "useFirstPass").build(),
                             new SecurityModule.Builder().name("REMOVED").flag("optional") // AddRoleLoginModule.class.getName()

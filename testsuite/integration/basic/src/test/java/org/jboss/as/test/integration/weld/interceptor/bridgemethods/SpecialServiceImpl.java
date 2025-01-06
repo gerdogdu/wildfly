@@ -1,7 +1,12 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.weld.interceptor.bridgemethods;
 
-import javax.ejb.Local;
-import javax.ejb.Stateless;
+import jakarta.ejb.Local;
+import jakarta.ejb.Stateless;
 
 /**
  *

@@ -1,4 +1,9 @@
-<subsystem xmlns="urn:jboss:domain:resource-adapters:6.1">
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:resource-adapters:7.1">
   <!--Optional:-->
   <resource-adapters>
     <!--1 or more repetitions:-->
@@ -6,16 +11,16 @@
       <!--Optional:-->
       <archive>archive</archive>
       <!--Optional:-->
-      <bootstrap-context>bootstrapContext</bootstrap-context>
-      <!--Optional:-->
       <bean-validation-groups>
         <!--1 or more repetitions:-->
         <bean-validation-group>group</bean-validation-group>
       </bean-validation-groups>
       <!--Optional:-->
-      <transaction-support>XATransaction</transaction-support>
+      <bootstrap-context>bootstrapContext</bootstrap-context>
       <!--Zero or more repetitions:-->
       <config-property name="config1">value</config-property>
+      <!--Optional:-->
+      <transaction-support>XATransaction</transaction-support>
       <!--Optional:-->
       <connection-definitions>
         <!--1 or more repetitions:-->
@@ -74,11 +79,8 @@
           <!--Optional:-->
           <recovery no-recovery="false">
             <!--Optional:-->
-            <recover-credential>
+            <recover-credential user-name="userName" password="pwd">
               <!--Optional:-->
-              <user-name>userName</user-name>
-              <!--Optional:-->
-              <password>pwd</password>
             </recover-credential>
             <!--Optional:-->
             <recover-plugin class-name="aClass">

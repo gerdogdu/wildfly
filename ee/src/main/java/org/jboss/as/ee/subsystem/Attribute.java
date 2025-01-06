@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.subsystem;
@@ -40,22 +23,7 @@ enum Attribute {
     SERVICES(GlobalModulesDefinition.SERVICES),
     META_INF(GlobalModulesDefinition.META_INF),
 
-    // from ee concurrent
-    JNDI_NAME(ContextServiceResourceDefinition.JNDI_NAME),
-    USE_TRANSACTION_SETUP_PROVIDER(ContextServiceResourceDefinition.USE_TRANSACTION_SETUP_PROVIDER),
-    CONTEXT_SERVICE(ManagedThreadFactoryResourceDefinition.CONTEXT_SERVICE),
-    PRIORITY(ManagedThreadFactoryResourceDefinition.PRIORITY),
-    THREAD_FACTORY(ManagedExecutorServiceResourceDefinition.THREAD_FACTORY),
-    THREAD_PRIORITY(ManagedExecutorServiceResourceDefinition.THREAD_PRIORITY),
-    HUNG_TASK_TERMINATION_PERIOD(ManagedExecutorServiceResourceDefinition.HUNG_TASK_TERMINATION_PERIOD),
-    HUNG_TASK_THRESHOLD(ManagedExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD),
-    LONG_RUNNING_TASKS(ManagedExecutorServiceResourceDefinition.LONG_RUNNING_TASKS),
-    CORE_THREADS(ManagedExecutorServiceResourceDefinition.CORE_THREADS),
-    MAX_THREADS(ManagedExecutorServiceResourceDefinition.MAX_THREADS),
-    KEEPALIVE_TIME(ManagedExecutorServiceResourceDefinition.KEEPALIVE_TIME),
-    QUEUE_LENGTH(ManagedExecutorServiceResourceDefinition.QUEUE_LENGTH),
-    REJECT_POLICY(ManagedExecutorServiceResourceDefinition.REJECT_POLICY),
-
+    CONTEXT_SERVICE(DefaultBindingsResourceDefinition.CONTEXT_SERVICE),
     DATASOURCE(DefaultBindingsResourceDefinition.DATASOURCE),
     JMS_CONNECTION_FACTORY(DefaultBindingsResourceDefinition.JMS_CONNECTION_FACTORY),
     MANAGED_EXECUTOR_SERVICE(DefaultBindingsResourceDefinition.MANAGED_EXECUTOR_SERVICE),

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
@@ -40,9 +23,13 @@ import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.OperationEntry;
+import org.jboss.as.network.ClientMapping;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
-import org.wildfly.clustering.ejb.BeanManagerFactoryServiceConfiguratorConfiguration;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.server.registry.Registry;
+import org.wildfly.service.descriptor.UnaryServiceDescriptor;
+import org.wildfly.subsystem.resource.capability.CapabilityReference;
 
 import java.util.List;
 
@@ -57,12 +44,13 @@ public class EJB3RemoteResourceDefinition extends SimpleResourceDefinition {
 
     // todo: add in connector capability reference when connector resources are converted to use capabilities (WFCORE-5055)
     public static final String CONNECTOR_CAPABILITY_NAME = "org.wildfly.remoting.connector";
-    protected static final String INFINISPAN_CACHE_CONTAINER_CAPABILITY_NAME = "org.wildfly.clustering.infinispan.cache-container";
     protected static final String REMOTE_TRANSACTION_SERVICE_CAPABILITY_NAME = "org.wildfly.transactions.remote-transaction-service";
     protected static final String REMOTING_ENDPOINT_CAPABILITY_NAME = "org.wildfly.remoting.endpoint";
-    protected static final String THREAD_POOL_CAPABILITY_NAME = "org.wildfly.threads.executor.ejb3";
 
     public static final String EJB_REMOTE_CAPABILITY_NAME = "org.wildfly.ejb.remote";
+
+    @SuppressWarnings("unchecked")
+    static final UnaryServiceDescriptor<Registry<GroupMember, String, List<ClientMapping>>> CLIENT_MAPPINGS_REGISTRY = UnaryServiceDescriptor.of("org.wildfly.ejb.remote.client-mappings-registry", (Class<Registry<GroupMember, String, List<ClientMapping>>>) (Class<?>) Registry.class);
 
     static final RuntimeCapability<Void> EJB_REMOTE_CAPABILITY = RuntimeCapability.Builder.of(EJB_REMOTE_CAPABILITY_NAME)
             .setServiceType(Void.class)
@@ -75,9 +63,7 @@ public class EJB3RemoteResourceDefinition extends SimpleResourceDefinition {
                     // Capability references should not allow expressions
                     .setAllowExpression(false)
                     .setFlags(AttributeAccess.Flag.RESTART_ALL_SERVICES)
-                    .setDefaultValue(new ModelNode(BeanManagerFactoryServiceConfiguratorConfiguration.DEFAULT_CONTAINER_NAME))
-                    // TODO: replace this with a Requirement reference when the ejb-spi module for clustering is available
-                    .setCapabilityReference(INFINISPAN_CACHE_CONTAINER_CAPABILITY_NAME, EJB_REMOTE_CAPABILITY)
+                    .setDefaultValue(new ModelNode(org.wildfly.clustering.ejb.bean.LegacyBeanManagementConfiguration.DEFAULT_CONTAINER_NAME))
                     .setDeprecated(EJB3Model.VERSION_10_0_0.getVersion())
                     .build();
 
@@ -103,7 +89,7 @@ public class EJB3RemoteResourceDefinition extends SimpleResourceDefinition {
             new SimpleAttributeDefinitionBuilder(EJB3SubsystemModel.THREAD_POOL_NAME, ModelType.STRING, true)
                     .setAllowExpression(true)
                     .setFlags(AttributeAccess.Flag.RESTART_ALL_SERVICES)
-                    .setCapabilityReference(THREAD_POOL_CAPABILITY_NAME, EJB_REMOTE_CAPABILITY)
+                    .setCapabilityReference(CapabilityReference.builder(EJB_REMOTE_CAPABILITY, EJB3SubsystemRootResourceDefinition.EXECUTOR_SERVICE_DESCRIPTOR).build())
                     .build();
 
     static final SimpleAttributeDefinition EXECUTE_IN_WORKER =
@@ -115,11 +101,9 @@ public class EJB3RemoteResourceDefinition extends SimpleResourceDefinition {
 
     private static final AttributeDefinition[] ATTRIBUTES = new AttributeDefinition[] { CLIENT_MAPPINGS_CLUSTER_NAME, CONNECTORS, THREAD_POOL_NAME, EXECUTE_IN_WORKER };
 
-    static final EJB3RemoteServiceAdd ADD_HANDLER = new EJB3RemoteServiceAdd(ATTRIBUTES);
+    static final EJB3RemoteServiceAdd ADD_HANDLER = new EJB3RemoteServiceAdd();
 
-    public static final EJB3RemoteResourceDefinition INSTANCE = new EJB3RemoteResourceDefinition();
-
-    private EJB3RemoteResourceDefinition() {
+    EJB3RemoteResourceDefinition() {
         super(new Parameters(EJB3SubsystemModel.REMOTE_SERVICE_PATH, EJB3Extension.getResourceDescriptionResolver(EJB3SubsystemModel.REMOTE))
                 .setAddHandler(ADD_HANDLER)
                 .setAddRestartLevel(OperationEntry.Flag.RESTART_ALL_SERVICES)
@@ -131,7 +115,7 @@ public class EJB3RemoteResourceDefinition extends SimpleResourceDefinition {
     @Override
     public void registerAttributes(ManagementResourceRegistration resourceRegistration) {
         for (AttributeDefinition attr : ATTRIBUTES) {
-            resourceRegistration.registerReadWriteAttribute(attr, null, new ReloadRequiredWriteAttributeHandler(attr));
+            resourceRegistration.registerReadWriteAttribute(attr, null, ReloadRequiredWriteAttributeHandler.INSTANCE);
         }
 
         // register custom handlers for deprecated attribute connector-ref

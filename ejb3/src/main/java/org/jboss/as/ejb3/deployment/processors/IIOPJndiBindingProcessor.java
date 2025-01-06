@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.deployment.processors;
 
@@ -40,7 +23,6 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.modules.Module;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
 import org.omg.CORBA.ORB;
 import org.wildfly.iiop.openjdk.deployment.IIOPDeploymentMarker;
 import org.wildfly.iiop.openjdk.service.CorbaORBService;
@@ -49,7 +31,7 @@ import org.wildfly.iiop.openjdk.service.CorbaORBService;
  * Processor responsible for binding IIOP related resources to JNDI.
  * </p>
  * Unlike other resource injections this binding happens for all eligible components,
- * regardless of the presence of the {@link javax.annotation.Resource} annotation.
+ * regardless of the presence of the {@link jakarta.annotation.Resource} annotation.
  *
  * @author Stuart Douglas
  */
@@ -105,7 +87,7 @@ public class IIOPJndiBindingProcessor implements DeploymentUnitProcessor {
 
         final ServiceName handleDelegateServiceName = contextServiceName.append("HandleDelegate");
         final BinderService handleDelegateBindingService = new BinderService("HandleDelegate");
-        handleDelegateBindingService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue(new HandleDelegateImpl(module.getClassLoader()))));
+        handleDelegateBindingService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new HandleDelegateImpl(module.getClassLoader())));
         serviceTarget.addService(handleDelegateServiceName, handleDelegateBindingService)
                 .addDependency(contextServiceName, ServiceBasedNamingStore.class, handleDelegateBindingService.getNamingStoreInjector())
                 .install();

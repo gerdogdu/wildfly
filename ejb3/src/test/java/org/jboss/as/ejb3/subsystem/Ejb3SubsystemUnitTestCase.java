@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
@@ -32,13 +15,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.jboss.as.controller.PathAddress;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.subsystem.test.AbstractSubsystemBaseTest;
 import org.jboss.as.subsystem.test.AdditionalInitialization;
 import org.jboss.as.subsystem.test.KernelServices;
 import org.jboss.dmr.ModelNode;
 import org.junit.Test;
-import org.wildfly.clustering.singleton.SingletonDefaultRequirement;
+import org.wildfly.clustering.ejb.timer.TimerManagementProvider;
+import org.wildfly.clustering.singleton.service.ServiceTargetFactory;
 
 /**
  * Test case for testing the integrity of the EJB3 subsystem.
@@ -55,7 +40,10 @@ import org.wildfly.clustering.singleton.SingletonDefaultRequirement;
 public class Ejb3SubsystemUnitTestCase extends AbstractSubsystemBaseTest {
 
     private static final AdditionalInitialization ADDITIONAL_INITIALIZATION = AdditionalInitialization.withCapabilities(
-            SingletonDefaultRequirement.POLICY.getName());
+            RuntimeCapability.resolveCapabilityName(TimerManagementProvider.SERVICE_DESCRIPTOR, "transient"),
+            RuntimeCapability.resolveCapabilityName(TimerManagementProvider.SERVICE_DESCRIPTOR, "persistent"),
+            ServiceTargetFactory.DEFAULT_SERVICE_DESCRIPTOR.getName()
+            );
 
     public Ejb3SubsystemUnitTestCase() {
         super(EJB3Extension.SUBSYSTEM_NAME, new EJB3Extension());

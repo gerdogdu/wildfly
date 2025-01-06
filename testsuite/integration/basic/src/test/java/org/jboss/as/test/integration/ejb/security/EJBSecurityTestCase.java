@@ -1,30 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ejb.security;
 
 import static org.junit.Assert.assertEquals;
 
-import javax.ejb.EJBAccessException;
+import jakarta.ejb.EJBAccessException;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -175,7 +158,7 @@ public class EJBSecurityTestCase {
     }
 
     /**
-     * Tests that if a method of an EJB is annotated with a {@link javax.annotation.security.RolesAllowed} with empty value for the annotation
+     * Tests that if a method of an EJB is annotated with a {@link jakarta.annotation.security.RolesAllowed} with empty value for the annotation
      * <code>@RolesAllowed({})</code> then access to that method by any user MUST throw an EJBAccessException. i.e. it should
      * behave like a @DenyAll
      *

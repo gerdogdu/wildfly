@@ -1,27 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.remote;
 
-import javax.ejb.EJBHome;
+import java.util.function.Supplier;
+import jakarta.ejb.EJBHome;
 
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.as.naming.ContextListAndJndiViewManagedReferenceFactory;
@@ -34,8 +18,6 @@ import org.jboss.ejb.client.EJBHomeLocator;
 import org.jboss.ejb.client.EJBIdentifier;
 import org.jboss.ejb.client.EJBLocator;
 import org.jboss.ejb.client.StatelessEJBLocator;
-import org.jboss.msc.value.ImmediateValue;
-import org.jboss.msc.value.Value;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
@@ -49,14 +31,14 @@ public class RemoteViewManagedReferenceFactory implements ContextListAndJndiView
     private final EJBIdentifier identifier;
     private final String viewClass;
     private final boolean stateful;
-    private final Value<ClassLoader> viewClassLoader;
+    private final Supplier<ClassLoader> viewClassLoader;
     private final boolean appclient;
 
-    public RemoteViewManagedReferenceFactory(final String appName, final String moduleName, final String distinctName, final String beanName, final String viewClass, final boolean stateful, final Value<ClassLoader> viewClassLoader, boolean appclient) {
+    public RemoteViewManagedReferenceFactory(final String appName, final String moduleName, final String distinctName, final String beanName, final String viewClass, final boolean stateful, final Supplier<ClassLoader> viewClassLoader, boolean appclient) {
         this(new EJBIdentifier(appName == null ? "" : appName, moduleName, beanName, distinctName), viewClass, stateful, viewClassLoader, appclient);
     }
 
-    public RemoteViewManagedReferenceFactory(final EJBIdentifier identifier, final String viewClass, final boolean stateful, final Value<ClassLoader> viewClassLoader, boolean appclient) {
+    public RemoteViewManagedReferenceFactory(final EJBIdentifier identifier, final String viewClass, final boolean stateful, final Supplier<ClassLoader> viewClassLoader, boolean appclient) {
         this.identifier = identifier;
         this.viewClass = viewClass;
         this.stateful = stateful;
@@ -81,11 +63,11 @@ public class RemoteViewManagedReferenceFactory implements ContextListAndJndiView
         try {
             viewClass = Class.forName(this.viewClass, false, WildFlySecurityManager.getCurrentContextClassLoaderPrivileged());
         } catch (ClassNotFoundException e) {
-            if(viewClassLoader == null || viewClassLoader.getValue() == null) {
+            if(viewClassLoader == null || viewClassLoader.get() == null) {
                 throw EjbLogger.ROOT_LOGGER.failToLoadViewClassEjb(identifier.toString(), e);
             }
             try {
-                viewClass = Class.forName(this.viewClass, false, viewClassLoader.getValue());
+                viewClass = Class.forName(this.viewClass, false, viewClassLoader.get());
             } catch (ClassNotFoundException ce) {
                 throw EjbLogger.ROOT_LOGGER.failToLoadViewClassEjb(identifier.toString(), ce);
             }
@@ -104,6 +86,6 @@ public class RemoteViewManagedReferenceFactory implements ContextListAndJndiView
         }
         final Object proxy = EJBClient.createProxy(ejbLocator);
 
-        return new ValueManagedReference(new ImmediateValue<>(proxy));
+        return new ValueManagedReference(proxy);
     }
 }

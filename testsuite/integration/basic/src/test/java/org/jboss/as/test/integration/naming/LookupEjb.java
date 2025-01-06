@@ -1,7 +1,12 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.naming;
 
-import javax.annotation.Resource;
-import javax.ejb.Stateless;
+import jakarta.annotation.Resource;
+import jakarta.ejb.Stateless;
 import javax.naming.ldap.LdapContext;
 
 /**

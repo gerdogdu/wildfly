@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.messaging.activemq.deployment;
@@ -47,7 +30,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
-import javax.resource.spi.TransactionSupport;
+import jakarta.resource.spi.TransactionSupport;
 import org.apache.activemq.artemis.api.core.DiscoveryGroupConfiguration;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
 import org.apache.activemq.artemis.ra.ActiveMQRAConnectionFactoryImpl;
@@ -59,7 +42,6 @@ import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.ee.component.EEModuleDescription;
-import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.resource.definition.ResourceDefinitionInjectionSource;
 import org.jboss.as.naming.ContextListAndJndiViewManagedReferenceFactory;
 import org.jboss.as.naming.ManagedReference;
@@ -93,7 +75,7 @@ import org.wildfly.extension.messaging.activemq.jms.PooledConnectionFactoryConfi
 import org.wildfly.extension.messaging.activemq.jms.PooledConnectionFactoryConfigurationRuntimeHandler;
 import org.wildfly.extension.messaging.activemq.jms.PooledConnectionFactoryDefinition;
 import org.wildfly.extension.messaging.activemq.jms.PooledConnectionFactoryService;
-import org.wildfly.extension.messaging.activemq.logging.MessagingLogger;
+import org.wildfly.extension.messaging.activemq._private.MessagingLogger;
 
 /**
  * @author <a href="http://jmesnil.net/">Jeff Mesnil</a> (c) 2013 Red Hat inc.
@@ -104,7 +86,7 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
     /*
     String description() default "";
     String name();
-    String interfaceName() default "javax.jms.ConnectionFactory";
+    String interfaceName() default "jakarta.jms.ConnectionFactory";
     String className() default "";
     String resourceAdapter() default "";
     String user() default "";
@@ -127,7 +109,6 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
     private boolean transactional;
     private int maxPoolSize;
     private int minPoolSize;
-    private boolean legacySecurityAvailable;
 
     public JMSConnectionFactoryDefinitionInjectionSource(String jndiName) {
         super(jndiName);
@@ -169,10 +150,6 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
         this.minPoolSize = minPoolSize;
     }
 
-    public void setLegacySecurityAvailable(boolean legacySecurityAvailable) {
-        this.legacySecurityAvailable = legacySecurityAvailable;
-    }
-
     @Override
     public void getResourceValue(ResolutionContext context, ServiceBuilder<?> serviceBuilder, DeploymentPhaseContext phaseContext, Injector<ManagedReferenceFactory> injector) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
@@ -192,7 +169,6 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
             cfdis.setMaxPoolSize(maxPoolSize);
             cfdis.setMinPoolSize(minPoolSize);
             cfdis.setTransactionSupportLevel(transactional ? TransactionSupport.TransactionSupportLevel.XATransaction : TransactionSupport.TransactionSupportLevel.NoTransaction);
-            cfdis.setLegacySecurityAvailable(legacySecurityAvailable);
             // transfer all the generic properties + the additional properties specific to the JMSConnectionFactoryDefinition
             for (Map.Entry<String, String> property : properties.entrySet()) {
                 cfdis.addProperty(property.getKey(), property.getValue());
@@ -260,12 +236,16 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
         if(external) {
             serverName = null;
             Set<String> connectorsSocketBindings = new HashSet<>();
+            Set<String> sslContextNames = new HashSet<>();
             ExternalBrokerConfigurationService configuration = (ExternalBrokerConfigurationService)deploymentUnit.getServiceRegistry().getRequiredService(MessagingSubsystemRootResourceDefinition.CONFIGURATION_CAPABILITY.getCapabilityServiceName()).getService().getValue();
             TransportConfiguration[] tcs = new TransportConfiguration[connectors.size()];
             for (int i = 0; i < tcs.length; i++) {
                 tcs[i] = configuration.getConnectors().get(connectors.get(i));
                 if (tcs[i].getParams().containsKey(ModelDescriptionConstants.SOCKET_BINDING)) {
                     connectorsSocketBindings.add(tcs[i].getParams().get(ModelDescriptionConstants.SOCKET_BINDING).toString());
+                }
+                if (tcs[i].getParams().containsKey(ModelDescriptionConstants.SSL_CONTEXT)) {
+                    sslContextNames.add(tcs[i].getParams().get(ModelDescriptionConstants.SSL_CONTEXT).toString());
                 }
             }
             DiscoveryGroupConfiguration discoveryGroupConfiguration = null;
@@ -274,14 +254,17 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
             }
             if (connectors.isEmpty() && discoveryGroupConfiguration == null) {
                 tcs = getExternalPooledConnectionFactory(resourceAdapter, deploymentUnit.getServiceRegistry()).getConnectors();
-                for(int i = 0 ; i < tcs.length; i++) {
-                 if(tcs[i].getParams().containsKey(ModelDescriptionConstants.SOCKET_BINDING)) {
-                    connectorsSocketBindings.add(tcs[i].getParams().get(ModelDescriptionConstants.SOCKET_BINDING).toString());
-                 }
-             }
+                for (int i = 0; i < tcs.length; i++) {
+                    if (tcs[i].getParams().containsKey(ModelDescriptionConstants.SOCKET_BINDING)) {
+                        connectorsSocketBindings.add(tcs[i].getParams().get(ModelDescriptionConstants.SOCKET_BINDING).toString());
+                    }
+                    if (tcs[i].getParams().containsKey(ModelDescriptionConstants.SSL_CONTEXT)) {
+                        sslContextNames.add(tcs[i].getParams().get(ModelDescriptionConstants.SSL_CONTEXT).toString());
+                    }
+                }
             }
             ExternalPooledConnectionFactoryService.installService(serviceTarget, configuration, pcfName, tcs, discoveryGroupConfiguration,
-                    connectorsSocketBindings, null, jgroupsChannelName, adapterParams, bindInfo, Collections.emptyList(),
+                    connectorsSocketBindings, sslContextNames, null, jgroupsChannelName, adapterParams, bindInfo, Collections.emptyList(),
                     txSupport, minPoolSize, maxPoolSize, managedConnectionPoolClassName, enlistmentTrace, deploymentUnit.getAttachment(CAPABILITY_SERVICE_SUPPORT));
         } else {
             serverName = getActiveMQServerName(properties);
@@ -308,7 +291,11 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
             registration = PathAddress.pathAddress(serverElement, pcfPath);
         }
         MessagingXmlInstallDeploymentUnitProcessor.createDeploymentSubModel(registration, deploymentUnit);
-        PooledConnectionFactoryConfigurationRuntimeHandler.INSTANCE.registerResource(serverName, managementName, model);
+        if(external) {
+            PooledConnectionFactoryConfigurationRuntimeHandler.EXTERNAL_INSTANCE.registerResource(serverName, managementName, model);
+        } else {
+            PooledConnectionFactoryConfigurationRuntimeHandler.INSTANCE.registerResource(serverName, managementName, model);
+        }
     }
 
     private List<String> getConnectors(Map<String, String> props) {
@@ -332,7 +319,7 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
     }
 
     void clearUnknownProperties(final Map<String, String> props) {
-        Set<String> attributeNames = PooledConnectionFactoryDefinition.getAttributesMap().keySet();
+        Map<String, ConnectionFactoryAttribute> attributesMap = PooledConnectionFactoryDefinition.getAttributesMap();
 
         final Iterator<Map.Entry<String, String>> it = props.entrySet().iterator();
         while (it.hasNext()) {
@@ -340,21 +327,21 @@ public class JMSConnectionFactoryDefinitionInjectionSource extends ResourceDefin
             String value = entry.getKey();
             if (value == null || "".equals(value)) {
                 it.remove();
-            } else if (!attributeNames.contains(entry.getKey())) {
+            } else if (!attributesMap.containsKey(entry.getKey())) {
                 MessagingLogger.ROOT_LOGGER.unknownPooledConnectionFactoryAttribute(entry.getKey());
                 it.remove();
             }
         }
     }
 
-    private static String uniqueName(InjectionSource.ResolutionContext context, final String jndiName) {
+    private static String uniqueName(ResolutionContext context, final String jndiName) {
         StringBuilder uniqueName = new StringBuilder();
         return uniqueName.append(context.getApplicationName()).append("_")
                 .append(managementName(context, jndiName))
                 .toString();
     }
 
-    private static String managementName(InjectionSource.ResolutionContext context, final String jndiName) {
+    private static String managementName(ResolutionContext context, final String jndiName) {
         StringBuilder uniqueName = new StringBuilder();
         uniqueName.append(context.getModuleName()).append("_");
         if (context.getComponentName() != null) {

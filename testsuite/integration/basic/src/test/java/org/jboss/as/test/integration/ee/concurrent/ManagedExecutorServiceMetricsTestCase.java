@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ee.concurrent;
@@ -46,7 +29,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.wildfly.extension.requestcontroller.RequestControllerExtension;
 
-import javax.enterprise.concurrent.ManagedExecutorService;
+import jakarta.enterprise.concurrent.ManagedExecutorService;
 import javax.naming.InitialContext;
 import java.io.FilePermission;
 import java.io.IOException;
@@ -61,7 +44,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.FAI
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OPERATION_HEADERS;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.RESULT;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 /**
  * Test case for managed executor runtime stats
@@ -222,11 +205,11 @@ public class ManagedExecutorServiceMetricsTestCase {
     private void testActiveRequestStats(PathAddress pathAddress, ManagedExecutorService executorService) throws IOException, ExecutionException, InterruptedException, BrokenBarrierException {
 
         // assert stats initial values
-        Assert.assertEquals(0, readStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME));
-        Assert.assertEquals(0, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.ACTIVE_THREAD_COUNT));
-        Assert.assertEquals(0, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.COMPLETED_TASK_COUNT));
-        Assert.assertEquals(0, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.CURRENT_QUEUE_SIZE));
-        Assert.assertEquals(0, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.TASK_COUNT));
+        assertStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.ACTIVE_THREAD_COUNT, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.COMPLETED_TASK_COUNT, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.CURRENT_QUEUE_SIZE, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.TASK_COUNT, 0);
 
         // exclusive testing of queue size stat
         final CyclicBarrier barrier1 = new CyclicBarrier(3);
@@ -240,7 +223,7 @@ public class ManagedExecutorServiceMetricsTestCase {
                 Assert.fail();
             }
         });
-        Assert.assertEquals(1, readStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME));
+        assertStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME, 1);
         final Future f2 = executorService.submit(() -> {
             logger.info("Executing task #4.2");
             try {
@@ -250,15 +233,15 @@ public class ManagedExecutorServiceMetricsTestCase {
                 Assert.fail();
             }
         });
-        Assert.assertEquals(2, readStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME));
+        assertStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME, 2);
         barrier1.await();
         // 2 tasks running, executing a 3rd should place it in queue,
         // cause when core threads is reached executor always prefers queueing than creating a new thread
         final Future f3 = executorService.submit(() -> {
             logger.info("Executing task #4.3");
         });
-        Assert.assertEquals(3, readStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME));
-        Assert.assertEquals(1, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.CURRENT_QUEUE_SIZE));
+        assertStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME, 3);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.CURRENT_QUEUE_SIZE, 1);
         // executor is full, the following task will be rejected which should not increase the active request counter
         try {
             final Future f4 = executorService.submit(() -> {
@@ -268,17 +251,17 @@ public class ManagedExecutorServiceMetricsTestCase {
         } catch (RejectedExecutionException e) {
             // expected exception
         }
-        Assert.assertEquals(3, readStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME));
+        assertStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME, 3);
         // resume tasks running, ensure all complete and then confirm expected idle stats
         barrier2.await();
         f1.get();
         f2.get();
         f3.get();
-        Assert.assertEquals(0, readStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME));
-        Assert.assertEquals(0, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.ACTIVE_THREAD_COUNT));
-        Assert.assertEquals(3, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.COMPLETED_TASK_COUNT));
-        Assert.assertEquals(0, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.CURRENT_QUEUE_SIZE));
-        Assert.assertEquals(3, readStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.TASK_COUNT));
+        assertStatsAttribute(REQUEST_CONTROLLER_PATH_ADDRESS, ACTIVE_REQUEST_ATTRIBUTE_NAME, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.ACTIVE_THREAD_COUNT, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.COMPLETED_TASK_COUNT, 3);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.CURRENT_QUEUE_SIZE, 0);
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.TASK_COUNT, 3);
     }
 
     private void testRuntimeStats(PathAddress pathAddress, ManagedExecutorService executorService) throws IOException, ExecutionException, InterruptedException, BrokenBarrierException {

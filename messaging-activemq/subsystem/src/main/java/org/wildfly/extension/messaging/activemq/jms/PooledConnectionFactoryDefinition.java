@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.messaging.activemq.jms;
@@ -132,11 +115,12 @@ public class PooledConnectionFactoryDefinition extends PersistentResourceDefinit
     }
 
     private final boolean deployed;
+    private final boolean external;
 
-    public static final PooledConnectionFactoryDefinition INSTANCE = new PooledConnectionFactoryDefinition(false);
-
-    public static final PooledConnectionFactoryDefinition DEPLOYMENT_INSTANCE = new PooledConnectionFactoryDefinition(true);
-
+    /**
+     * Constructor for a pooled connection factory.
+     * @param deployed: indicates if this resource describe a pcf created via a deployment.
+     */
     public PooledConnectionFactoryDefinition(final boolean deployed) {
         this(new SimpleResourceDefinition.Parameters(MessagingExtension.POOLED_CONNECTION_FACTORY_PATH, MessagingExtension.getResourceDescriptionResolver(CommonAttributes.POOLED_CONNECTION_FACTORY))
                 .setAddHandler(PooledConnectionFactoryAdd.INSTANCE)
@@ -145,8 +129,13 @@ public class PooledConnectionFactoryDefinition extends PersistentResourceDefinit
     }
 
     protected PooledConnectionFactoryDefinition(SimpleResourceDefinition.Parameters parameters, final boolean deployed) {
+        this(parameters, deployed, false);
+    }
+
+    protected PooledConnectionFactoryDefinition(SimpleResourceDefinition.Parameters parameters, final boolean deployed, final boolean external) {
         super(parameters);
         this.deployed = deployed;
+        this.external = external;
     }
 
     @Override
@@ -162,7 +151,7 @@ public class PooledConnectionFactoryDefinition extends PersistentResourceDefinit
         for (AttributeDefinition attr : definitions) {
             if (!attr.getFlags().contains(AttributeAccess.Flag.STORAGE_RUNTIME)) {
                 if (deployed) {
-                    registry.registerReadOnlyAttribute(attr, PooledConnectionFactoryConfigurationRuntimeHandler.INSTANCE);
+                    registry.registerReadOnlyAttribute(attr, external ? PooledConnectionFactoryConfigurationRuntimeHandler.EXTERNAL_INSTANCE: PooledConnectionFactoryConfigurationRuntimeHandler.INSTANCE);
                 } else {
                     if (CREDENTIAL_REFERENCE.equals(attr)) {
                         registry.registerReadWriteAttribute(attr, null, credentialReferenceWriteAttributeHandler);

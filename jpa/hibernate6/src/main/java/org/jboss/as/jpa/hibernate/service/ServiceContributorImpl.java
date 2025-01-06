@@ -1,19 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2022 Red Hat, Inc., and individual contributors
- * as indicated by the @author tags.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.jpa.hibernate.service;
 
@@ -34,6 +21,7 @@ public class ServiceContributorImpl implements ServiceContributor {
     private static final String TRANSACTION_PLATFORM = "hibernate.transaction.jta.platform";
     private static final String EHCACHE = "ehcache";
     private static final String HIBERNATE_REGION_FACTORY_CLASS = "hibernate.cache.region.factory_class";
+    private static final String DEFAULT_REGION_FACTORY = "org.infinispan.hibernate.cache.v62.InfinispanRegionFactory";
 
     @Override
     public void contribute(StandardServiceRegistryBuilder serviceRegistryBuilder) {
@@ -54,10 +42,18 @@ public class ServiceContributorImpl implements ServiceContributor {
 
         final Object regionFactoryInitiatorEnabled = serviceRegistryBuilder.getSettings().getOrDefault(CONTROL2LCINTEGRATION, true);
         final Object regionFactory = serviceRegistryBuilder.getSettings().get(HIBERNATE_REGION_FACTORY_CLASS);
-        if ((regionFactory instanceof String) && ((String) regionFactory).contains(EHCACHE)) {
-            JPA_LOGGER.tracef("ServiceContributorImpl#contribute application is using Ehcache via regionFactory=%s",
-                    regionFactory);
-        } else if (regionFactoryInitiatorEnabled == null ||
+        if ((regionFactory instanceof String)) {
+            String cacheRegionFactory = (String) regionFactory;
+            if (cacheRegionFactory.contains(EHCACHE)) {
+                JPA_LOGGER.tracef("ServiceContributorImpl#contribute application is using Ehcache via %s=%s",
+                        HIBERNATE_REGION_FACTORY_CLASS, cacheRegionFactory);
+                return;
+            } else if (!DEFAULT_REGION_FACTORY.equals(cacheRegionFactory)) {
+                // warn and ignore application cache region setting
+                JPA_LOGGER.ignoredCacheRegionSetting(HIBERNATE_REGION_FACTORY_CLASS, cacheRegionFactory);
+            }
+        }
+        if (regionFactoryInitiatorEnabled == null ||
                 (regionFactoryInitiatorEnabled instanceof Boolean && ((Boolean) regionFactoryInitiatorEnabled).booleanValue()) ||
                 Boolean.parseBoolean(regionFactoryInitiatorEnabled.toString())) {
             JPA_LOGGER.tracef("ServiceContributorImpl#contribute adding ORM initiator for 2lc region factory");

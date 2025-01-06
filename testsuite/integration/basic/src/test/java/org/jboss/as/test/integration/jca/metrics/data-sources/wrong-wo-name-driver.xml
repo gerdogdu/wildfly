@@ -1,7 +1,12 @@
-<subsystem xmlns="urn:jboss:domain:datasources:7.0">
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:datasources:7.2">
     <datasources>
         <drivers>
-            <driver module="com.h2database.h2" major-version="1">
+            <driver module="com.h2database.h2" major-version="2" minor-version="1">
                 <driver-class>org.h2.Driver</driver-class>
                 <xa-datasource-class>XaDsClass</xa-datasource-class>
             </driver>

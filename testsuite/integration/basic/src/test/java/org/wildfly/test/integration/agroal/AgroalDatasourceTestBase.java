@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.test.integration.agroal;
@@ -25,7 +8,6 @@ package org.wildfly.test.integration.agroal;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.as.arquillian.api.ServerSetup;
 import org.jboss.as.arquillian.container.ManagementClient;
-import org.jboss.as.controller.client.Operation;
 import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.test.integration.management.base.ContainerResourceMgmtTestBase;
 import org.jboss.as.test.integration.management.util.MgmtOperationException;
@@ -82,17 +64,6 @@ public abstract class AgroalDatasourceTestBase extends ContainerResourceMgmtTest
 
             // Reload before continuing
             ServerReload.executeReloadAndWaitForCompletion(client, TimeoutUtil.adjust(50000));
-        }
-
-        private void executeOperation(final ManagementClient client, final Operation op) throws IOException {
-            final ModelNode result = client.getControllerClient().execute(op);
-            if (!isSuccessfulOutcome(result)) {
-                // Throwing an exception does not seem to stop the tests from running, log the error as well for some
-                // better details
-                log.errorf("Failed to execute operation: %s%n%s",
-                        getFailureDescription(result).asString(), op.getOperation());
-                throw new RuntimeException("Failed to execute operation: " + getFailureDescription(result).asString());
-            }
         }
     }
 

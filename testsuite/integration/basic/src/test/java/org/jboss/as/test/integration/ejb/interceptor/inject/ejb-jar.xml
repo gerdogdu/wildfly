@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <ejb-jar xmlns="http://java.sun.com/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
                             http://java.sun.com/xml/ns/javaee/ejb-jar_3_0.xsd"
@@ -58,7 +63,7 @@
             <interceptor-class>org.jboss.as.test.integration.ejb.interceptor.inject.SimpleInterceptor</interceptor-class>
             <resource-env-ref>
                 <resource-env-ref-name>someOtherENCName</resource-env-ref-name>
-                <resource-env-ref-type>javax.ejb.EJBContext</resource-env-ref-type>
+                <resource-env-ref-type>jakarta.ejb.EJBContext</resource-env-ref-type>
                 <injection-target>
                     <injection-target-class>org.jboss.as.test.integration.ejb.interceptor.inject.SimpleInterceptor</injection-target-class>
                     <injection-target-name>ejbContextInjectedThroughEjbJarXml</injection-target-name>

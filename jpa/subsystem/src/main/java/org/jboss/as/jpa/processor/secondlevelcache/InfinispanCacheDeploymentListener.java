@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jpa.processor.secondlevelcache;
@@ -44,8 +27,7 @@ import org.jipijapa.cache.spi.Classification;
 import org.jipijapa.cache.spi.Wrapper;
 import org.jipijapa.event.spi.EventListener;
 import org.jipijapa.plugin.spi.PersistenceUnitMetadata;
-import org.wildfly.clustering.infinispan.service.InfinispanCacheRequirement;
-import org.wildfly.clustering.infinispan.service.InfinispanRequirement;
+import org.wildfly.clustering.infinispan.service.InfinispanServiceDescriptor;
 
 /**
  * InfinispanCacheDeploymentListener adds Infinispan second level cache dependencies during application deployment.
@@ -80,7 +62,7 @@ public class InfinispanCacheDeploymentListener implements EventListener {
         String container = properties.getProperty(CONTAINER);
         String cacheType = properties.getProperty(CACHE_TYPE);
         // TODO Figure out how to access CapabilityServiceSupport from here
-        ServiceName containerServiceName = ServiceNameFactory.parseServiceName(InfinispanRequirement.CONTAINER.getName()).append(container);
+        ServiceName containerServiceName = ServiceNameFactory.resolveServiceName(InfinispanServiceDescriptor.CACHE_CONTAINER, container);
 
         // need a private cache for non-jpa application use
         String name = properties.getProperty(NAME, UUID.randomUUID().toString());
@@ -92,7 +74,7 @@ public class InfinispanCacheDeploymentListener implements EventListener {
             // If using a private cache, addCacheDependencies(...) is never triggered
             String[] caches = properties.getProperty(CACHES).split("\\s+");
             for (String cache : caches) {
-                builder.requires(ServiceNameFactory.parseServiceName(InfinispanCacheRequirement.CONFIGURATION.getName()).append(container, cache));
+                builder.requires(ServiceNameFactory.resolveServiceName(InfinispanServiceDescriptor.CACHE_CONFIGURATION, container, cache));
             }
         }
         final CountDownLatch latch = new CountDownLatch(1);
@@ -119,8 +101,8 @@ public class InfinispanCacheDeploymentListener implements EventListener {
         String container = properties.getProperty(CONTAINER);
         for (String cache : properties.getProperty(CACHES).split("\\s+")) {
             // Workaround for legacy default configuration, where the pending-puts cache configuration is missing
-            if (cache.equals(PENDING_PUTS) ? support.hasCapability(InfinispanCacheRequirement.CACHE.resolve(container, cache)) : true) {
-                builder.requires(InfinispanCacheRequirement.CONFIGURATION.getServiceName(support, container, cache));
+            if (cache.equals(PENDING_PUTS) ? support.hasCapability(InfinispanServiceDescriptor.CACHE_CONFIGURATION, container, cache) : true) {
+                builder.requires(support.getCapabilityServiceName(InfinispanServiceDescriptor.CACHE_CONFIGURATION, container, cache));
             }
         }
     }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow.filters;
@@ -26,24 +9,30 @@ import static org.jboss.as.controller.PathElement.pathElement;
 import static org.wildfly.extension.undertow.Capabilities.CAPABILITY_MOD_CLUSTER_FILTER;
 import static org.wildfly.extension.undertow.Capabilities.REF_SSL_CONTEXT;
 
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import io.undertow.Handlers;
 import io.undertow.UndertowOptions;
 import io.undertow.predicate.Predicate;
+import io.undertow.predicate.PredicateParser;
 import io.undertow.protocols.ajp.AjpClientRequestClientStreamSinkChannel;
 import io.undertow.protocols.http2.Http2Channel;
+import io.undertow.server.HandlerWrapper;
 import io.undertow.server.HttpHandler;
-import io.undertow.server.handlers.proxy.ProxyHandler;
-import org.jboss.as.clustering.controller.AddStepHandler;
-import org.jboss.as.clustering.controller.AddStepHandlerDescriptor;
-import org.jboss.as.clustering.controller.RemoveStepHandler;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.server.handlers.proxy.mod_cluster.MCMPConfig;
+import io.undertow.server.handlers.proxy.mod_cluster.ModCluster;
+
 import org.jboss.as.clustering.controller.ResourceDescriptor;
-import org.jboss.as.clustering.controller.ResourceRegistration;
 import org.jboss.as.clustering.controller.ResourceServiceHandler;
-import org.jboss.as.clustering.controller.UnaryCapabilityNameResolver;
+import org.jboss.as.clustering.controller.SimpleResourceRegistrar;
 import org.jboss.as.controller.AttributeDefinition;
+import org.jboss.as.controller.CapabilityServiceBuilder;
 import org.jboss.as.controller.ModelVersion;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
@@ -51,24 +40,28 @@ import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
-import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.access.management.SensitiveTargetAccessConstraintDefinition;
 import org.jboss.as.controller.capability.RuntimeCapability;
+import org.jboss.as.controller.capability.UnaryCapabilityNameResolver;
 import org.jboss.as.controller.client.helpers.MeasurementUnit;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.IntRangeValidator;
 import org.jboss.as.controller.operations.validation.StringLengthValidator;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
-import org.jboss.as.controller.registry.Resource;
+import org.jboss.as.network.SocketBinding;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
+import org.jboss.msc.Service;
+import org.jboss.msc.service.ServiceController;
 import org.wildfly.extension.io.OptionAttributeDefinition;
-import org.wildfly.extension.undertow.AbstractHandlerDefinition;
 import org.wildfly.extension.undertow.Capabilities;
 import org.wildfly.extension.undertow.Constants;
 import org.wildfly.extension.undertow.PredicateValidator;
-import org.wildfly.extension.undertow.UndertowExtension;
 import org.wildfly.extension.undertow.UndertowService;
+import org.wildfly.subsystem.resource.capability.CapabilityReferenceRecorder;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.capture.ServiceValueExecutorRegistry;
+import org.wildfly.subsystem.service.capture.ServiceValueRegistry;
 
 /**
  * mod_cluster front-end handler. This acts like a filter, but does not re-use a lot of the filter code as it
@@ -77,13 +70,12 @@ import org.wildfly.extension.undertow.UndertowService;
  * @author Stuart Douglas
  * @author Radoslav Husar
  */
-public class ModClusterDefinition extends AbstractHandlerDefinition {
+public class ModClusterDefinition extends AbstractFilterDefinition {
 
-    public static final PathElement PATH = pathElement(Constants.MOD_CLUSTER);
-    public static final ModClusterDefinition INSTANCE = new ModClusterDefinition();
+    public static final PathElement PATH_ELEMENT = pathElement(Constants.MOD_CLUSTER);
 
     enum Capability implements org.jboss.as.clustering.controller.Capability {
-        MOD_CLUSTER_FILTER_CAPABILITY(CAPABILITY_MOD_CLUSTER_FILTER, FilterService.class),
+        MOD_CLUSTER_FILTER_CAPABILITY(CAPABILITY_MOD_CLUSTER_FILTER, HandlerWrapper.class),
         ;
         private final RuntimeCapability<Void> definition;
 
@@ -101,7 +93,7 @@ public class ModClusterDefinition extends AbstractHandlerDefinition {
             .setAllowExpression(true)
             .setRequired(true)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SOCKET_BINDING_REF)
-            .setCapabilityReference(Capabilities.REF_SOCKET_BINDING)
+            .setCapabilityReference(CapabilityReferenceRecorder.builder(Capability.MOD_CLUSTER_FILTER_CAPABILITY.getDefinition(), SocketBinding.SERVICE_DESCRIPTOR).build())
             .setRestartAllServices()
             .build();
 
@@ -109,7 +101,7 @@ public class ModClusterDefinition extends AbstractHandlerDefinition {
             .setAllowExpression(true)
             .setRequired(false)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SOCKET_BINDING_REF)
-            .setCapabilityReference(Capabilities.REF_SOCKET_BINDING)
+            .setCapabilityReference(CapabilityReferenceRecorder.builder(Capability.MOD_CLUSTER_FILTER_CAPABILITY.getDefinition(), SocketBinding.SERVICE_DESCRIPTOR).build())
             .setRestartAllServices()
             .build();
 
@@ -314,23 +306,15 @@ public class ModClusterDefinition extends AbstractHandlerDefinition {
             .setDefaultValue(new ModelNode(1L))
             .build();
 
-    public static final Collection<AttributeDefinition> ATTRIBUTES = Collections.unmodifiableCollection(Arrays.asList(MANAGEMENT_SOCKET_BINDING, ADVERTISE_SOCKET_BINDING, SECURITY_KEY, ADVERTISE_PROTOCOL,
+    public static final Collection<AttributeDefinition> ATTRIBUTES = List.of(MANAGEMENT_SOCKET_BINDING, ADVERTISE_SOCKET_BINDING, SECURITY_KEY, ADVERTISE_PROTOCOL,
             ADVERTISE_PATH, ADVERTISE_FREQUENCY, FAILOVER_STRATEGY, HEALTH_CHECK_INTERVAL, BROKEN_NODE_TIMEOUT, WORKER, MAX_REQUEST_TIME, MANAGEMENT_ACCESS_PREDICATE,
             CONNECTIONS_PER_THREAD, CACHED_CONNECTIONS_PER_THREAD, CONNECTION_IDLE_TIMEOUT, REQUEST_QUEUE_SIZE, SECURITY_REALM, SSL_CONTEXT, USE_ALIAS, ENABLE_HTTP2, MAX_AJP_PACKET_SIZE,
-            HTTP2_MAX_HEADER_LIST_SIZE, HTTP2_MAX_FRAME_SIZE, HTTP2_MAX_CONCURRENT_STREAMS, HTTP2_INITIAL_WINDOW_SIZE, HTTP2_HEADER_TABLE_SIZE, HTTP2_ENABLE_PUSH, MAX_RETRIES));
+            HTTP2_MAX_HEADER_LIST_SIZE, HTTP2_MAX_FRAME_SIZE, HTTP2_MAX_CONCURRENT_STREAMS, HTTP2_INITIAL_WINDOW_SIZE, HTTP2_HEADER_TABLE_SIZE, HTTP2_ENABLE_PUSH, MAX_RETRIES);
 
-    public ModClusterDefinition() {
-        super(new SimpleResourceDefinition.Parameters(PATH, UndertowExtension.getResolver(Constants.HANDLER, Constants.MOD_CLUSTER)));
-    }
+    private final ServiceValueExecutorRegistry<ModCluster> registry = ServiceValueExecutorRegistry.newInstance();
 
-    @Override
-    public Class<? extends HttpHandler> getHandlerClass() {
-        return ProxyHandler.class;
-    }
-
-    @Override
-    public HttpHandler createHttpHandler(Predicate predicate, ModelNode model, HttpHandler next) {
-        throw new IllegalStateException(); //this is not used for mod_cluster, as it required injection and socket binding
+    ModClusterDefinition() {
+        super(PATH_ELEMENT);
     }
 
     @Override
@@ -339,9 +323,10 @@ public class ModClusterDefinition extends AbstractHandlerDefinition {
                 .addAttributes(ATTRIBUTES)
                 .addCapabilities(Capability.class)
                 .addRequiredSingletonChildren(SingleAffinityResourceDefinition.PATH)
+                .setResourceTransformation(ModClusterResource::new)
                 ;
-        ModClusterResourceServiceHandler handler = new ModClusterResourceServiceHandler();
-        new ModClusterResourceRegistration(descriptor, handler).register(resourceRegistration);
+        ModClusterResourceServiceHandler handler = new ModClusterResourceServiceHandler(this.registry);
+        new SimpleResourceRegistrar(descriptor, handler).register(resourceRegistration);
     }
 
     @Override
@@ -350,52 +335,73 @@ public class ModClusterDefinition extends AbstractHandlerDefinition {
         new SingleAffinityResourceDefinition().register(resourceRegistration);
         new RankedAffinityResourceDefinition().register(resourceRegistration);
 
-        resourceRegistration.registerSubModel(ModClusterBalancerDefinition.INSTANCE);
-    }
-
-    static class ModClusterResourceRegistration extends ResourceRegistration {
-
-        ModClusterResourceRegistration(AddStepHandlerDescriptor descriptor, ResourceServiceHandler handler) {
-            super(descriptor, handler, new ModClusterAddStepHandler(descriptor, handler), new RemoveStepHandler(descriptor, handler));
-        }
+        resourceRegistration.registerSubModel(new ModClusterBalancerDefinition(this.registry));
     }
 
     static class ModClusterResourceServiceHandler implements ResourceServiceHandler {
 
+        private final ServiceValueRegistry<ModCluster> registry;
+        private final Map<PathAddress, Consumer<OperationContext>> removers = new ConcurrentHashMap<>();
+
+        ModClusterResourceServiceHandler(ServiceValueRegistry<ModCluster> registry) {
+            this.registry = registry;
+        }
+
         @Override
         public void installServices(OperationContext context, ModelNode model) throws OperationFailedException {
-            String name = context.getCurrentAddressValue();
-            ModelNode recursiveModel = Resource.Tools.readModel(context.readResourceFromRoot(context.getCurrentAddress(), true));
-            ModClusterService.install(name, context.getCapabilityServiceTarget(), recursiveModel, context);
+            PathAddress address = context.getCurrentAddress();
+            String managementAccessPredicateString = ModClusterDefinition.MANAGEMENT_ACCESS_PREDICATE.resolveModelAttribute(context, model).asStringOrNull();
+            Predicate managementAccessPredicate = (managementAccessPredicateString != null) ? PredicateParser.parse(managementAccessPredicateString, this.getClass().getClassLoader()) : null;
+
+            ModClusterServiceConfigurator configurator = new ModClusterServiceConfigurator(address);
+            configurator.configure(context, model).build(context.getServiceTarget()).setInitialMode(ServiceController.Mode.ON_DEMAND).install();
+
+            this.removers.put(address, this.registry.capture(ServiceDependency.on(configurator.getServiceName())).install(context));
+
+            RuntimeCapability<Void> capability = ModClusterDefinition.Capability.MOD_CLUSTER_FILTER_CAPABILITY.getDefinition();
+            CapabilityServiceBuilder<?> builder = context.getCapabilityServiceTarget().addCapability(capability);
+            Consumer<PredicateHandlerWrapper> filter = builder.provides(capability, UndertowService.FILTER.append(context.getCurrentAddressValue()));
+            Supplier<ModCluster> serviceRequirement = builder.requires(configurator.getServiceName());
+            Supplier<MCMPConfig> configRequirement = builder.requires(configurator.getConfigServiceName());
+
+            PredicateHandlerWrapper wrapper = PredicateHandlerWrapper.filter(new HandlerWrapper() {
+                @Override
+                public HttpHandler wrap(HttpHandler next) {
+                    ModCluster modCluster = serviceRequirement.get();
+                    MCMPConfig config = configRequirement.get();
+                    //this is a bit of a hack at the moment. Basically we only want to create a single mod_cluster instance
+                    //not matter how many filter refs use it, also mod_cluster at this point has no way
+                    //to specify the next handler. To get around this we invoke the mod_proxy handler
+                    //and then if it has not dispatched or handled the request then we know that we can
+                    //just pass it on to the next handler
+                    HttpHandler proxyHandler = modCluster.createProxyHandler(next);
+                    HttpHandler realNext = new HttpHandler() {
+                        @Override
+                        public void handleRequest(HttpServerExchange exchange) throws Exception {
+                            proxyHandler.handleRequest(exchange);
+                            if (!exchange.isDispatched() && !exchange.isComplete()) {
+                                exchange.setStatusCode(200);
+                                next.handleRequest(exchange);
+                            }
+                        }
+                    };
+                    HttpHandler mcmpHandler = config.create(modCluster, realNext);
+                    return (managementAccessPredicate != null) ? Handlers.predicate(managementAccessPredicate, mcmpHandler, next) : mcmpHandler;
+                }
+            });
+
+            builder.setInstance(Service.newInstance(filter, wrapper)).setInitialMode(ServiceController.Mode.ON_DEMAND).install();
         }
 
         @Override
         public void removeServices(OperationContext context, ModelNode model) {
-            context.removeService(UndertowService.FILTER.append(Constants.MOD_CLUSTER));
-        }
-    }
-
-    static class ModClusterAddStepHandler extends AddStepHandler {
-
-        ModClusterAddStepHandler(AddStepHandlerDescriptor descriptor, ResourceServiceHandler handler) {
-            super(descriptor, handler);
-        }
-
-        /**
-         * Wraps a standard {@link Resource} implementation which can dynamically register runtime resources at
-         * {@code ../mod-cluster=X/balancer=Y} address.
-         */
-        @Override
-        protected Resource createResource(OperationContext context, ModelNode operation) {
-            if (context.isDefaultRequiresRuntime()) {
-                Resource delegate = Resource.Factory.create();
-                Resource result = new ModClusterResource(delegate, context.getCurrentAddressValue());
-                context.addResource(PathAddress.EMPTY_ADDRESS, result);
-                return result;
-            } else {
-                return super.createResource(context, operation);
+            PathAddress address = context.getCurrentAddress();
+            context.removeService(new ModClusterServiceNameProvider(address).getServiceName());
+            context.removeService(ModClusterDefinition.Capability.MOD_CLUSTER_FILTER_CAPABILITY.getDefinition().getCapabilityServiceName(address));
+            Consumer<OperationContext> remover = this.removers.remove(address);
+            if (remover != null) {
+                remover.accept(context);
             }
         }
-
     }
 }

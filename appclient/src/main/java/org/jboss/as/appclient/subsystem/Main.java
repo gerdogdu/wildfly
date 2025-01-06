@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.appclient.subsystem;
 
@@ -36,9 +19,10 @@ import java.util.concurrent.ExecutorService;
 import javax.xml.namespace.QName;
 
 import org.jboss.as.appclient.logging.AppClientLogger;
-import org.jboss.as.appclient.subsystem.parsing.AppClientXml;
+import org.jboss.as.appclient.subsystem.parsing.AppClientSchemas;
 import org.jboss.as.controller.extension.ExtensionRegistry;
-import org.jboss.as.controller.parsing.Namespace;
+import org.jboss.as.controller.parsing.ManagementXmlSchema;
+import org.jboss.as.controller.persistence.ConfigurationExtensionFactory;
 import org.jboss.as.controller.persistence.ExtensibleConfigurationPersister;
 import org.jboss.as.process.CommandLineConstants;
 import org.jboss.as.server.Bootstrap;
@@ -46,8 +30,6 @@ import org.jboss.as.server.ServerEnvironment;
 import org.jboss.as.server.SystemExiter;
 import org.jboss.as.version.ProductConfig;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
-import org.jboss.msc.service.ServiceActivator;
 import org.jboss.stdio.LoggingOutputStream;
 import org.jboss.stdio.NullInputStream;
 import org.jboss.stdio.SimpleStdioContextSelector;
@@ -96,7 +78,7 @@ public final class Main {
         }
 
         try {
-            Module.registerURLStreamHandlerFactoryModule(Module.getBootModuleLoader().loadModule(ModuleIdentifier.create("org.jboss.vfs")));
+            Module.registerURLStreamHandlerFactoryModule(Module.getBootModuleLoader().loadModule("org.jboss.vfs"));
 
             final ParsedOptions options = determineEnvironment(args, new Properties(WildFlySecurityManager.getSystemPropertiesPrivileged()), WildFlySecurityManager.getSystemEnvironmentPrivileged(), ServerEnvironment.LaunchType.APPCLIENT);
             if(options == null) {
@@ -112,7 +94,6 @@ public final class Main {
                 abort(null);
             } else {
 
-                final QName rootElement = new QName(Namespace.CURRENT.getUriString(), "server");
                 final String file = clientArgs.get(0);
                 final List<String> params = clientArgs.subList(1, clientArgs.size());
                 final String deploymentName;
@@ -131,24 +112,27 @@ public final class Main {
                 final Bootstrap.Configuration configuration = new Bootstrap.Configuration(serverEnvironment);
                 configuration.setModuleLoader(Module.getBootModuleLoader());
                 final ExtensionRegistry extensionRegistry = configuration.getExtensionRegistry();
-                final AppClientXml parser = new AppClientXml(Module.getBootModuleLoader(), extensionRegistry);
+                AppClientSchemas appClientXmlSchemas = new AppClientSchemas(serverEnvironment.getStability(), Module.getBootModuleLoader(), extensionRegistry);
+                ManagementXmlSchema current = appClientXmlSchemas.getCurrent();
+                QName rootElement = current.getQualifiedName();
+
                 final Bootstrap.ConfigurationPersisterFactory configurationPersisterFactory = new Bootstrap.ConfigurationPersisterFactory() {
 
                     @Override
                     public ExtensibleConfigurationPersister createConfigurationPersister(ServerEnvironment serverEnvironment, ExecutorService executorService) {
                         ApplicationClientConfigurationPersister persister = new ApplicationClientConfigurationPersister(earPath, deploymentName, options.hostUrl,options.propertiesFile, params,
-                                serverEnvironment.getServerConfigurationFile().getBootFile(), rootElement, parser);
-                        for (Namespace namespace : Namespace.domainValues()) {
-                            if (!namespace.equals(Namespace.CURRENT)) {
-                                persister.registerAdditionalRootElement(new QName(namespace.getUriString(), "server"), parser);
-                            }
+                                serverEnvironment.getServerConfigurationFile().getBootFile(), rootElement, current);
+
+                        for (ManagementXmlSchema schema : appClientXmlSchemas.getAdditional()) {
+                            persister.registerAdditionalRootElement(schema.getQualifiedName(), schema);
                         }
+
                         extensionRegistry.setWriterRegistry(persister);
                         return persister;
                     }
                 };
                 configuration.setConfigurationPersisterFactory(configurationPersisterFactory);
-                bootstrap.bootstrap(configuration, Collections.<ServiceActivator>emptyList()).get();
+                bootstrap.bootstrap(configuration, Collections.emptyList()).get();
             }
         } catch (Throwable t) {
             abort(t);
@@ -161,12 +145,12 @@ public final class Main {
                 t.printStackTrace(STDERR);
             }
         } finally {
-            SystemExiter.exit(1);
+            SystemExiter.abort(1);
         }
     }
 
     public static ParsedOptions determineEnvironment(String[] args, Properties systemProperties, Map<String, String> systemEnvironment, ServerEnvironment.LaunchType launchType) {
-        List<String> clientArguments = new ArrayList<String>();
+        List<String> clientArguments = new ArrayList<>();
         ParsedOptions ret = new ParsedOptions();
         ret.clientArguments = clientArguments;
         final int argsLength = args.length;
@@ -174,6 +158,7 @@ public final class Main {
         boolean clientArgs = false;
         ProductConfig productConfig;
         boolean hostSet = false;
+        String yamlFile = null;
 
         for (int i = 0; i < argsLength; i++) {
             final String arg = args[i];
@@ -182,7 +167,7 @@ public final class Main {
                     clientArguments.add(arg);
                 } else if (CommandLineConstants.VERSION.equals(arg) || CommandLineConstants.SHORT_VERSION.equals(arg)
                         || CommandLineConstants.OLD_VERSION.equals(arg) || CommandLineConstants.OLD_SHORT_VERSION.equals(arg)) {
-                    productConfig = new ProductConfig(Module.getBootModuleLoader(), WildFlySecurityManager.getPropertyPrivileged(ServerEnvironment.HOME_DIR, null), null);
+                    productConfig = ProductConfig.fromFilesystemSlot(Module.getBootModuleLoader(), WildFlySecurityManager.getPropertyPrivileged(ServerEnvironment.HOME_DIR, null), null);
                     STDOUT.println(productConfig.getPrettyVersionString());
                     return null;
                 } else if (CommandLineConstants.HELP.equals(arg) || CommandLineConstants.SHORT_HELP.equals(arg) || CommandLineConstants.OLD_HELP.equals(arg)) {
@@ -214,30 +199,25 @@ public final class Main {
                         throw AppClientLogger.ROOT_LOGGER.cannotSpecifyBothHostAndPropertiesFile();
                     }
                     hostSet = true;
-                    String urlSpec = args[++i];
-                    ret.hostUrl = urlSpec;
+                    ret.hostUrl = args[++i];
                 } else if (arg.startsWith(CommandLineConstants.SHORT_HOST)) {
                     if(ret.propertiesFile != null) {
                         throw AppClientLogger.ROOT_LOGGER.cannotSpecifyBothHostAndPropertiesFile();
                     }
                     hostSet = true;
-                    String urlSpec = parseValue(arg, CommandLineConstants.SHORT_HOST);
-                    ret.hostUrl = urlSpec;
+                    ret.hostUrl = parseValue(arg, CommandLineConstants.SHORT_HOST);
                 } else if (arg.startsWith(CommandLineConstants.HOST)) {
                     if(ret.propertiesFile != null) {
                         throw AppClientLogger.ROOT_LOGGER.cannotSpecifyBothHostAndPropertiesFile();
                     }
                     hostSet = true;
-                    String urlSpec = parseValue(arg, CommandLineConstants.HOST);
-                    ret.hostUrl = urlSpec;
+                    ret.hostUrl = parseValue(arg, CommandLineConstants.HOST);
                 } else if (arg.startsWith(CommandLineConstants.CONNECTION_PROPERTIES)) {
                     if(hostSet) {
                         throw AppClientLogger.ROOT_LOGGER.cannotSpecifyBothHostAndPropertiesFile();
                     }
-                    String fileUrl = parseValue(arg, CommandLineConstants.CONNECTION_PROPERTIES);
-                    ret.propertiesFile = fileUrl;
-                }else if (arg.startsWith(CommandLineConstants.SYS_PROP)) {
-
+                    ret.propertiesFile = parseValue(arg, CommandLineConstants.CONNECTION_PROPERTIES);
+                } else if (arg.startsWith(CommandLineConstants.SYS_PROP)) {
                     // set a system property
                     String name, value;
                     int idx = arg.indexOf("=");
@@ -254,6 +234,22 @@ public final class Main {
                     appClientConfig = parseValue(arg, CommandLineConstants.APPCLIENT_CONFIG);
                 } else if (CommandLineConstants.SECMGR.equals(arg)) {
                     // ignore the argument as it's allowed, but passed to jboss-modules and not used here
+                } else if(ConfigurationExtensionFactory.isConfigurationExtensionSupported()
+                        && ConfigurationExtensionFactory.commandLineContainsArgument(arg)) {
+                    int idx = arg.indexOf("=");
+                    if (idx == -1) {
+                       final int next = i + 1;
+                        if (next < argsLength) {
+                            yamlFile = args[next];
+                            i++;
+                        } else {
+                            STDERR.println(AppClientLogger.ROOT_LOGGER.argumentExpected(arg));
+                            usage();
+                            return null;
+                        }
+                    } else {
+                        yamlFile = arg.substring(idx + 1);
+                    }
                 } else {
                     if (arg.startsWith("-")) {
                         STDOUT.println(AppClientLogger.ROOT_LOGGER.unknownOption(arg));
@@ -272,8 +268,9 @@ public final class Main {
         }
 
         String hostControllerName = null; // No host controller unless in domain mode.
-        productConfig = new ProductConfig(Module.getBootModuleLoader(), WildFlySecurityManager.getPropertyPrivileged(ServerEnvironment.HOME_DIR, null), systemProperties);
-        ret.environment = new ServerEnvironment(hostControllerName, systemProperties, systemEnvironment, appClientConfig, null, launchType, null, productConfig);
+        productConfig = ProductConfig.fromFilesystemSlot(Module.getBootModuleLoader(), WildFlySecurityManager.getPropertyPrivileged(ServerEnvironment.HOME_DIR, null), systemProperties);
+        ret.environment = new ServerEnvironment(hostControllerName, systemProperties, systemEnvironment, appClientConfig, null, launchType, null, productConfig,
+                System.currentTimeMillis(), false, false,null, null, null, yamlFile);
         return ret;
     }
 
@@ -288,6 +285,7 @@ public final class Main {
         return value;
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private static boolean processProperties(final String arg, final String urlSpec) {
         URL url = null;
         try {

@@ -1,9 +1,14 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ws.context.application;
 
-import javax.ejb.LocalBean;
-import javax.ejb.Stateless;
-import javax.jws.WebMethod;
-import javax.jws.WebService;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
+import jakarta.jws.WebMethod;
+import jakarta.jws.WebService;
 
 @Stateless
 @LocalBean

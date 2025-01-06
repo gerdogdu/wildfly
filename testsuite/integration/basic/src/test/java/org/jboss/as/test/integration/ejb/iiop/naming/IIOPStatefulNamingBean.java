@@ -1,9 +1,14 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ejb.iiop.naming;
 
 import java.rmi.RemoteException;
 
-import javax.ejb.RemoteHome;
-import javax.ejb.Stateful;
+import jakarta.ejb.RemoteHome;
+import jakarta.ejb.Stateful;
 
 /**
  * @author Stuart Douglas

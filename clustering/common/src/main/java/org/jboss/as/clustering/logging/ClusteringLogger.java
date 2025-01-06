@@ -1,29 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.logging;
 
 import static org.jboss.logging.Logger.Level.WARN;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Set;
 
 import org.jboss.as.controller.OperationFailedException;
@@ -45,7 +29,7 @@ public interface ClusteringLogger extends BasicLogger {
     /**
      * The root logger.
      */
-    ClusteringLogger ROOT_LOGGER = Logger.getMessageLogger(ClusteringLogger.class, ROOT_LOGGER_CATEGORY);
+    ClusteringLogger ROOT_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ClusteringLogger.class, ROOT_LOGGER_CATEGORY);
 
     @Message(id = 1, value = "%2$g is not a valid value for parameter %1$s. The value must be %3$s %4$g")
     OperationFailedException parameterValueOutOfBounds(String name, double value, String relationalOperator, double bound);
@@ -62,4 +46,15 @@ public interface ClusteringLogger extends BasicLogger {
 
     @Message(id = 5, value = "Legacy host does not support multiple values for attributes: %s")
     String rejectedMultipleValues(Set<String> attributes);
+
+    @LogMessage(level = WARN)
+    @Message(id = 6, value = "The '%s' attribute of the '%s' element is no longer supported and will be ignored")
+    void attributeIgnored(String attribute, String element);
+
+    @LogMessage(level = WARN)
+    @Message(id = 7, value = "The '%s' element is no longer supported and will be ignored")
+    void elementIgnored(String element);
+
+    @Message(id = 8, value = "%s:%s operation is only supported in admin-only mode.")
+    OperationFailedException operationNotSupportedInNormalServerMode(String address, String operation);
 }

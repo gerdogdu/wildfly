@@ -1,28 +1,12 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.extension.undertow;
 
 import static org.wildfly.extension.undertow.Capabilities.CAPABILITY_HTTP_INVOKER_HOST;
 import static org.wildfly.extension.undertow.UndertowRootDefinition.HTTP_INVOKER_RUNTIME_CAPABILITY;
+import static org.wildfly.extension.undertow.logging.UndertowLogger.ROOT_LOGGER;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,17 +19,18 @@ import org.jboss.as.controller.CapabilityServiceBuilder;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
+import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.PersistentResourceDefinition;
 import org.jboss.as.controller.ServiceRemoveStepHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
+import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.access.management.SensitiveTargetAccessConstraintDefinition;
-import org.jboss.as.controller.capability.DynamicNameMappers;
+import org.jboss.as.controller.capability.BinaryCapabilityNameResolver;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.validation.StringLengthValidator;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
-import org.jboss.msc.service.ServiceName;
 import org.wildfly.security.auth.server.HttpAuthenticationFactory;
 
 /**
@@ -53,11 +38,10 @@ import org.wildfly.security.auth.server.HttpAuthenticationFactory;
  * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public class HttpInvokerDefinition extends PersistentResourceDefinition {
-
+    static final PathElement PATH_ELEMENT = PathElement.pathElement(Constants.SETTING, Constants.HTTP_INVOKER);
     static final RuntimeCapability<Void> HTTP_INVOKER_HOST_CAPABILITY =
                 RuntimeCapability.Builder.of(CAPABILITY_HTTP_INVOKER_HOST, true, Void.class)
-                        .setDynamicNameMapper(DynamicNameMappers.PARENT)
-                        //.addDynamicRequirements(Capabilities.CAPABILITY_HOST)
+                        .setDynamicNameMapper(BinaryCapabilityNameResolver.GRANDPARENT_PARENT)
                         .addRequirements(Capabilities.CAPABILITY_HTTP_INVOKER)
                         .build();
 
@@ -75,6 +59,7 @@ public class HttpInvokerDefinition extends PersistentResourceDefinition {
             .setValidator(new StringLengthValidator(1, Integer.MAX_VALUE, true, false))
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SECURITY_REALM_REF)
             .setAlternatives(Constants.HTTP_AUTHENTICATION_FACTORY)
+            .setDeprecated(UndertowSubsystemModel.VERSION_12_0_0.getVersion())
             .build();
 
     protected static final SimpleAttributeDefinition PATH = new SimpleAttributeDefinitionBuilder(Constants.PATH, ModelType.STRING, true)
@@ -89,12 +74,11 @@ public class HttpInvokerDefinition extends PersistentResourceDefinition {
             HTTP_AUTHENTICATION_FACTORY,
             SECURITY_REALM
     );
-    static final HttpInvokerDefinition INSTANCE = new HttpInvokerDefinition();
 
-    private HttpInvokerDefinition() {
-        super(new Parameters(UndertowExtension.PATH_HTTP_INVOKER, UndertowExtension.getResolver(Constants.HTTP_INVOKER))
-                .setAddHandler(new HttpInvokerAdd())
-                .setRemoveHandler(new HttpInvokerRemove())
+    HttpInvokerDefinition() {
+        super(new SimpleResourceDefinition.Parameters(PATH_ELEMENT, UndertowExtension.getResolver(PATH_ELEMENT.getValue()))
+                .setAddHandler(HttpInvokerAdd.INSTANCE)
+                .setRemoveHandler(new ServiceRemoveStepHandler(HttpInvokerAdd.INSTANCE))
                 .setCapabilities(HTTP_INVOKER_HOST_CAPABILITY)
         );
     }
@@ -105,10 +89,7 @@ public class HttpInvokerDefinition extends PersistentResourceDefinition {
     }
 
     private static final class HttpInvokerAdd extends AbstractAddStepHandler {
-
-        HttpInvokerAdd() {
-            super(ATTRIBUTES);
-        }
+        static final AbstractAddStepHandler INSTANCE = new HttpInvokerAdd();
 
         @Override
         protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model) throws OperationFailedException {
@@ -117,20 +98,19 @@ public class HttpInvokerDefinition extends PersistentResourceDefinition {
             final PathAddress serverAddress = hostAddress.getParent();
             String path = PATH.resolveModelAttribute(context, model).asString();
             String httpAuthenticationFactory = null;
-            String securityRealmString = null;
             final ModelNode authFactory = HTTP_AUTHENTICATION_FACTORY.resolveModelAttribute(context, model);
             final ModelNode securityRealm = SECURITY_REALM.resolveModelAttribute(context, model);
             if (authFactory.isDefined()) {
                 httpAuthenticationFactory = authFactory.asString();
             } else if (securityRealm.isDefined()) {
-                securityRealmString = securityRealm.asString();
+                throw ROOT_LOGGER.runtimeSecurityRealmUnsupported();
             }
 
             final String serverName = serverAddress.getLastElement().getValue();
             final String hostName = hostAddress.getLastElement().getValue();
 
             final CapabilityServiceBuilder<?> sb = context.getCapabilityServiceTarget().addCapability(HTTP_INVOKER_HOST_CAPABILITY);
-            final Supplier<Host> hSupplier = sb.requiresCapability(Capabilities.CAPABILITY_HOST, Host.class, serverName, hostName);
+            final Supplier<Host> hSupplier = sb.requires(Host.SERVICE_DESCRIPTOR, serverName, hostName);
             Supplier<HttpAuthenticationFactory> hafSupplier = null;
             final Supplier<PathHandler> phSupplier = sb.requiresCapability(HTTP_INVOKER_RUNTIME_CAPABILITY.getName(), PathHandler.class);
             if (httpAuthenticationFactory != null) {
@@ -138,17 +118,6 @@ public class HttpInvokerDefinition extends PersistentResourceDefinition {
             }
             sb.setInstance(new HttpInvokerHostService(hSupplier, hafSupplier, phSupplier, path));
             sb.install();
-        }
-    }
-
-    private static final class HttpInvokerRemove extends ServiceRemoveStepHandler {
-        HttpInvokerRemove() {
-            super(new HttpInvokerAdd());
-        }
-
-        @Override
-        protected ServiceName serviceName(String name, PathAddress address) {
-            return HTTP_INVOKER_HOST_CAPABILITY.getCapabilityServiceName(address);
         }
     }
 }

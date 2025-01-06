@@ -1,4 +1,9 @@
-<subsystem xmlns="urn:jboss:domain:datasources:7.0">
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:datasources:7.2">
     <datasources>
         <datasource jndi-name="java:jboss/datasources/complexDs" pool-name="complexDs_Pool"
                     use-java-context="${test.expr:true}" spy="${test.expr:false}" use-ccm="${test.expr:true}" jta="${test.expr:false}"
@@ -18,18 +23,18 @@
             <driver>
                 ${test.expr:h2}
             </driver>
-            <new-connection-sql>
-                ${test.expr:select 1}
-            </new-connection-sql>
-            <transaction-isolation>
-                ${test.expr:TRANSACTION_READ_COMMITTED}
-            </transaction-isolation>
             <url-delimiter>
                 ${test.expr::}
             </url-delimiter>
             <url-selector-strategy-class-name>
                 ${test.expr:someClass}
             </url-selector-strategy-class-name>
+            <new-connection-sql>
+                ${test.expr:select 1}
+            </new-connection-sql>
+            <transaction-isolation>
+                ${test.expr:TRANSACTION_READ_COMMITTED}
+            </transaction-isolation>
             <pool>
                 <min-pool-size>${test.expr:1}</min-pool-size>
                 <max-pool-size>${test.expr:5}</max-pool-size>
@@ -47,13 +52,7 @@
                     </decrementer>
                 </capacity>
             </pool>
-            <security>
-                <user-name>
-                    ${test.expr:sa}
-                </user-name>
-                <password>
-                    ${test.expr:sa}
-                </password>
+            <security user-name="${test.expr:sa}" password="${test.expr:sa}">
                 <reauth-plugin class-name="${test.expr:someClass1}">
                     <config-property name="name">${test.expr:Property1}</config-property>
                 </reauth-plugin>
@@ -162,31 +161,18 @@
                 </wrap-xa-resource>
 
             </xa-pool>
-            <security>
-                <user-name>
-                    ${test.expr:sa}
-                </user-name>
-                <password>
-                    ${test.expr:sa}
-                </password>
-                <reauth-plugin class-name="${test.expr:someClass1}">
-                    <config-property name="name">${test.expr:Property1}</config-property>
-                </reauth-plugin>
-            </security>
             <recovery no-recovery="${test.expr:false}">
-                <recover-credential>
-                    <user-name>
-                        ${test.expr:sa}
-                    </user-name>
-                    <password>
-                        ${test.expr:sa}
-                    </password>
-                </recover-credential>
+                <recover-credential user-name="${test.expr:sa}" password="${test.expr:sa}"/>
                 <recover-plugin class-name="${test.expr:someClass5}">
                     <config-property name="name">Property5</config-property>
                     <config-property name="name1">${test.expr:Property6}</config-property>
                 </recover-plugin>
             </recovery>
+            <security user-name="${test.expr:sa}" password="${test.expr:sa}">
+                <reauth-plugin class-name="${test.expr:someClass1}">
+                    <config-property name="name">${test.expr:Property1}</config-property>
+                </reauth-plugin>
+            </security>
             <validation>
                 <valid-connection-checker class-name="${test.expr:someClass2}" module="${test.expr:someModule2}">
                     <config-property name="name">${test.expr:Property2}</config-property>

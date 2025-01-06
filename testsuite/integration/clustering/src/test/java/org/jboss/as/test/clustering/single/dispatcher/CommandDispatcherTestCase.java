@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.clustering.single.dispatcher;
 
@@ -29,9 +12,10 @@ import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.as.test.clustering.cluster.dispatcher.bean.ClusterTopology;
 import org.jboss.as.test.clustering.cluster.dispatcher.bean.ClusterTopologyRetriever;
 import org.jboss.as.test.clustering.cluster.dispatcher.bean.ClusterTopologyRetrieverBean;
+import org.jboss.as.test.clustering.cluster.dispatcher.bean.legacy.LegacyClusterTopologyRetrieverBean;
 import org.jboss.as.test.clustering.ejb.EJBDirectory;
 import org.jboss.as.test.clustering.ejb.RemoteEJBDirectory;
-import org.jboss.as.test.shared.integration.ejb.security.PermissionUtils;
+import org.jboss.as.test.shared.PermissionUtils;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
@@ -49,7 +33,8 @@ public class CommandDispatcherTestCase {
     @Deployment(testable = false)
     public static Archive<?> createDeployment() {
         WebArchive war = ShrinkWrap.create(WebArchive.class, MODULE_NAME + ".war");
-        war.addPackage(ClusterTopologyRetriever.class.getPackage());
+        war.addPackage(ClusterTopologyRetrieverBean.class.getPackage());
+        war.addPackage(LegacyClusterTopologyRetrieverBean.class.getPackage());
         war.addAsManifestResource(PermissionUtils.createPermissionsXmlAsset(new RuntimePermission("getClassLoader")), "permissions.xml");
         war.setWebXML(org.jboss.as.test.clustering.cluster.dispatcher.CommandDispatcherTestCase.class.getPackage(), "web.xml");
         return war;
@@ -57,8 +42,17 @@ public class CommandDispatcherTestCase {
 
     @Test
     public void test() throws Exception {
+        this.test(ClusterTopologyRetrieverBean.class);
+    }
+
+    @Test
+    public void legacy() throws Exception {
+        this.test(LegacyClusterTopologyRetrieverBean.class);
+    }
+
+    public void test(Class<? extends ClusterTopologyRetriever> beanClass) throws Exception {
         try (EJBDirectory directory = new RemoteEJBDirectory(MODULE_NAME)) {
-            ClusterTopologyRetriever bean = directory.lookupStateless(ClusterTopologyRetrieverBean.class, ClusterTopologyRetriever.class);
+            ClusterTopologyRetriever bean = directory.lookupStateless(beanClass, ClusterTopologyRetriever.class);
             ClusterTopology topology = bean.getClusterTopology();
             assertEquals(1, topology.getNodes().size());
             assertTrue(topology.getNodes().toString(), topology.getNodes().contains(NODE_1));

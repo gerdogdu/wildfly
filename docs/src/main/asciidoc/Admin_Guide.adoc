@@ -14,12 +14,19 @@ WildFly developer team;
 :idseparator: -
 :include-depth: 2
 
-ifdef::env-github[:outfilesuffix: .adoc]
+ifdef::env-github[]
+:outfilesuffix: .adoc
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 
 ifndef::ebook-format[:leveloffset: 1]
 
-(C) 2017 The original authors.
+(C) The WildFly Authors.
 
 ifdef::basebackend-html[toc::[]]
 
@@ -61,7 +68,7 @@ include::_admin-guide/Domain_Setup.adoc[]
 
 include::_admin-guide/Management_tasks.adoc[]
 
-include::_admin-guide/Management_API_reference.adoc[]
-
 include::_admin-guide/CLI_Recipes.adoc[]
+
+include::_admin-guide/Management_API_reference.adoc[]
 

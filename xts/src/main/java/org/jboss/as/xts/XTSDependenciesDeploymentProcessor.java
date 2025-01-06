@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2013, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.xts;
 
@@ -33,18 +16,11 @@ import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoader;
-import org.jboss.narayana.compensations.api.CancelOnFailure;
-import org.jboss.narayana.compensations.api.Compensatable;
-import org.jboss.narayana.compensations.api.CompensationScoped;
-import org.jboss.narayana.compensations.api.TxCompensate;
-import org.jboss.narayana.compensations.api.TxConfirm;
-import org.jboss.narayana.compensations.api.TxLogged;
 
-import javax.ejb.TransactionAttribute;
-import javax.jws.WebService;
-import javax.transaction.Transactional;
+import jakarta.ejb.TransactionAttribute;
+import jakarta.jws.WebService;
+import jakarta.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,16 +29,7 @@ import java.util.List;
  */
 public class XTSDependenciesDeploymentProcessor implements DeploymentUnitProcessor {
 
-    private static final ModuleIdentifier XTS_MODULE = ModuleIdentifier.create("org.jboss.xts");
-
-    private static final Class[] COMPENSATABLE_ANNOTATIONS = {
-            Compensatable.class,
-            CancelOnFailure.class,
-            CompensationScoped.class,
-            TxCompensate.class,
-            TxConfirm.class,
-            TxLogged.class
-    };
+    private static final String XTS_MODULE = "org.jboss.xts";
 
     @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
@@ -73,19 +40,9 @@ public class XTSDependenciesDeploymentProcessor implements DeploymentUnitProcess
             return;
         }
 
-        if (isCompensationAnnotationPresent(compositeIndex) || isTransactionalEndpointPresent(compositeIndex)) {
+        if (isTransactionalEndpointPresent(compositeIndex)) {
             addXTSModuleDependency(unit);
         }
-    }
-
-    private boolean isCompensationAnnotationPresent(final CompositeIndex compositeIndex) {
-        for (Class annotation : COMPENSATABLE_ANNOTATIONS) {
-            if (!compositeIndex.getAnnotations(DotName.createSimple(annotation.getName())).isEmpty()) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private boolean isTransactionalEndpointPresent(final CompositeIndex compositeIndex) {
@@ -99,7 +56,7 @@ public class XTSDependenciesDeploymentProcessor implements DeploymentUnitProcess
             if (target instanceof ClassInfo) {
                 final ClassInfo classInfo = (ClassInfo) target;
 
-                if (classInfo.annotations().get(DotName.createSimple(WebService.class.getName())) != null) {
+                if (classInfo.annotationsMap().get(DotName.createSimple(WebService.class.getName())) != null) {
                     return true;
                 }
             }

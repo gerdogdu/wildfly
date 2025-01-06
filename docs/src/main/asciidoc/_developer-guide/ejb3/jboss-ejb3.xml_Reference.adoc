@@ -1,6 +1,14 @@
 [[jboss-ejb3]]
 = jboss-ejb3.xml Reference
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 `jboss-ejb3.xml` is a custom deployment descriptor that can be placed in
 either ejb-jar or war archives. If it is placed in an ejb-jar then it
 must be placed in the `META-INF` folder, in a web archive it must be
@@ -70,7 +78,7 @@ or to all beans in the deployment by using `*` as the `ejb-name`.
 ==== The security namespace urn:security
 
 This allows you to set the security domain and the run-as principal for
-an Jakarta Enterprise Beans.
+a Jakarta Enterprise Beans bean.
 
 [source,xml,options="nowrap"]
 ----
@@ -137,3 +145,19 @@ defined in the server configuration (i.e. `standalone.xml` or
 This namespace is deprecated and as of WildFly {wildflyVersion} its use has no effect.
 The clustering behavior of Jakarta Enterprise Beans are determined by the profile in use on
 the server.
+
+[[timer-service-namespace]]
+==== The timer-service namespace urn:timer-service:2.0
+
+This allows you to customize the TimerService behavior for a given EJB.
+
+e.g.
+
+[source,xml,options="nowrap"]
+----
+<t:timer-service>
+    <ejb-name>*</ejb-name>
+    <t:persistent-timer-management>persistent</t:persistent-timer-management>
+    <t:transient-timer-management>transient</t:transient-timer-management>
+</t:timer-service>
+----

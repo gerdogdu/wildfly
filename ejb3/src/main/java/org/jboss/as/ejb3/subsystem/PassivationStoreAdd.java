@@ -1,35 +1,22 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
 
+import java.util.OptionalInt;
+import java.util.ServiceLoader;
+
 import org.jboss.as.controller.AbstractAddStepHandler;
-import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
-import org.jboss.as.ejb3.cache.distributable.LegacyDistributableCacheFactoryBuilderServiceConfigurator;
+import org.jboss.as.controller.ServiceNameFactory;
 import org.jboss.dmr.ModelNode;
-import org.jboss.msc.service.ServiceController;
-import org.wildfly.clustering.ejb.BeanManagerFactoryServiceConfiguratorConfiguration;
+import org.wildfly.clustering.ejb.bean.BeanManagementProvider;
+import org.wildfly.clustering.ejb.bean.LegacyBeanManagementConfiguration;
+import org.wildfly.clustering.ejb.bean.LegacyBeanManagementProviderFactory;
+import org.wildfly.subsystem.service.ServiceInstaller;
 
 /**
  * @author Paul Ferraro
@@ -37,18 +24,7 @@ import org.wildfly.clustering.ejb.BeanManagerFactoryServiceConfiguratorConfigura
 @Deprecated
 public class PassivationStoreAdd extends AbstractAddStepHandler {
 
-    private final AttributeDefinition[] attributes;
-
-    PassivationStoreAdd(AttributeDefinition... attributes) {
-        this.attributes = attributes;
-    }
-
-    @Override
-    protected void populateModel(ModelNode operation, ModelNode model) throws OperationFailedException {
-        for (AttributeDefinition attr : this.attributes) {
-            attr.validateAndSet(operation, model);
-        }
-    }
+    private static final LegacyBeanManagementProviderFactory LEGACY_PROVIDER_FACTORY = ServiceLoader.load(LegacyBeanManagementProviderFactory.class, LegacyBeanManagementProviderFactory.class.getClassLoader()).findFirst().orElseThrow(IllegalStateException::new);
 
     @Override
     protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model) throws OperationFailedException {
@@ -60,7 +36,7 @@ public class PassivationStoreAdd extends AbstractAddStepHandler {
     }
 
     protected void install(OperationContext context, ModelNode operation, final int maxSize, final String containerName, final String cacheName) {
-        BeanManagerFactoryServiceConfiguratorConfiguration config = new BeanManagerFactoryServiceConfiguratorConfiguration() {
+        LegacyBeanManagementConfiguration config = new LegacyBeanManagementConfiguration() {
             @Override
             public String getContainerName() {
                 return containerName;
@@ -72,12 +48,12 @@ public class PassivationStoreAdd extends AbstractAddStepHandler {
             }
 
             @Override
-            public Integer getMaxActiveBeans() {
-                return maxSize;
+            public OptionalInt getMaxActiveBeans() {
+                return OptionalInt.of(maxSize);
             }
         };
-        new LegacyDistributableCacheFactoryBuilderServiceConfigurator<>(context.getCurrentAddress(), config).build(context.getServiceTarget())
-                .setInitialMode(ServiceController.Mode.ON_DEMAND)
-                .install();
+        ServiceInstaller.builder(LEGACY_PROVIDER_FACTORY.createBeanManagementProvider(context.getCurrentAddressValue(), config))
+                .provides(ServiceNameFactory.resolveServiceName(BeanManagementProvider.SERVICE_DESCRIPTOR, context.getCurrentAddressValue()))
+                .build();
     }
 }

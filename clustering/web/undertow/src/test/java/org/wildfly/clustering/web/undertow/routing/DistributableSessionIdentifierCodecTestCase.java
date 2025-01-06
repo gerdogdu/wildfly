@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.web.undertow.routing;
 
@@ -26,11 +9,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.function.UnaryOperator;
 
 import org.jboss.as.web.session.RoutingSupport;
 import org.jboss.as.web.session.SessionIdentifierCodec;
 import org.junit.Test;
-import org.wildfly.clustering.web.routing.RouteLocator;
 
 /**
  * Unit test for {@link DistributableSessionIdentifierCodec}.
@@ -39,7 +22,7 @@ import org.wildfly.clustering.web.routing.RouteLocator;
  */
 public class DistributableSessionIdentifierCodecTestCase {
     private final RoutingSupport routing = mock(RoutingSupport.class);
-    private final RouteLocator locator = mock(RouteLocator.class);
+    private final UnaryOperator<String> locator = mock(UnaryOperator.class);
 
     private SessionIdentifierCodec codec = new DistributableSessionIdentifierCodec(this.locator, this.routing);
 
@@ -47,7 +30,7 @@ public class DistributableSessionIdentifierCodecTestCase {
     public void encode() {
         String sessionId = "session";
 
-        when(this.locator.locate(sessionId)).thenReturn(null);
+        when(this.locator.apply(sessionId)).thenReturn(null);
 
         CharSequence result = this.codec.encode(sessionId);
 
@@ -56,7 +39,7 @@ public class DistributableSessionIdentifierCodecTestCase {
         String route = "route";
         String encodedSessionId = "session.route";
 
-        when(this.locator.locate(sessionId)).thenReturn(route);
+        when(this.locator.apply(sessionId)).thenReturn(route);
         when(this.routing.format(sessionId, route)).thenReturn(encodedSessionId);
 
         result = this.codec.encode(sessionId);

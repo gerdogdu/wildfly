@@ -1,37 +1,21 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.connector.subsystems.datasources;
 
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.JNDI_NAME;
+import static org.jboss.as.connector.subsystems.common.jndi.Constants.USE_JAVA_CONTEXT;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.DISABLE;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ENABLE;
 
 import org.jboss.as.connector._private.Capabilities;
-import org.jboss.as.connector.logging.ConnectorLogger;
 import org.jboss.as.connector.metadata.api.common.Credential;
 import org.jboss.as.connector.metadata.api.common.Security;
+import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.ModelVersion;
 import org.jboss.as.controller.ObjectListAttributeDefinition;
 import org.jboss.as.controller.ObjectTypeAttributeDefinition;
-import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PrimitiveListAttributeDefinition;
 import org.jboss.as.controller.PropertiesAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinition;
@@ -40,9 +24,11 @@ import org.jboss.as.controller.SimpleOperationDefinition;
 import org.jboss.as.controller.SimpleOperationDefinitionBuilder;
 import org.jboss.as.controller.access.constraint.SensitivityClassification;
 import org.jboss.as.controller.access.management.SensitiveTargetAccessConstraintDefinition;
+import org.jboss.as.controller.client.helpers.MeasurementUnit;
 import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.controller.descriptions.NonResolvingResourceDescriptionResolver;
-import org.jboss.as.controller.operations.validation.ParameterValidator;
+import org.jboss.as.controller.operations.validation.EnumValidator;
+import org.jboss.as.controller.operations.validation.StringLengthValidator;
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.security.CredentialReference;
 import org.jboss.dmr.ModelNode;
@@ -55,8 +41,12 @@ import org.jboss.jca.common.api.metadata.ds.Driver;
 import org.jboss.jca.common.api.metadata.ds.DsPool;
 import org.jboss.jca.common.api.metadata.ds.Statement;
 import org.jboss.jca.common.api.metadata.ds.TimeOut;
+import org.jboss.jca.common.api.metadata.ds.TransactionIsolation;
 import org.jboss.jca.common.api.metadata.ds.Validation;
 import org.jboss.jca.common.api.metadata.ds.XaDataSource;
+
+import java.util.Arrays;
+import java.util.stream.Stream;
 
 /**
  * Defines contants and attributes for datasources subsystem.
@@ -68,6 +58,8 @@ import org.jboss.jca.common.api.metadata.ds.XaDataSource;
 public class Constants {
 
     private static final Boolean ELYTRON_MANAGED_SECURITY = Boolean.FALSE;
+
+    private static final ModelVersion ELYTRON_BY_DEFAULT_VERSION = ModelVersion.create(6, 1, 0);
 
     public static final String DATASOURCES = "datasources";
 
@@ -113,8 +105,6 @@ public class Constants {
 
     private static final String URL_SELECTOR_STRATEGY_CLASS_NAME_NAME = "url-selector-strategy-class-name";
 
-    private static final String USE_JAVA_CONTEXT_NAME = "use-java-context";
-
     private static final String CONNECTABLE_NAME = "connectable";
 
     private static final String MCP_NAME = "mcp";
@@ -128,8 +118,6 @@ public class Constants {
     private static final String ENABLED_NAME = "enabled";
 
     private static final String JTA_NAME = "jta";
-
-    private static final String JNDINAME_NAME = "jndi-name";
 
     private static final String ALLOCATION_RETRY_NAME = "allocation-retry";
 
@@ -278,34 +266,6 @@ public class Constants {
             .setRestartAllServices()
             .build();
 
-    static SimpleAttributeDefinition JNDI_NAME = new SimpleAttributeDefinitionBuilder(JNDINAME_NAME, ModelType.STRING, false)
-            .setXmlName(DataSource.Attribute.JNDI_NAME.getLocalName())
-            .setAllowExpression(true)
-            .setValidator(new ParameterValidator() {
-                @Override
-                public void validateParameter(String parameterName, ModelNode value) throws OperationFailedException {
-                    if (value.isDefined()) {
-                        if (value.getType() != ModelType.EXPRESSION) {
-                            String str = value.asString();
-                            if (!str.startsWith("java:/") && !str.startsWith("java:jboss/")) {
-                                throw ConnectorLogger.ROOT_LOGGER.jndiNameInvalidFormat();
-                            } else if (str.endsWith("/") || str.indexOf("//") != -1) {
-                                throw ConnectorLogger.ROOT_LOGGER.jndiNameShouldValidate();
-                            }
-                        }
-                    } else {
-                        throw ConnectorLogger.ROOT_LOGGER.jndiNameRequired();
-                    }
-                }
-
-                @Override
-                public void validateResolvedParameter(String parameterName, ModelNode value) throws OperationFailedException {
-                    validateParameter(parameterName, value.resolve());
-                }
-            })
-            .setRestartAllServices()
-            .build();
-
 
     static SimpleAttributeDefinition DATASOURCE_DRIVER = new SimpleAttributeDefinitionBuilder(DATASOURCE_DRIVER_NAME, ModelType.STRING, false)
             .setXmlName(DataSource.Tag.DRIVER.getLocalName())
@@ -336,13 +296,6 @@ public class Constants {
 
     static SimpleAttributeDefinition URL_SELECTOR_STRATEGY_CLASS_NAME = new SimpleAttributeDefinitionBuilder(URL_SELECTOR_STRATEGY_CLASS_NAME_NAME, ModelType.STRING, true)
             .setXmlName(DataSource.Tag.URL_SELECTOR_STRATEGY_CLASS_NAME.getLocalName())
-            .setAllowExpression(true)
-            .setRestartAllServices()
-            .build();
-
-    static SimpleAttributeDefinition USE_JAVA_CONTEXT = new SimpleAttributeDefinitionBuilder(USE_JAVA_CONTEXT_NAME, ModelType.BOOLEAN, true)
-            .setXmlName(DataSource.Attribute.USE_JAVA_CONTEXT.getLocalName())
-            .setDefaultValue(new ModelNode(Defaults.USE_JAVA_CONTEXT))
             .setAllowExpression(true)
             .setRestartAllServices()
             .build();
@@ -439,6 +392,7 @@ public class Constants {
             .addAlternatives(USERNAME_NAME, AUTHENTICATION_CONTEXT_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.SECURITY_DOMAIN_REF)
             .addAccessConstraint(DS_SECURITY_DEF)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
@@ -448,12 +402,13 @@ public class Constants {
             .setAllowExpression(true)
             .addAccessConstraint(DS_SECURITY_DEF)
             .setNullSignificant(false)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
+
     public static final SimpleAttributeDefinition AUTHENTICATION_CONTEXT = new SimpleAttributeDefinitionBuilder(AUTHENTICATION_CONTEXT_NAME, ModelType.STRING, true)
             .setXmlName(Security.Tag.AUTHENTICATION_CONTEXT.getLocalName())
             .setAllowExpression(false)
-            .setRequires(ELYTRON_ENABLED_NAME)
             .addAlternatives(SECURITY_DOMAIN_NAME, USERNAME_NAME)
             .addAccessConstraint(SensitiveTargetAccessConstraintDefinition.AUTHENTICATION_CLIENT_REF)
             .addAccessConstraint(DS_SECURITY_DEF)
@@ -479,7 +434,8 @@ public class Constants {
     static SimpleAttributeDefinition TRACK_STATEMENTS = new SimpleAttributeDefinitionBuilder(TRACKSTATEMENTS_NAME, ModelType.STRING, true)
             .setAllowExpression(true)
             .setXmlName(Statement.Tag.TRACK_STATEMENTS.getLocalName())
-            .setDefaultValue(new ModelNode(Defaults.TRACK_STATEMENTS.name()))
+            .setDefaultValue(new ModelNode(Defaults.TRACK_STATEMENTS.toString()))
+            .setValidator(EnumValidator.create(Statement.TrackStatementsEnum.class))
             .setRestartAllServices()
             .build();
 
@@ -492,6 +448,7 @@ public class Constants {
 
     static SimpleAttributeDefinition ALLOCATION_RETRY_WAIT_MILLIS = new SimpleAttributeDefinitionBuilder(ALLOCATION_RETRY_WAIT_MILLIS_NAME, ModelType.LONG, true)
             .setXmlName(TimeOut.Tag.ALLOCATION_RETRY_WAIT_MILLIS.getLocalName())
+            .setMeasurementUnit(MeasurementUnit.MILLISECONDS)
             .setAllowExpression(true)
             .setRestartAllServices()
             .build();
@@ -520,6 +477,7 @@ public class Constants {
 
     static SimpleAttributeDefinition QUERY_TIMEOUT = new SimpleAttributeDefinitionBuilder(QUERYTIMEOUT_NAME, ModelType.LONG, true)
             .setXmlName(TimeOut.Tag.QUERY_TIMEOUT.getLocalName())
+            .setMeasurementUnit(MeasurementUnit.SECONDS)
             .setAllowExpression(true)
             .setRestartAllServices()
             .build();
@@ -540,6 +498,9 @@ public class Constants {
     static SimpleAttributeDefinition TRANSACTION_ISOLATION = new SimpleAttributeDefinitionBuilder(TRANSACTION_ISOLATION_NAME, ModelType.STRING, true)
             .setXmlName(DataSource.Tag.TRANSACTION_ISOLATION.getLocalName())
             .setAllowExpression(true)
+            .setAllowedValues(TransactionIsolation.TRANSACTION_NONE.name(), TransactionIsolation.TRANSACTION_READ_COMMITTED.name(),
+                    TransactionIsolation.TRANSACTION_READ_UNCOMMITTED.name(), TransactionIsolation.TRANSACTION_REPEATABLE_READ.name(),
+                    TransactionIsolation.TRANSACTION_SERIALIZABLE.name())
             .setRestartAllServices()
             .build();
 
@@ -671,6 +632,7 @@ public class Constants {
 
     static SimpleAttributeDefinition XA_RESOURCE_TIMEOUT = new SimpleAttributeDefinitionBuilder(XA_RESOURCE_TIMEOUT_NAME, ModelType.INT, true)
             .setXmlName(TimeOut.Tag.XA_RESOURCE_TIMEOUT.getLocalName())
+            .setMeasurementUnit(MeasurementUnit.SECONDS)
             .setAllowExpression(true)
             .setRestartAllServices()
             .build();
@@ -765,6 +727,7 @@ public class Constants {
             .setAllowExpression(true)
             .setRequired(false)
             .addAlternatives(RECOVERY_USERNAME_NAME, RECOVERY_AUTHENTICATION_CONTEXT_NAME)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
@@ -773,6 +736,7 @@ public class Constants {
             .setAllowExpression(true)
             .setDefaultValue(new ModelNode(ELYTRON_MANAGED_SECURITY))
             .setNullSignificant(false)
+            .setDeprecated(ELYTRON_BY_DEFAULT_VERSION)
             .setRestartAllServices()
             .build();
 
@@ -868,11 +832,13 @@ public class Constants {
             .setAllowExpression(true)
             .build();
 
+    @Deprecated
     static final SimpleAttributeDefinition DRIVER_NAME = new SimpleAttributeDefinitionBuilder(DRIVER_NAME_NAME, ModelType.STRING)
             .setXmlName(Driver.Attribute.NAME.getLocalName())
-            .setRequired(true)
+            .setRequired(false)
                     //.setResourceOnly()
             .setRestartAllServices()
+            .setDeprecated(ModelVersion.create(7))
             .build();
 
     static final SimpleAttributeDefinition DRIVER_MODULE_NAME = new SimpleAttributeDefinitionBuilder(DRIVER_MODULE_NAME_NAME, ModelType.STRING)
@@ -918,21 +884,25 @@ public class Constants {
 
     static final SimpleAttributeDefinition[] JDBC_DRIVER_ATTRIBUTES = {
             DEPLOYMENT_NAME,
-            DRIVER_NAME,
             DRIVER_MODULE_NAME,
             MODULE_SLOT,
             DRIVER_CLASS_NAME,
             DRIVER_DATASOURCE_CLASS_NAME,
             DRIVER_XA_DATASOURCE_CLASS_NAME,
-            XA_DATASOURCE_CLASS,
             DRIVER_MAJOR_VERSION,
             DRIVER_MINOR_VERSION,
             JDBC_COMPLIANT,
             PROFILE
     };
 
+    static final SimpleAttributeDefinition INSTALLED_DRIVER_NAME = new SimpleAttributeDefinitionBuilder(DRIVER_NAME_NAME, ModelType.STRING)
+            .setValidator(new StringLengthValidator(1))
+            .build();
 
-    static final ObjectTypeAttributeDefinition INSTALLED_DRIVER = ObjectTypeAttributeDefinition.Builder.of("installed-driver", JDBC_DRIVER_ATTRIBUTES).build();
+    private static final AttributeDefinition[] INSTALLED_DRIVER_ATTRIBUTES = Stream.concat(Arrays.stream(JDBC_DRIVER_ATTRIBUTES), Stream.of(INSTALLED_DRIVER_NAME, DATASOURCE_CLASS_INFO))
+            .toArray(AttributeDefinition[]::new);
+
+    static final ObjectTypeAttributeDefinition INSTALLED_DRIVER = ObjectTypeAttributeDefinition.Builder.of("installed-driver", INSTALLED_DRIVER_ATTRIBUTES).build();
     static final ObjectListAttributeDefinition INSTALLED_DRIVERS = ObjectListAttributeDefinition.Builder.of("installed-drivers", INSTALLED_DRIVER)
             .setResourceOnly().setFlags(AttributeAccess.Flag.STORAGE_RUNTIME)
             .build();
@@ -942,13 +912,14 @@ public class Constants {
             .setReadOnly()
             .setRuntimeOnly()
             .setReplyType(ModelType.LIST)
-            .setReplyParameters(JDBC_DRIVER_ATTRIBUTES)
+            .setReplyParameters(INSTALLED_DRIVER_ATTRIBUTES)
             .build();
+
     static final SimpleOperationDefinition GET_INSTALLED_DRIVER = new SimpleOperationDefinitionBuilder("get-installed-driver", DataSourcesExtension.getResourceDescriptionResolver())
             .setReadOnly()
             .setRuntimeOnly()
-            .setParameters(DRIVER_NAME)
-            .setReplyParameters(DRIVER_MINOR_VERSION, DRIVER_MAJOR_VERSION, DEPLOYMENT_NAME, DRIVER_NAME, DRIVER_XA_DATASOURCE_CLASS_NAME, XA_DATASOURCE_CLASS, JDBC_COMPLIANT, MODULE_SLOT, DRIVER_CLASS_NAME, DRIVER_MODULE_NAME)
+            .setParameters(INSTALLED_DRIVER_NAME)
+            .setReplyParameters(INSTALLED_DRIVER_ATTRIBUTES)
             .setAttributeResolver(DataSourcesExtension.getResourceDescriptionResolver("jdbc-driver"))
             .build();
     static final SimpleOperationDefinition DATASOURCE_ENABLE = new SimpleOperationDefinitionBuilder(ENABLE, DataSourcesExtension.getResourceDescriptionResolver()).setDeprecated(ModelVersion.create(3)).build();

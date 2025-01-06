@@ -1,89 +1,64 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.web;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.Consumer;
 
-import org.jboss.as.clustering.controller.CapabilityProvider;
-import org.jboss.as.clustering.controller.CapabilityReference;
 import org.jboss.as.clustering.controller.DefaultSubsystemDescribeHandler;
-import org.jboss.as.clustering.controller.DeploymentChainContributingResourceRegistration;
-import org.jboss.as.clustering.controller.RequirementCapability;
+import org.jboss.as.clustering.controller.DeploymentChainContributingResourceRegistrar;
 import org.jboss.as.clustering.controller.ResourceDescriptor;
 import org.jboss.as.clustering.controller.ResourceServiceHandler;
+import org.jboss.as.clustering.controller.SubsystemRegistration;
 import org.jboss.as.clustering.controller.SubsystemResourceDefinition;
 import org.jboss.as.controller.AttributeDefinition;
-import org.jboss.as.controller.CapabilityReferenceRecorder;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
-import org.jboss.as.controller.SubsystemRegistration;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.registry.AttributeAccess.Flag;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.server.DeploymentProcessorTarget;
 import org.jboss.as.server.deployment.Phase;
-import org.jboss.as.server.deployment.jbossallxml.JBossAllXmlParserRegisteringProcessor;
+import org.jboss.as.server.deployment.jbossallxml.JBossAllSchema;
+import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
-import org.wildfly.clustering.service.Requirement;
-import org.wildfly.clustering.web.service.WebDefaultProviderRequirement;
-import org.wildfly.clustering.web.service.WebProviderRequirement;
+import org.wildfly.clustering.web.service.session.DistributableSessionManagementProvider;
+import org.wildfly.clustering.web.service.user.DistributableUserManagementProvider;
 import org.wildfly.extension.clustering.web.deployment.DistributableWebDeploymentDependencyProcessor;
 import org.wildfly.extension.clustering.web.deployment.DistributableWebDeploymentParsingProcessor;
 import org.wildfly.extension.clustering.web.deployment.DistributableWebDeploymentProcessor;
 import org.wildfly.extension.clustering.web.deployment.DistributableWebDeploymentSchema;
-import org.wildfly.extension.clustering.web.deployment.DistributableWebDeploymentXMLReader;
+import org.wildfly.subsystem.resource.capability.CapabilityReferenceRecorder;
+import org.wildfly.subsystem.resource.operation.ResourceOperationRuntimeHandler;
+import org.wildfly.subsystem.service.ResourceServiceConfigurator;
+import org.wildfly.subsystem.service.ResourceServiceInstaller;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.capability.CapabilityServiceInstaller;
 
 /**
  * Definition of the /subsystem=distributable-web resource.
  * @author Paul Ferraro
  */
-public class DistributableWebResourceDefinition extends SubsystemResourceDefinition<SubsystemRegistration> implements Consumer<DeploymentProcessorTarget> {
+public class DistributableWebResourceDefinition extends SubsystemResourceDefinition implements Consumer<DeploymentProcessorTarget>, ResourceServiceConfigurator {
 
     static final PathElement PATH = pathElement(DistributableWebExtension.SUBSYSTEM_NAME);
 
-    enum Capability implements CapabilityProvider {
-        DEFAULT_SESSION_MANAGEMENT_PROVIDER(WebDefaultProviderRequirement.SESSION_MANAGEMENT_PROVIDER),
-        DEFAULT_SSO_MANAGEMENT_PROVIDER(WebDefaultProviderRequirement.SSO_MANAGEMENT_PROVIDER),
-        ;
-        private final org.jboss.as.clustering.controller.Capability capability;
-
-        Capability(Requirement requirement) {
-            this.capability = new RequirementCapability(requirement);
-        }
-
-        @Override
-        public org.jboss.as.clustering.controller.Capability getCapability() {
-            return this.capability;
-        }
-    }
+    static final RuntimeCapability<Void> DEFAULT_SESSION_MANAGEMENT_PROVIDER = RuntimeCapability.Builder.of(DistributableSessionManagementProvider.DEFAULT_SERVICE_DESCRIPTOR).build();
+    static final RuntimeCapability<Void> DEFAULT_SSO_MANAGEMENT_PROVIDER = RuntimeCapability.Builder.of(DistributableUserManagementProvider.DEFAULT_SERVICE_DESCRIPTOR).build();
 
     enum Attribute implements org.jboss.as.clustering.controller.Attribute {
-        DEFAULT_SESSION_MANAGEMENT("default-session-management", ModelType.STRING, new CapabilityReference(Capability.DEFAULT_SESSION_MANAGEMENT_PROVIDER, WebProviderRequirement.SESSION_MANAGEMENT_PROVIDER)),
-        DEFAULT_SSO_MANAGEMENT("default-single-sign-on-management", ModelType.STRING, new CapabilityReference(Capability.DEFAULT_SSO_MANAGEMENT_PROVIDER, WebProviderRequirement.SSO_MANAGEMENT_PROVIDER)),
+        DEFAULT_SESSION_MANAGEMENT("default-session-management", ModelType.STRING, CapabilityReferenceRecorder.builder(DEFAULT_SESSION_MANAGEMENT_PROVIDER, DistributableSessionManagementProvider.SERVICE_DESCRIPTOR).build()),
+        DEFAULT_SSO_MANAGEMENT("default-single-sign-on-management", ModelType.STRING, CapabilityReferenceRecorder.builder(DEFAULT_SSO_MANAGEMENT_PROVIDER, DistributableUserManagementProvider.SERVICE_DESCRIPTOR).build()),
         ;
         private final AttributeDefinition definition;
 
-        Attribute(String name, ModelType type, CapabilityReferenceRecorder reference) {
+        Attribute(String name, ModelType type, CapabilityReferenceRecorder<?> reference) {
             this.definition = new SimpleAttributeDefinitionBuilder(name, type)
                     .setAllowExpression(false)
                     .setRequired(true)
@@ -110,31 +85,38 @@ public class DistributableWebResourceDefinition extends SubsystemResourceDefinit
 
         ResourceDescriptor descriptor = new ResourceDescriptor(this.getResourceDescriptionResolver())
                 .addAttributes(Attribute.class)
-                .addCapabilities(Capability.class)
+                .addCapabilities(List.of(DEFAULT_SESSION_MANAGEMENT_PROVIDER, DEFAULT_SSO_MANAGEMENT_PROVIDER))
                 .addRequiredSingletonChildren(LocalRoutingProviderResourceDefinition.PATH)
                 ;
-        ResourceServiceHandler handler = new DistributableWebResourceServiceHandler();
-        new DeploymentChainContributingResourceRegistration(descriptor, handler, this).register(registration);
+        ResourceServiceHandler handler = ResourceServiceHandler.of(ResourceOperationRuntimeHandler.configureService(this));
+        new DeploymentChainContributingResourceRegistrar(descriptor, handler, this).register(registration);
 
         new LocalRoutingProviderResourceDefinition().register(registration);
         new InfinispanRoutingProviderResourceDefinition().register(registration);
 
         new InfinispanSessionManagementResourceDefinition().register(registration);
-        new InfinispanSSOManagementResourceDefinition().register(registration);
+        new InfinispanUserManagementResourceDefinition().register(registration);
 
         new HotRodSessionManagementResourceDefinition().register(registration);
-        new HotRodSSOManagementResourceDefinition().register(registration);
+        new HotRodUserManagementResourceDefinition().register(registration);
     }
 
     @Override
     public void accept(DeploymentProcessorTarget target) {
-        JBossAllXmlParserRegisteringProcessor.Builder builder = JBossAllXmlParserRegisteringProcessor.builder();
-        for (DistributableWebDeploymentSchema schema : EnumSet.allOf(DistributableWebDeploymentSchema.class)) {
-            builder.addParser(schema.getRoot(), DistributableWebDeploymentDependencyProcessor.CONFIGURATION_KEY, new DistributableWebDeploymentXMLReader(schema));
-        }
-        target.addDeploymentProcessor(DistributableWebExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_REGISTER_JBOSS_ALL_DISTRIBUTABLE_WEB, builder.build());
+        target.addDeploymentProcessor(DistributableWebExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_REGISTER_JBOSS_ALL_DISTRIBUTABLE_WEB, JBossAllSchema.createDeploymentUnitProcessor(EnumSet.allOf(DistributableWebDeploymentSchema.class), DistributableWebDeploymentDependencyProcessor.CONFIGURATION_KEY));
         target.addDeploymentProcessor(DistributableWebExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_DISTRIBUTABLE_WEB, new DistributableWebDeploymentParsingProcessor());
         target.addDeploymentProcessor(DistributableWebExtension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_DISTRIBUTABLE_WEB, new DistributableWebDeploymentDependencyProcessor());
         target.addDeploymentProcessor(DistributableWebExtension.SUBSYSTEM_NAME, Phase.CONFIGURE_MODULE, Phase.CONFIGURE_DISTRIBUTABLE_WEB, new DistributableWebDeploymentProcessor());
+    }
+
+
+    @Override
+    public ResourceServiceInstaller configure(OperationContext context, ModelNode model) throws OperationFailedException {
+        String defaultSessionManagement = Attribute.DEFAULT_SESSION_MANAGEMENT.resolveModelAttribute(context, model).asString();
+        String defaultSSOManagement = Attribute.DEFAULT_SSO_MANAGEMENT.resolveModelAttribute(context, model).asString();
+
+        return ResourceServiceInstaller.combine(
+                CapabilityServiceInstaller.builder(DEFAULT_SESSION_MANAGEMENT_PROVIDER, ServiceDependency.on(DistributableSessionManagementProvider.SERVICE_DESCRIPTOR, defaultSessionManagement)).build(),
+                CapabilityServiceInstaller.builder(DEFAULT_SSO_MANAGEMENT_PROVIDER, ServiceDependency.on(DistributableUserManagementProvider.SERVICE_DESCRIPTOR, defaultSSOManagement)).build());
     }
 }

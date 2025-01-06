@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.messaging.activemq.broadcast;
@@ -28,10 +11,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.apache.activemq.artemis.api.core.BroadcastEndpoint;
-import org.wildfly.clustering.Registration;
-import org.wildfly.clustering.dispatcher.CommandDispatcher;
-import org.wildfly.clustering.dispatcher.CommandDispatcherFactory;
-import org.wildfly.extension.messaging.activemq.logging.MessagingLogger;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.server.Registration;
+import org.wildfly.clustering.server.dispatcher.CommandDispatcher;
+import org.wildfly.clustering.server.dispatcher.CommandDispatcherFactory;
+import org.wildfly.extension.messaging.activemq._private.MessagingLogger;
 
 /**
  * A {@link BroadcastEndpoint} based on a {@link CommandDispatcher}.
@@ -43,7 +27,7 @@ public class CommandDispatcherBroadcastEndpoint implements BroadcastEndpoint {
         BROADCASTER, RECEIVER, CLOSED;
     }
 
-    private final CommandDispatcherFactory factory;
+    private final CommandDispatcherFactory<GroupMember> factory;
     private final String name;
     private final BroadcastReceiverRegistrar registrar;
     private final Function<String, BroadcastManager> managerFactory;
@@ -51,9 +35,9 @@ public class CommandDispatcherBroadcastEndpoint implements BroadcastEndpoint {
 
     private volatile BroadcastManager manager = null;
     private volatile Registration registration = null;
-    private volatile CommandDispatcher<BroadcastReceiver> dispatcher;
+    private volatile CommandDispatcher<GroupMember, BroadcastReceiver> dispatcher;
 
-    public CommandDispatcherBroadcastEndpoint(CommandDispatcherFactory factory, String name, BroadcastReceiverRegistrar registrar, Function<String, BroadcastManager> managerFactory) {
+    public CommandDispatcherBroadcastEndpoint(CommandDispatcherFactory<GroupMember> factory, String name, BroadcastReceiverRegistrar registrar, Function<String, BroadcastManager> managerFactory) {
         this.factory = factory;
         this.name = name;
         this.registrar = registrar;
@@ -76,7 +60,7 @@ public class CommandDispatcherBroadcastEndpoint implements BroadcastEndpoint {
         }
     }
 
-    private void open() throws Exception {
+    private void open() {
         this.dispatcher = this.factory.createCommandDispatcher(this.name, this.registrar);
     }
 
@@ -101,7 +85,7 @@ public class CommandDispatcherBroadcastEndpoint implements BroadcastEndpoint {
             if (MessagingLogger.ROOT_LOGGER.isDebugEnabled()) {
                 MessagingLogger.ROOT_LOGGER.debugf("Broadcasting to group %s: %s", this.name, Arrays.toString(data));
             }
-            this.dispatcher.executeOnGroup(new BroadcastCommand(data));
+            this.dispatcher.dispatchToGroup(new BroadcastCommand(data));
         }
     }
 

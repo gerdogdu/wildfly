@@ -1,6 +1,14 @@
 [[Remote_Jakarta_Enterprise_Beans_invocations_via_JNDI_-_Jakarta_Enterprise_Beans_client_API_or_wildfly-naming-client_project]]
 = Remote Jakarta Enterprise Beans invocations via JNDI - Jakarta Enterprise Beans client API or wildfly-naming-client project
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 [[purpose]]
 == Purpose
 
@@ -80,7 +88,7 @@ standalone client to use. Below is a simple example specifying plaintext
 username / password and the remote server connection (host/port).
 The wildfly-config.xml goes in the META-INF directory.
 
-[source,java,options="nowrap"]
+[source,xml,options="nowrap"]
 ----
 <configuration>
   <authentication-client xmlns="urn:elytron:1.0.1">
@@ -304,8 +312,8 @@ implementation using the approach described in the `java.util.ServiceLoader` doc
 [NOTE]
 
 Note: One important thing is that jndi.properties should not be packaged in an
-app running in Wildfly though you can put it in a standalone java app.
-The reason is, when you run in Wildfly , if you do new InitialContext() and
+app running in WildFly though you can put it in a standalone java app.
+The reason is, when you run in WildFly, if you do new InitialContext() and
 you have jndi.properties in your classpath, it will read those settings
 and change the default configuration for the whole wildfly JVM.
 
@@ -581,4 +589,4 @@ fine with _not_ wanting the optimizations that the EJB client API can do
 for you or if you have other restrictions that force you to use that
 project.
 
-NOTE: References in this document to Enterprise JavaBeans(EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
+NOTE: References in this document to Enterprise JavaBeans (EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.

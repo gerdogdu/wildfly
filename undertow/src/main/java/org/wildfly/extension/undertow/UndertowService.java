@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.undertow;
@@ -37,6 +20,7 @@ import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 import org.wildfly.extension.undertow.logging.UndertowLogger;
+import org.wildfly.service.descriptor.NullaryServiceDescriptor;
 
 import io.undertow.Version;
 
@@ -45,14 +29,23 @@ import io.undertow.Version;
  * @author Stuart Douglas
  * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
-@SuppressWarnings("ALL")
 public class UndertowService implements Service<UndertowService> {
+    public static NullaryServiceDescriptor<UndertowService> SERVICE_DESCRIPTOR = NullaryServiceDescriptor.of(Capabilities.CAPABILITY_UNDERTOW, UndertowService.class);
 
-    @Deprecated
-    public static final ServiceName UNDERTOW = ServiceName.JBOSS.append("undertow");
-    @Deprecated
+    /**
+     * @deprecated Replaced by capability reference {@link UndertowRootDefinition#UNDERTOW_CAPABILITY}.
+     */
+    @Deprecated(forRemoval = true)
+    public static final ServiceName UNDERTOW = UndertowRootDefinition.UNDERTOW_CAPABILITY.getCapabilityServiceName();
+    /**
+     * @deprecated Replaced by capability reference {@link ServletContainerDefinition#SERVLET_CONTAINER_CAPABILITY}.
+     */
+    @Deprecated(forRemoval = true)
     public static final ServiceName SERVLET_CONTAINER = UNDERTOW.append(Constants.SERVLET_CONTAINER);
-    @Deprecated
+    /**
+     * @deprecated Replaced by capability reference {@link HostDefinition.HOST_CAPABILITY}.
+     */
+    @Deprecated(forRemoval = true)
     public static final ServiceName SERVER = UNDERTOW.append(Constants.SERVER);
     /**
      * service name under which default server is bound.
@@ -66,8 +59,9 @@ public class UndertowService implements Service<UndertowService> {
 
     public static final ServiceName UNDERTOW_DEPLOYMENT = ServiceName.of("undertow-deployment");
     /**
-     * The base name for listener/handler/filter services.
+     * @deprecated Replaced by capability reference {@link Capabilities#CAPABILITY_HANDLER}.
      */
+    @Deprecated(forRemoval = true)
     public static final ServiceName HANDLER = UNDERTOW.append(Constants.HANDLER);
     public static final ServiceName FILTER = UNDERTOW.append(Constants.FILTER);
 
@@ -111,26 +105,24 @@ public class UndertowService implements Service<UndertowService> {
      * @param contextPath The context path
      * @return The legacy deployment service alias
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static ServiceName deploymentServiceName(final String serverName, final String virtualHost, final String contextPath) {
         return WEB_DEPLOYMENT_BASE.append(serverName).append(virtualHost).append("".equals(contextPath) ? "/" : contextPath);
     }
 
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static ServiceName virtualHostName(final String server, final String virtualHost) {
-        return SERVER.append(server).append(virtualHost);
+        return HostDefinition.HOST_CAPABILITY.getCapabilityServiceName(server, virtualHost);
     }
 
+    @Deprecated(forRemoval = true)
     public static ServiceName locationServiceName(final String server, final String virtualHost, final String locationName) {
-        return virtualHostName(server, virtualHost).append(Constants.LOCATION, locationName);
+        return LocationDefinition.LOCATION_CAPABILITY.getCapabilityServiceName(server, virtualHost, locationName);
     }
 
+    @Deprecated(forRemoval = true)
     public static ServiceName accessLogServiceName(final String server, final String virtualHost) {
-        return virtualHostName(server, virtualHost).append(Constants.ACCESS_LOG);
-    }
-
-    public static ServiceName ssoServiceName(final String server, final String virtualHost) {
-        return virtualHostName(server, virtualHost).append("single-sign-on");
+        return AccessLogDefinition.ACCESS_LOG_CAPABILITY.getCapabilityServiceName(server, virtualHost);
     }
 
     public static ServiceName consoleRedirectServiceName(final String server, final String virtualHost) {
@@ -174,9 +166,9 @@ public class UndertowService implements Service<UndertowService> {
         return serviceName;
     }
 
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static ServiceName listenerName(String listenerName) {
-        return UNDERTOW.append(Constants.LISTENER).append(listenerName);
+        return ListenerResourceDefinition.LISTENER_CAPABILITY.getCapabilityServiceName(listenerName);
     }
 
     @Override

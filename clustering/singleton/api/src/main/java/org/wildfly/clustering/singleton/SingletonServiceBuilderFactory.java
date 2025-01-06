@@ -1,29 +1,14 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.singleton;
 
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceName;
 import org.wildfly.clustering.singleton.service.SingletonServiceConfiguratorFactory;
+import org.wildfly.service.descriptor.BinaryServiceDescriptor;
+import org.wildfly.service.descriptor.UnaryServiceDescriptor;
 
 /**
  * Factory for creating a singleton service builder.
@@ -32,6 +17,8 @@ import org.wildfly.clustering.singleton.service.SingletonServiceConfiguratorFact
  */
 @Deprecated(forRemoval = true)
 public interface SingletonServiceBuilderFactory extends SingletonPolicy, SingletonServiceConfiguratorFactory {
+    UnaryServiceDescriptor<SingletonServiceBuilderFactory> DEFAULT_SERVICE_DESCRIPTOR = UnaryServiceDescriptor.of("org.wildfly.clustering.cache.default-singleton-service-builder-factory", SingletonServiceBuilderFactory.class);
+    BinaryServiceDescriptor<SingletonServiceBuilderFactory> SERVICE_DESCRIPTOR = BinaryServiceDescriptor.of("org.wildfly.clustering.cache.singleton-service-builder-factory", DEFAULT_SERVICE_DESCRIPTOR);
 
     @Override
     <T> SingletonServiceBuilder<T> createSingletonServiceBuilder(ServiceName name, Service<T> service);

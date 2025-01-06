@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.logging.config;
 
@@ -25,7 +8,7 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.json.JsonObject;
+import jakarta.json.JsonObject;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.OperateOnDeployment;
@@ -73,7 +56,7 @@ public class LoggingProfileSharedTestCase extends AbstractConfigTestCase {
 
     // This should be deployed last to ensure that WAR_DEPLOYMENT_2 does register a log context
     @Deployment(name = WAR_DEPLOYMENT_1, order = 3)
-    @OverProtocol("Servlet 3.0")
+    @OverProtocol("Servlet 5.0")
     public static WebArchive createWar1() {
         return ShrinkWrap.create(WebArchive.class, WAR_DEPLOYMENT_1_NAME)
                 .addAsManifestResource(createJBossDeploymentStructure(), "jboss-deployment-structure.xml")

@@ -1,32 +1,12 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2021, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.jsf.deployment;
-
-import static org.jboss.as.weld.Capabilities.WELD_CAPABILITY_NAME;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jboss.as.controller.capability.CapabilityServiceSupport;
 import org.jboss.as.ee.structure.DeploymentType;
 import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.jsf.logging.JSFLogger;
@@ -38,11 +18,9 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.server.deployment.module.ModuleDependency;
 import org.jboss.as.server.deployment.module.ModuleSpecification;
 import org.jboss.as.web.common.WarMetaData;
-import org.jboss.as.weld.WeldCapability;
 import org.jboss.metadata.javaee.spec.ParamValueMetaData;
 import org.jboss.metadata.web.jboss.JBossWebMetaData;
 import org.jboss.modules.Module;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
 import org.jboss.modules.ModuleLoader;
 import org.jboss.modules.filter.PathFilters;
@@ -54,9 +32,9 @@ import org.jboss.modules.filter.PathFilters;
 public class JSFDependencyProcessor implements DeploymentUnitProcessor {
     public static final String IS_CDI_PARAM = "org.jboss.jbossfaces.IS_CDI";
 
-    private static final ModuleIdentifier JSF_SUBSYSTEM = ModuleIdentifier.create("org.jboss.as.jsf");
+    private static final String JSF_SUBSYSTEM = "org.jboss.as.jsf";
     // We use . instead of / on this stream as a workaround to get it transformed correctly by Batavia into a Jakarta namespace
-    private static final String JAVAX_FACES_EVENT_NAMEDEVENT_class = "/javax.faces.event.NamedEvent".replaceAll("\\.", "/") + ".class";
+    private static final String JAVAX_FACES_EVENT_NAMEDEVENT_class = "/jakarta.faces.event.NamedEvent".replaceAll("\\.", "/") + ".class";
 
     private JSFModuleIdFactory moduleIdFactory = JSFModuleIdFactory.getInstance();
 
@@ -74,7 +52,7 @@ public class JSFDependencyProcessor implements DeploymentUnitProcessor {
             if (jsfVersion.equals(defaultJsfVersion) && !moduleIdFactory.isValidJSFSlot(jsfVersion)) {
                 throw JSFLogger.ROOT_LOGGER.invalidDefaultJSFImpl(defaultJsfVersion);
             }
-            addJSFAPI(JsfVersionMarker.JSF_2_0, moduleSpecification, moduleLoader);
+            addJSFAPI(JsfVersionMarker.JSF_4_0, moduleSpecification, moduleLoader);
             return;
         }
         if (!DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit) && !DeploymentTypeMarker.isType(DeploymentType.EAR, deploymentUnit)) {
@@ -101,7 +79,7 @@ public class JSFDependencyProcessor implements DeploymentUnitProcessor {
         addJSFAPI(jsfVersion, moduleSpecification, moduleLoader);
         addJSFImpl(jsfVersion, moduleSpecification, moduleLoader);
 
-        moduleSpecification.addSystemDependency(new ModuleDependency(moduleLoader, JSF_SUBSYSTEM, false, false, true, false));
+        moduleSpecification.addSystemDependency(ModuleDependency.Builder.of(moduleLoader, JSF_SUBSYSTEM).setImportServices(true).build());
 
         addJSFInjection(jsfVersion, moduleSpecification, moduleLoader);
 
@@ -114,18 +92,16 @@ public class JSFDependencyProcessor implements DeploymentUnitProcessor {
     private void addJSFAPI(String jsfVersion, ModuleSpecification moduleSpecification, ModuleLoader moduleLoader) {
         if (jsfVersion.equals(JsfVersionMarker.WAR_BUNDLES_JSF_IMPL)) return;
 
-        ModuleIdentifier jsfModule = moduleIdFactory.getApiModId(jsfVersion);
-        ModuleDependency jsfAPI = new ModuleDependency(moduleLoader, jsfModule, false, false, false, false);
+        String jsfModule = moduleIdFactory.getApiModId(jsfVersion);
+        ModuleDependency jsfAPI = ModuleDependency.Builder.of(moduleLoader, jsfModule).build();
         moduleSpecification.addSystemDependency(jsfAPI);
     }
 
-    private void addJSFImpl(String jsfVersion,
-            ModuleSpecification moduleSpecification,
-            ModuleLoader moduleLoader) {
+    private void addJSFImpl(String jsfVersion, ModuleSpecification moduleSpecification, ModuleLoader moduleLoader) {
         if (jsfVersion.equals(JsfVersionMarker.WAR_BUNDLES_JSF_IMPL)) return;
 
-        ModuleIdentifier jsfModule = moduleIdFactory.getImplModId(jsfVersion);
-        ModuleDependency jsfImpl = new ModuleDependency(moduleLoader, jsfModule, false, false, true, false);
+        String jsfModule = moduleIdFactory.getImplModId(jsfVersion);
+        ModuleDependency jsfImpl = ModuleDependency.Builder.of(moduleLoader, jsfModule).setImportServices(true).build();
         jsfImpl.addImportFilter(PathFilters.getMetaInfFilter(), true);
         moduleSpecification.addSystemDependency(jsfImpl);
     }
@@ -134,8 +110,8 @@ public class JSFDependencyProcessor implements DeploymentUnitProcessor {
             throws DeploymentUnitProcessingException {
         if (jsfVersion.equals(JsfVersionMarker.WAR_BUNDLES_JSF_IMPL)) return;
 
-        ModuleIdentifier jsfInjectionModule = moduleIdFactory.getInjectionModId(jsfVersion);
-        ModuleDependency jsfInjectionDependency = new ModuleDependency(moduleLoader, jsfInjectionModule, false, true, true, false);
+        String jsfInjectionModule = moduleIdFactory.getInjectionModId(jsfVersion);
+        ModuleDependency jsfInjectionDependency = ModuleDependency.Builder.of(moduleLoader, jsfInjectionModule).setExport(true).setImportServices(true).build();
 
         try {
             if (isJSF12(jsfInjectionDependency, jsfInjectionModule.toString())) {
@@ -157,12 +133,12 @@ public class JSFDependencyProcessor implements DeploymentUnitProcessor {
 
     private boolean isJSF12(ModuleDependency moduleDependency, String identifier) throws ModuleLoadException {
 
-        // The class javax.faces.event.NamedEvent was introduced in JSF 2.0
+        // The class jakarta.faces.event.NamedEvent was introduced in JSF 2.0
         return (moduleDependency.getModuleLoader().loadModule(identifier)
                 .getClassLoader().getResource(JAVAX_FACES_EVENT_NAMEDEVENT_class) == null);
     }
 
-    // Add a flag to the sevlet context so that we know if we need to instantiate
+    // Add a flag to the servlet context so that we know if we need to instantiate
     // a Jakarta Contexts and Dependency Injection ViewHandler.
     private void addCDIFlag(WarMetaData warMetaData, DeploymentUnit deploymentUnit) {
         JBossWebMetaData webMetaData = warMetaData.getMergedJBossWebMetaData();
@@ -176,16 +152,9 @@ public class JSFDependencyProcessor implements DeploymentUnitProcessor {
             contextParams = new ArrayList<ParamValueMetaData>();
         }
 
-        boolean isCDI = false;
-        final CapabilityServiceSupport support = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
-        if (support.hasCapability(WELD_CAPABILITY_NAME)) {
-            isCDI = support.getOptionalCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class).get()
-                    .isPartOfWeldDeployment(deploymentUnit);
-        }
-
         ParamValueMetaData param = new ParamValueMetaData();
         param.setParamName(IS_CDI_PARAM);
-        param.setParamValue(Boolean.toString(isCDI));
+        param.setParamValue("true");
         contextParams.add(param);
 
         webMetaData.setContextParams(contextParams);

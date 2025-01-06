@@ -1,37 +1,20 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.smoke.deployment.rar.configproperty;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
-import javax.resource.NotSupportedException;
-import javax.resource.ResourceException;
-import javax.resource.spi.ConnectionEvent;
-import javax.resource.spi.ConnectionEventListener;
-import javax.resource.spi.ConnectionRequestInfo;
-import javax.resource.spi.LocalTransaction;
-import javax.resource.spi.ManagedConnection;
-import javax.resource.spi.ManagedConnectionMetaData;
+import jakarta.resource.NotSupportedException;
+import jakarta.resource.ResourceException;
+import jakarta.resource.spi.ConnectionEvent;
+import jakarta.resource.spi.ConnectionEventListener;
+import jakarta.resource.spi.ConnectionRequestInfo;
+import jakarta.resource.spi.LocalTransaction;
+import jakarta.resource.spi.ManagedConnection;
+import jakarta.resource.spi.ManagedConnectionMetaData;
 import javax.security.auth.Subject;
 import javax.transaction.xa.XAResource;
 
@@ -80,7 +63,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
      * @param subject       Security context as JAAS subject
      * @param cxRequestInfo ConnectionRequestInfo instance
      * @return generic Object instance representing the connection handle.
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public Object getConnection(Subject subject,
                                 ConnectionRequestInfo cxRequestInfo) throws ResourceException {
@@ -93,7 +76,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
      * application-level connection handle with a ManagedConneciton instance.
      *
      * @param connection Application-level connection handle
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public void associateConnection(Object connection) throws ResourceException {
     }
@@ -101,7 +84,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
     /**
      * Application server calls this method to force any cleanup on the ManagedConnection instance.
      *
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public void cleanup() throws ResourceException {
     }
@@ -109,7 +92,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
     /**
      * Destroys the physical connection to the underlying resource manager.
      *
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public void destroy() throws ResourceException {
     }
@@ -151,7 +134,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
      * Gets the log writer for this ManagedConnection instance.
      *
      * @return Character ourput stream associated with this Managed-Connection instance
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public PrintWriter getLogWriter() throws ResourceException {
         return logwriter;
@@ -161,17 +144,17 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
      * Sets the log writer for this ManagedConnection instance.
      *
      * @param out Character Output stream to be associated
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public void setLogWriter(PrintWriter out) throws ResourceException {
         logwriter = out;
     }
 
     /**
-     * Returns an <code>javax.resource.spi.LocalTransaction</code> instance.
+     * Returns an <code>jakarta.resource.spi.LocalTransaction</code> instance.
      *
      * @return LocalTransaction instance
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public LocalTransaction getLocalTransaction() throws ResourceException {
         throw new NotSupportedException("LocalTransaction not supported");
@@ -181,7 +164,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
      * Returns an <code>javax.transaction.xa.XAresource</code> instance.
      *
      * @return XAResource instance
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public XAResource getXAResource() throws ResourceException {
         throw new NotSupportedException("GetXAResource not supported not supported");
@@ -191,7 +174,7 @@ public class ConfigPropertyManagedConnection implements ManagedConnection {
      * Gets the metadata information for this connection's underlying EIS resource manager instance.
      *
      * @return ManagedConnectionMetaData instance
-     * @throws javax.resource.ResourceException generic exception if operation fails
+     * @throws jakarta.resource.ResourceException generic exception if operation fails
      */
     public ManagedConnectionMetaData getMetaData() throws ResourceException {
         return new ConfigPropertyManagedConnectionMetaData();

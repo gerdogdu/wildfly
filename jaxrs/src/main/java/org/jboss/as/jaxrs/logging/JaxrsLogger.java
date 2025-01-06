@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jaxrs.logging;
@@ -26,9 +9,9 @@ import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
+import java.lang.invoke.MethodHandles;
 import java.util.List;
 
-import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.jaxrs.deployment.JaxrsSpringProcessor;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -52,7 +35,7 @@ public interface JaxrsLogger extends BasicLogger {
     /**
      * A logger with the category {@code org.jboss.jaxrs}.
      */
-    JaxrsLogger JAXRS_LOGGER = Logger.getMessageLogger(JaxrsLogger.class, "org.jboss.as.jaxrs");
+    JaxrsLogger JAXRS_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), JaxrsLogger.class, "org.jboss.as.jaxrs");
 
     /**
      * Logs a warning message indicating the annotation, represented by the {@code annotation} parameter, not on Class,
@@ -89,7 +72,7 @@ public interface JaxrsLogger extends BasicLogger {
 
 //    /**
 //     * Logs a warning message indicating no servlet mappings found for the Jakarta RESTful Web Services application, represented by the
-//     * {@code servletName} parameter, either annotate with {@link javax.ws.rs.ApplicationPath @ApplicationPath} or add
+//     * {@code servletName} parameter, either annotate with {@link jakarta.ws.rs.ApplicationPath @ApplicationPath} or add
 //     * a {@code servlet-mapping} in the web.xml.
 //     *
 //     * @param servletName the servlet name.
@@ -150,7 +133,7 @@ public interface JaxrsLogger extends BasicLogger {
      * @param ejbName The ejb
      * @return  the exception
      */
-    @Message(id = 10, value = "Jakarta RESTful Web Services resource %s does not correspond to a view on the Jakarta Enterprise Beans %s. @Path annotations can only be placed on classes or interfaces that represent a local, remote or no-interface view of an Jakarta Enterprise Beans.")
+    @Message(id = 10, value = "Jakarta RESTful Web Services resource %s does not correspond to a view on the Jakarta Enterprise Beans %s. @Path annotations can only be placed on classes or interfaces that represent a local, remote or no-interface view of a Jakarta Enterprise Beans bean.")
     DeploymentUnitProcessingException typeNameNotAnEjbView(List<Class<?>> type, String ejbName);
 
     @Message(id = 11, value = "Invalid value for parameter %s: %s")
@@ -168,7 +151,7 @@ public interface JaxrsLogger extends BasicLogger {
     void failedToRegisterManagementViewForRESTResources(String resClass, @Cause Exception e);
 
     @LogMessage(level = WARN)
-    @Message(id = 15, value = "No Servlet declaration found for Jakarta RESTful Web Services application.  In %s either provide a class that extends javax.ws.rs.core.Application or declare a servlet class in web.xml.")
+    @Message(id = 15, value = "No Servlet declaration found for Jakarta RESTful Web Services application.  In %s either provide a class that extends jakarta.ws.rs.core.Application or declare a servlet class in web.xml.")
     void noServletDeclaration(String archiveName);
 
     @LogMessage(level = INFO)
@@ -199,10 +182,21 @@ public interface JaxrsLogger extends BasicLogger {
     @Message(id = 21, value = "%s %s")
     void classIntrospectionFailure(String clazz, String msg);
 
-    @Message(id = 22, value = "\"Parameter %s is not a list\"")
-    OperationFailedException parameterNotList(String param);
+//    @Message(id = 22, value = "\"Parameter %s is not a list\"")
+//    OperationFailedException parameterNotList(String param);
+//
+//    @Message(id = 23, value = "Illegal value for parameter %s: %s")
+//    String illegalArgument(String name, String value);
 
-    @Message(id = 23, value = "Illegal value for parameter %s: %s")
-    String illegalArgument(String name, String value);
+    @LogMessage(level = WARN)
+    @Message(id = 29, value = "The RESTEasy tracing API has been enabled for deployment \"%s\" and is not meant for production.")
+    void tracingEnabled(String deploymentName);
+
+    @Message(id = 30, value = "Invalid ConfigurationFactory found %s")
+    IllegalStateException invalidConfigurationFactory(Class<?> factory);
+
+    @LogMessage(level = WARN)
+    @Message(id = 31, value = "Failed to load RESTEasy MicroProfile Configuration: %s")
+    void failedToLoadConfigurationFactory(String msg);
 
 }

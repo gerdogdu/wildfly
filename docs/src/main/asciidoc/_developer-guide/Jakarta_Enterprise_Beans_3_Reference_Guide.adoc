@@ -1,10 +1,18 @@
 [[Jakarta_Enterprise_Beans_3_Reference_Guide]]
 = Jakarta Enterprise Beans 3 Reference Guide
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 This chapter details the extensions that are available when developing
 Enterprise Java Beans ^tm^ on WildFly {wildflyVersion}.
 
-Currently there is no support for configuring the extensions using an
+Currently, there is no support for configuring the extensions using an
 implementation specific descriptor file.
 
 [[resource-adapter-for-message-driven-beans]]
@@ -61,7 +69,7 @@ For example:
 == Security Domain
 
 Each Enterprise Java Bean ^tm^ can be associated with a security domain.
-Only when an Jakarta Enterprise Beans are associated with a security domain will
+Only when a Jakarta Enterprise Beans bean is associated with a security domain will
 authentication and authorization be enforced.
 
 [[specification-of-security-domain-using-metadata-annotations]]
@@ -254,7 +262,9 @@ fired only once like a recurring timer!
 
 include::ejb3/Container_interceptors.adoc[]
 
-include::ejb3/Jakarta_Enterprise_Beans_3_Clustered_Database_Timers.adoc[]
+include::ejb3/Jakarta_Enterprise_Beans_Database_Persistent_Timers.adoc[]
+
+include::ejb3/Jakarta_Enterprise_Beans_Distributed_Timers.adoc[]
 
 include::ejb3/Jakarta_Enterprise_Beans_IIOP_Guide.adoc[]
 

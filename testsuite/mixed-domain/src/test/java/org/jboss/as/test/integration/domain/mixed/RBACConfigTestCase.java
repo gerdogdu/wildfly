@@ -1,17 +1,6 @@
 /*
-Copyright 2016 Red Hat, Inc.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain.mixed;
@@ -66,24 +55,24 @@ public class RBACConfigTestCase {
 
     private static final PathAddress RBAC_BASE = PathAddress.pathAddress(PathElement.pathElement(CORE_SERVICE, MANAGEMENT),
             PathElement.pathElement(ACCESS, AUTHORIZATION));
-    private static final PathAddress SERVER_ONE = PathAddress.pathAddress(PathElement.pathElement(HOST, "slave"),
+    private static final PathAddress SERVER_ONE = PathAddress.pathAddress(PathElement.pathElement(HOST, "secondary"),
             PathElement.pathElement(RUNNING_SERVER, "server-one"));
 
 
-    private static ModelControllerClient masterClient;
-    private static ModelControllerClient slaveClient;
+    private static ModelControllerClient primaryClient;
+    private static ModelControllerClient secondaryClient;
 
     @Before
     public void init() throws Exception {
         DomainTestSupport support = KernelBehaviorTestSuite.getSupport(this.getClass());
-        masterClient = support.getDomainMasterLifecycleUtil().getDomainClient();
-        slaveClient = support.getDomainSlaveLifecycleUtil().getDomainClient();
+        primaryClient = support.getDomainPrimaryLifecycleUtil().getDomainClient();
+        secondaryClient = support.getDomainSecondaryLifecycleUtil().getDomainClient();
     }
 
     @AfterClass
     public static synchronized void afterClass() {
         KernelBehaviorTestSuite.afterClass();
-        masterClient = slaveClient = null;
+        primaryClient = secondaryClient = null;
     }
 
     @Test
@@ -109,7 +98,7 @@ public class RBACConfigTestCase {
         ModelNode value = new ModelNode("Operator");
         ModelNode addOp = Util.createAddOperation(address);
         addOp.get(attribute).set(value);
-        addOp.get(HOSTS).add("slave");
+        addOp.get(HOSTS).add("secondary");
 
         addTest(address, attribute, value, addOp);
     }
@@ -166,57 +155,57 @@ public class RBACConfigTestCase {
     }
 
     private void modifyTest(PathAddress base, String attribute) throws IOException {
-        ModelNode masterValue = executeForResult(Util.getReadAttributeOperation(base, attribute), masterClient);
-        ModelNode slaveValue = executeForResult(Util.getReadAttributeOperation(base, attribute), slaveClient);
-        assertEquals(masterValue, slaveValue);
-        ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), masterClient);
-        assertEquals(masterValue, serverValue);
+        ModelNode primaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), primaryClient);
+        ModelNode secondaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), secondaryClient);
+        assertEquals(primaryValue, secondaryValue);
+        ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), primaryClient);
+        assertEquals(primaryValue, serverValue);
 
         // Write the same value, so we don't need to clean up.
-        executeForResult(Util.getWriteAttributeOperation(base, attribute, masterValue), masterClient);
+        executeForResult(Util.getWriteAttributeOperation(base, attribute, primaryValue), primaryClient);
 
-        ModelNode newMasterValue = executeForResult(Util.getReadAttributeOperation(base, attribute), masterClient);
-        assertEquals(masterValue, newMasterValue);
-        slaveValue = executeForResult(Util.getReadAttributeOperation(base, attribute), slaveClient);
-        assertEquals(masterValue, slaveValue);
-        serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), masterClient);
-        assertEquals(masterValue, serverValue);
+        ModelNode newPrimaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), primaryClient);
+        assertEquals(primaryValue, newPrimaryValue);
+        secondaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), secondaryClient);
+        assertEquals(primaryValue, secondaryValue);
+        serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), primaryClient);
+        assertEquals(primaryValue, serverValue);
     }
 
-    private void modifyTest(PathAddress base, String attribute, ModelNode newValue, boolean expectSlaveEffect) throws IOException {
-        ModelNode masterValue = executeForResult(Util.getReadAttributeOperation(base, attribute), masterClient);
-        if (expectSlaveEffect) {
-            ModelNode slaveValue = executeForResult(Util.getReadAttributeOperation(base, attribute), slaveClient);
-            assertEquals(masterValue, slaveValue);
-            ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), masterClient);
-            assertEquals(masterValue, serverValue);
+    private void modifyTest(PathAddress base, String attribute, ModelNode newValue, boolean expectSecondaryEffect) throws IOException {
+        ModelNode primaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), primaryClient);
+        if (expectSecondaryEffect) {
+            ModelNode secondaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), secondaryClient);
+            assertEquals(primaryValue, secondaryValue);
+            ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), primaryClient);
+            assertEquals(primaryValue, serverValue);
         } else {
-            executeForFailure(Util.getReadAttributeOperation(base, attribute), slaveClient);
-            executeForFailure(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), masterClient);
+            executeForFailure(Util.getReadAttributeOperation(base, attribute), secondaryClient);
+            executeForFailure(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), primaryClient);
         }
 
         // Write the same value, so we don't need to clean up.
         Throwable caught = null;
-        executeForResult(Util.getWriteAttributeOperation(base, attribute, newValue), masterClient);
+        executeForResult(Util.getWriteAttributeOperation(base, attribute, newValue), primaryClient);
         try {
-            ModelNode newMasterValue = executeForResult(Util.getReadAttributeOperation(base, attribute), masterClient);
-            assertEquals(newValue, newMasterValue);
-            if (expectSlaveEffect) {
-                ModelNode slaveValue = executeForResult(Util.getReadAttributeOperation(base, attribute), slaveClient);
-                assertEquals(newValue, slaveValue);
-                ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), masterClient);
+            ModelNode newPrimaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), primaryClient);
+            assertEquals(newValue, newPrimaryValue);
+            if (expectSecondaryEffect) {
+                ModelNode secondaryValue = executeForResult(Util.getReadAttributeOperation(base, attribute), secondaryClient);
+                assertEquals(newValue, secondaryValue);
+                ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), primaryClient);
                 assertEquals(newValue, serverValue);
             } else {
-                executeForFailure(Util.getReadAttributeOperation(base, attribute), slaveClient);
-                executeForFailure(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), masterClient);
+                executeForFailure(Util.getReadAttributeOperation(base, attribute), secondaryClient);
+                executeForFailure(Util.getReadAttributeOperation(SERVER_ONE.append(base), attribute), primaryClient);
             }
         } catch (Exception | Error e) {
             caught = e;
             throw e;
         } finally {
-            if (!newValue.equals(masterValue)) {
+            if (!newValue.equals(primaryValue)) {
                 try {
-                    executeForResult(Util.getWriteAttributeOperation(base, attribute, masterValue), masterClient);
+                    executeForResult(Util.getWriteAttributeOperation(base, attribute, primaryValue), primaryClient);
                 } catch (RuntimeException e) {
                     if (caught == null) {
                         throw e;
@@ -231,20 +220,20 @@ public class RBACConfigTestCase {
 
     private void addTest(PathAddress address, String attribute, ModelNode value, ModelNode addOp) {
         Throwable caught = null;
-        executeForResult(addOp, masterClient);
+        executeForResult(addOp, primaryClient);
         try {
-            ModelNode masterValue = executeForResult(Util.getReadAttributeOperation(address, attribute), masterClient);
-            assertEquals(value, masterValue);
-            ModelNode slaveValue = executeForResult(Util.getReadAttributeOperation(address, attribute), slaveClient);
-            assertEquals(value, slaveValue);
-            ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(address), attribute), masterClient);
+            ModelNode primaryValue = executeForResult(Util.getReadAttributeOperation(address, attribute), primaryClient);
+            assertEquals(value, primaryValue);
+            ModelNode secondaryValue = executeForResult(Util.getReadAttributeOperation(address, attribute), secondaryClient);
+            assertEquals(value, secondaryValue);
+            ModelNode serverValue = executeForResult(Util.getReadAttributeOperation(SERVER_ONE.append(address), attribute), primaryClient);
             assertEquals(value, serverValue);
         } catch (Exception | Error e) {
             caught = e;
             throw e;
         } finally {
             try {
-                executeForResult(Util.createRemoveOperation(address), masterClient);
+                executeForResult(Util.createRemoveOperation(address), primaryClient);
             } catch (RuntimeException e) {
                 if (caught == null) {
                     throw e;

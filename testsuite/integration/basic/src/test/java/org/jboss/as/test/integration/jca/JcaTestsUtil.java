@@ -1,25 +1,6 @@
 /*
- *
- *  * JBoss, Home of Professional Open Source.
- *  * Copyright 2015, Red Hat, Inc., and individual contributors
- *  * as indicated by the @author tags. See the copyright.txt file in the
- *  * distribution for a full listing of individual contributors.
- *  *
- *  * This is free software; you can redistribute it and/or modify it
- *  * under the terms of the GNU Lesser General Public License as
- *  * published by the Free Software Foundation; either version 2.1 of
- *  * the License, or (at your option) any later version.
- *  *
- *  * This software is distributed in the hope that it will be useful,
- *  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  * Lesser General Public License for more details.
- *  *
- *  * You should have received a copy of the GNU Lesser General Public
- *  * License along with this software; if not, write to the Free
- *  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- *  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
- *
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.jca;
@@ -135,7 +116,7 @@ public class JcaTestsUtil {
                 if (fields != null && fields.length > 0) {
                     for (Field field : fields) {
                         Class<?> fieldType = field.getType();
-                        if (fieldType.equals(javax.resource.spi.ConnectionManager.class) ||
+                        if (fieldType.equals(jakarta.resource.spi.ConnectionManager.class) ||
                                 fieldType.equals(ConnectionManager.class)) {
                             field.setAccessible(true);
                             return (ConnectionManager) field.get(connectionFactory);
@@ -149,7 +130,7 @@ public class JcaTestsUtil {
                 Method[] methods = clz.getDeclaredMethods();
                 for (Method method : methods) {
                     Class<?> type = method.getReturnType();
-                    if (type.equals(javax.resource.spi.ConnectionManager.class) ||
+                    if (type.equals(jakarta.resource.spi.ConnectionManager.class) ||
                             type.equals(ConnectionManager.class)) {
                         method.setAccessible(true);
                         return (ConnectionManager) method.invoke(connectionFactory);

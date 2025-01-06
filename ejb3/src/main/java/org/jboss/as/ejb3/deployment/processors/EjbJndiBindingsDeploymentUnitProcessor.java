@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.deployment.processors;
@@ -42,6 +25,7 @@ import org.jboss.as.ejb3.remote.RemoteViewInjectionSource;
 import org.jboss.as.ejb3.remote.RemoteViewManagedReferenceFactory;
 import org.jboss.as.naming.ManagedReference;
 import org.jboss.as.naming.ManagedReferenceFactory;
+import org.jboss.as.server.deployment.DelegatingSupplier;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -52,7 +36,6 @@ import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.value.InjectedValue;
-import org.jboss.msc.value.Values;
 import org.wildfly.extension.requestcontroller.ControlPoint;
 import org.wildfly.extension.requestcontroller.ControlPointService;
 import org.wildfly.extension.requestcontroller.RequestControllerActivationMarker;
@@ -227,22 +210,22 @@ public class EjbJndiBindingsDeploymentUnitProcessor implements DeploymentUnitPro
 
     private void registerRemoteBinding(final EJBComponentDescription componentDescription, final ViewDescription viewDescription, final String jndiName) {
         final EEModuleDescription moduleDescription = componentDescription.getModuleDescription();
-        final InjectedValue<ClassLoader> viewClassLoader = new InjectedValue<ClassLoader>();
+        final DelegatingSupplier<ClassLoader> viewClassLoader = new DelegatingSupplier<>();
         moduleDescription.getBindingConfigurations().add(new BindingConfiguration(jndiName, new RemoteViewInjectionSource(null, moduleDescription.getEarApplicationName(), moduleDescription.getModuleName(), moduleDescription.getDistinctName(), componentDescription.getComponentName(), viewDescription.getViewClassName(), componentDescription.isStateful(), viewClassLoader, appclient)));
         componentDescription.getConfigurators().add(new ComponentConfigurator() {
             public void configure(DeploymentPhaseContext context, ComponentDescription description, ComponentConfiguration configuration) throws DeploymentUnitProcessingException {
-                viewClassLoader.setValue(Values.immediateValue(configuration.getModuleClassLoader()));
+                viewClassLoader.set(() -> configuration.getModuleClassLoader());
             }
         });
     }
     private void registerControlPointBinding(final EJBComponentDescription componentDescription, final ViewDescription viewDescription, final String jndiName, final DeploymentUnit deploymentUnit) {
         final EEModuleDescription moduleDescription = componentDescription.getModuleDescription();
-        final InjectedValue<ClassLoader> viewClassLoader = new InjectedValue<ClassLoader>();
+        final DelegatingSupplier<ClassLoader> viewClassLoader = new DelegatingSupplier<>();
         final InjectedValue<ControlPoint> controlPointInjectedValue = new InjectedValue<>();
         final RemoteViewInjectionSource delegate = new RemoteViewInjectionSource(null, moduleDescription.getEarApplicationName(), moduleDescription.getModuleName(), moduleDescription.getDistinctName(), componentDescription.getComponentName(), viewDescription.getViewClassName(), componentDescription.isStateful(), viewClassLoader, appclient);
         final ServiceName depName = ControlPointService.serviceName(deploymentUnit.getParent() == null ? deploymentUnit.getName() : deploymentUnit.getParent().getName(), EJBComponentSuspendDeploymentUnitProcessor.ENTRY_POINT_NAME + deploymentUnit.getName() + "." + componentDescription.getComponentName());
         componentDescription.getConfigurators().add((context, description, configuration) -> {
-            viewClassLoader.setValue(Values.immediateValue(configuration.getModuleClassLoader()));
+            viewClassLoader.set(() -> configuration.getModuleClassLoader());
             configuration.getCreateDependencies().add((serviceBuilder, service) -> serviceBuilder.addDependency(depName, ControlPoint.class, controlPointInjectedValue));
         });
         //we need to wrap the injection source to allow graceful shutdown to function, although this is not ideal

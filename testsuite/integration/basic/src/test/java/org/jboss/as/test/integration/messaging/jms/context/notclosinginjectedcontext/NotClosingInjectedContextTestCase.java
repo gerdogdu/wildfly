@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.messaging.jms.context.notclosinginjectedcontext;
@@ -47,13 +30,13 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import javax.annotation.Resource;
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSConsumer;
-import javax.jms.JMSContext;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.Queue;
+import jakarta.annotation.Resource;
+import jakarta.jms.ConnectionFactory;
+import jakarta.jms.JMSConsumer;
+import jakarta.jms.JMSContext;
+import jakarta.jms.JMSException;
+import jakarta.jms.Message;
+import jakarta.jms.Queue;
 import java.io.IOException;
 import java.util.List;
 import java.util.PropertyPermission;
@@ -66,14 +49,15 @@ import static org.jboss.as.test.shared.TimeoutUtil.adjust;
 import java.io.File;
 import java.io.FilePermission;
 import java.net.SocketPermission;
-import org.jboss.as.test.shared.integration.ejb.security.PermissionUtils;
+import org.jboss.as.test.shared.PermissionUtils;
 import org.jboss.remoting3.security.RemotingPermission;
 
 
 /**
- * Test for issue https://issues.jboss.org/browse/WFLY-10531 (based on reproducer created by Gunter Zeilinger <gunterze@gmail.com>.
- *
- * 500 messages should be send to mdb and each of them should be received in verify queue.
+ * Test for issue <a href="https://issues.jboss.org/browse/WFLY-10531">https://issues.jboss.org/browse/WFLY-10531</a>,
+ * based on reproducer created by Gunter Zeilinger <gunterze@gmail.com>.
+ * <p>
+ * Two messages should be sent to mdb and each of them should be received in verify queue.
  * If error is still valid, there will be exceptions like: IJ000453: Unable to get managed connection for java:/JmsXA
  *
  * @author Jiri Ondrusek <jondruse@redhat.com>
@@ -100,7 +84,7 @@ public class NotClosingInjectedContextTestCase {
 
     @Deployment
     public static WebArchive createTestArchive() {
-        WebArchive archive = ShrinkWrap.create(WebArchive.class, "NotClosingInjectedContextTestCase.war")
+        return ShrinkWrap.create(WebArchive.class, "NotClosingInjectedContextTestCase.war")
                 .addPackage(StartUp.class.getPackage())
                 .addClass(TimeoutUtil.class)
                 .addAsManifestResource(PermissionUtils.createPermissionsXmlAsset(
@@ -112,7 +96,6 @@ public class NotClosingInjectedContextTestCase {
                 .addAsManifestResource(EmptyAsset.INSTANCE, "beans.xml")
                 .addClass(TimeoutUtil.class)
                 .addAsManifestResource(new StringAsset("Dependencies: org.jboss.as.controller,org.jboss.remoting\n"), "MANIFEST.MF");
-        return archive;
     }
 
     @After
@@ -142,7 +125,11 @@ public class NotClosingInjectedContextTestCase {
         try (JMSContext context = factory.createContext(); JMSConsumer consumer = context.createConsumer(queueVerify)) {
             int j = 0;
             while (true) {
-                String t = consumer.receiveBody(String.class, adjust(2000));
+                // StartUp singleton EJB triggers sending of two messages, which Mdb republishes in queueVerify.
+                // Make the test robust by being patient waiting to receive those two, but then don't waste time
+                // waiting for a non-existing msg
+                int timeout = j < 2 ? adjust(15000) : 2000;
+                String t = consumer.receiveBody(String.class, adjust(timeout));
                 if (t == null) {
                     LOGGER.info("Received null message");
                     break;

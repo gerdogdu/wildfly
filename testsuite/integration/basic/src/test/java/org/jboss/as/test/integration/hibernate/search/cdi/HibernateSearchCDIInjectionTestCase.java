@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.hibernate.search.cdi;
 
@@ -42,7 +25,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -73,8 +56,10 @@ public class HibernateSearchCDIInjectionTestCase {
                 .jtaDataSource("java:jboss/datasources/ExampleDS")
                 .getOrCreateProperties()
                 .createProperty().name("hibernate.hbm2ddl.auto").value("create-drop").up()
-                .createProperty().name("hibernate.search.default.lucene_version").value("LUCENE_CURRENT").up()
-                .createProperty().name("hibernate.search.default.directory_provider").value("local-heap").up()
+                .createProperty().name("hibernate.search.schema_management.strategy").value("drop-and-create-and-drop").up()
+                .createProperty().name("hibernate.search.backend.type").value("lucene").up()
+                .createProperty().name("hibernate.search.backend.lucene_version").value("LUCENE_CURRENT").up()
+                .createProperty().name("hibernate.search.backend.directory.type").value("local-heap").up()
                 .up().up()
                 .exportAsString();
         return new StringAsset(persistenceXml);
@@ -91,61 +76,61 @@ public class HibernateSearchCDIInjectionTestCase {
 
     @Test
     public void injectedFieldBridge() {
-        assertEquals(0, dao.searchFieldBridge("bonjour").size());
-        assertEquals(0, dao.searchFieldBridge("hello").size());
-        assertEquals(0, dao.searchFieldBridge("hallo").size());
-        assertEquals(0, dao.searchFieldBridge("au revoir").size());
+        assertEquals(0, dao.searchValueBridge("bonjour").size());
+        assertEquals(0, dao.searchValueBridge("hello").size());
+        assertEquals(0, dao.searchValueBridge("hallo").size());
+        assertEquals(0, dao.searchValueBridge("au revoir").size());
 
         EntityWithCDIAwareBridges entity = new EntityWithCDIAwareBridges();
         entity.setInternationalizedValue(InternationalizedValue.HELLO);
         dao.create(entity);
-        assertThat(dao.searchFieldBridge("bonjour"), hasItems(entity.getId()));
-        assertThat(dao.searchFieldBridge("hello"), hasItems(entity.getId()));
-        assertThat(dao.searchFieldBridge("hallo"), hasItems(entity.getId()));
-        assertEquals(0, dao.searchFieldBridge("au revoir").size());
+        assertThat(dao.searchValueBridge("bonjour"), hasItems(entity.getId()));
+        assertThat(dao.searchValueBridge("hello"), hasItems(entity.getId()));
+        assertThat(dao.searchValueBridge("hallo"), hasItems(entity.getId()));
+        assertEquals(0, dao.searchValueBridge("au revoir").size());
 
         EntityWithCDIAwareBridges entity2 = new EntityWithCDIAwareBridges();
         entity2.setInternationalizedValue(InternationalizedValue.GOODBYE);
         dao.create(entity2);
-        assertThat(dao.searchFieldBridge("bonjour"), hasItems(entity.getId()));
-        assertThat(dao.searchFieldBridge("hello"), hasItems(entity.getId()));
-        assertThat(dao.searchFieldBridge("hallo"), hasItems(entity.getId()));
-        assertThat(dao.searchFieldBridge("au revoir"), hasItems(entity2.getId()));
+        assertThat(dao.searchValueBridge("bonjour"), hasItems(entity.getId()));
+        assertThat(dao.searchValueBridge("hello"), hasItems(entity.getId()));
+        assertThat(dao.searchValueBridge("hallo"), hasItems(entity.getId()));
+        assertThat(dao.searchValueBridge("au revoir"), hasItems(entity2.getId()));
 
         dao.delete(entity);
-        assertEquals(0, dao.searchFieldBridge("bonjour").size());
-        assertEquals(0, dao.searchFieldBridge("hello").size());
-        assertEquals(0, dao.searchFieldBridge("hallo").size());
-        assertThat(dao.searchFieldBridge("au revoir"), hasItems(entity2.getId()));
+        assertEquals(0, dao.searchValueBridge("bonjour").size());
+        assertEquals(0, dao.searchValueBridge("hello").size());
+        assertEquals(0, dao.searchValueBridge("hallo").size());
+        assertThat(dao.searchValueBridge("au revoir"), hasItems(entity2.getId()));
     }
 
     @Test
     public void injectedClassBridge() {
-        assertEquals(0, dao.searchClassBridge("bonjour").size());
-        assertEquals(0, dao.searchClassBridge("hello").size());
-        assertEquals(0, dao.searchClassBridge("hallo").size());
-        assertEquals(0, dao.searchClassBridge("au revoir").size());
+        assertEquals(0, dao.searchTypeBridge("bonjour").size());
+        assertEquals(0, dao.searchTypeBridge("hello").size());
+        assertEquals(0, dao.searchTypeBridge("hallo").size());
+        assertEquals(0, dao.searchTypeBridge("au revoir").size());
 
         EntityWithCDIAwareBridges entity = new EntityWithCDIAwareBridges();
         entity.setInternationalizedValue(InternationalizedValue.HELLO);
         dao.create(entity);
-        assertThat(dao.searchClassBridge("bonjour"), hasItems(entity.getId()));
-        assertThat(dao.searchClassBridge("hello"), hasItems(entity.getId()));
-        assertThat(dao.searchClassBridge("hallo"), hasItems(entity.getId()));
-        assertEquals(0, dao.searchClassBridge("au revoir").size());
+        assertThat(dao.searchTypeBridge("bonjour"), hasItems(entity.getId()));
+        assertThat(dao.searchTypeBridge("hello"), hasItems(entity.getId()));
+        assertThat(dao.searchTypeBridge("hallo"), hasItems(entity.getId()));
+        assertEquals(0, dao.searchTypeBridge("au revoir").size());
 
         EntityWithCDIAwareBridges entity2 = new EntityWithCDIAwareBridges();
         entity2.setInternationalizedValue(InternationalizedValue.GOODBYE);
         dao.create(entity2);
-        assertThat(dao.searchClassBridge("bonjour"), hasItems(entity.getId()));
-        assertThat(dao.searchClassBridge("hello"), hasItems(entity.getId()));
-        assertThat(dao.searchClassBridge("hallo"), hasItems(entity.getId()));
-        assertThat(dao.searchClassBridge("au revoir"), hasItems(entity2.getId()));
+        assertThat(dao.searchTypeBridge("bonjour"), hasItems(entity.getId()));
+        assertThat(dao.searchTypeBridge("hello"), hasItems(entity.getId()));
+        assertThat(dao.searchTypeBridge("hallo"), hasItems(entity.getId()));
+        assertThat(dao.searchTypeBridge("au revoir"), hasItems(entity2.getId()));
 
         dao.delete(entity);
-        assertEquals(0, dao.searchClassBridge("bonjour").size());
-        assertEquals(0, dao.searchClassBridge("hello").size());
-        assertEquals(0, dao.searchClassBridge("hallo").size());
-        assertThat(dao.searchClassBridge("au revoir"), hasItems(entity2.getId()));
+        assertEquals(0, dao.searchTypeBridge("bonjour").size());
+        assertEquals(0, dao.searchTypeBridge("hello").size());
+        assertEquals(0, dao.searchTypeBridge("hallo").size());
+        assertThat(dao.searchTypeBridge("au revoir"), hasItems(entity2.getId()));
     }
 }

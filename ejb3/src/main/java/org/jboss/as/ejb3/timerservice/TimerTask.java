@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2009, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.timerservice;
 
@@ -28,7 +11,7 @@ import java.util.Date;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
- * A timer task which will be invoked at appropriate intervals based on a {@link javax.ejb.Timer}
+ * A timer task which will be invoked at appropriate intervals based on a {@link jakarta.ejb.Timer}
  * schedule.
  * <p/>
  * <p>
@@ -159,10 +142,15 @@ public class TimerTask implements Runnable {
                         return;
                     }
 
-                    if (!timer.isActive()) {
+                    // ensure timer service is started, and the timer has not expired or been cancelled.
+                    // Execution got here after this TimerTask instance has been scheduled on TimerServiceImpl#timer,
+                    // and TimerTask instance saved in TimerServiceImpl#scheduledTimerFutures
+                    if (timer.timerState == TimerState.CANCELED || timer.timerState == TimerState.EXPIRED || !timer.timerService.isStarted()) {
                         EJB3_TIMER_LOGGER.debug("Timer is not active, skipping this scheduled execution at: " + now + "for " + timer);
                         return;
                     }
+
+                    // timer state is now either CREATED or ACTIVE
                     // set the current date as the "previous run" of the timer.
                     timer.setPreviousRun(new Date());
                     Date nextTimeout = this.calculateNextTimeout(timer);

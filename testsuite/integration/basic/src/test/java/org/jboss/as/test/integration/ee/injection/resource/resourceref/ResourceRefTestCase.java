@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright (c) 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ee.injection.resource.resourceref;
@@ -48,7 +31,7 @@ import org.junit.runner.RunWith;
  * Tests that @Resource bindings on interceptors that are applied to multiple
  * components without their own naming context work properly, and do not try
  * and create two duplicate bindings in the same namespace.
- *
+ * <p>
  * Migration test from EJB Testsuite (ejbthree-1823, ejbthree-1858) to AS7 [JIRA JBQA-5483].
  * - ResourceHandler when resource-ref type is not specified.
  * - EJBContext is configured through ejb-jar.xml as a resource-env-ref.
@@ -66,7 +49,7 @@ public class ResourceRefTestCase {
         WebArchive war = ShrinkWrap.create(WebArchive.class, "managed-bean.war");
         war.addAsWebInfResource(ResourceRefTestCase.class.getPackage(),"web.xml", "web.xml");
         war.addAsWebInfResource(ResourceRefTestCase.class.getPackage(),"jboss-web.xml", "jboss-web.xml");
-        war.addClasses(ResourceRefTestCase.class, DatasourceManagedBean.class, CreateQueueSetupTask.class);
+        war.addClasses(ResourceRefTestCase.class, DatasourceBean.class, CreateQueueSetupTask.class);
 
         JavaArchive jar = ShrinkWrap.create(JavaArchive.class, "resource-ref-test.jar");
         jar.addClasses(ResourceRefBean.class, ResourceRefRemote.class, StatelessBean.class, StatelessBeanRemote.class, ResUrlChecker.class, ResUrlCheckerBean.class);
@@ -95,7 +78,7 @@ public class ResourceRefTestCase {
     @Test
     public void testInjection() throws NamingException {
         InitialContext context = new InitialContext();
-        DatasourceManagedBean bean = (DatasourceManagedBean)context.lookup("java:module/datasourceManagedBean");
+        DatasourceBean bean = (DatasourceBean)context.lookup("java:module/datasourceManagedBean");
         Assert.assertNotNull(bean.getDataSource());
     }
 

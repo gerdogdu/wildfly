@@ -1,6 +1,11 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ejb.async;
 
-import javax.ejb.Asynchronous;
+import jakarta.ejb.Asynchronous;
 
 /**
  * @author Ondrej Chaloupka

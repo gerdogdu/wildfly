@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.security.parser;
@@ -41,7 +24,8 @@ import org.jboss.metadata.property.PropertyReplacer;
 public class SecurityRoleMetaDataParser extends AbstractMetaDataParser<SecurityRoleMetaData> {
 
     public static final String LEGACY_NAMESPACE_URI = "urn:security-role";
-    public static final String NAMESPACE_URI = "urn:security-role:1.0";
+    public static final String NAMESPACE_URI_1_0 = "urn:security-role:1.0";
+    public static final String NAMESPACE_URI_2_0 = "urn:security-role:2.0";
     public static final SecurityRoleMetaDataParser INSTANCE = new SecurityRoleMetaDataParser();
 
     private SecurityRoleMetaDataParser() {
@@ -57,12 +41,13 @@ public class SecurityRoleMetaDataParser extends AbstractMetaDataParser<SecurityR
 
     @Override
     protected void processElement(SecurityRoleMetaData metaData, XMLStreamReader reader, final PropertyReplacer propertyReplacer) throws XMLStreamException {
-        if (reader.getNamespaceURI().equals(LEGACY_NAMESPACE_URI) ||
-                reader.getNamespaceURI().equals(NAMESPACE_URI)) {
+        if (LEGACY_NAMESPACE_URI.equals(reader.getNamespaceURI()) ||
+                NAMESPACE_URI_2_0.equals(reader.getNamespaceURI()) ||
+                NAMESPACE_URI_1_0.equals(reader.getNamespaceURI())) {
             final String localName = reader.getLocalName();
-            if (localName.equals(Element.ROLE_NAME.getLocalName()))
+            if (localName.equals(Element.ROLE_NAME.getLocalName())) {
                 metaData.setRoleName(getElementText(reader, propertyReplacer));
-            else if (localName.equals(Element.PRINCIPAL_NAME.getLocalName())) {
+            } else if (localName.equals(Element.PRINCIPAL_NAME.getLocalName())) {
                 Set<String> principalNames = metaData.getPrincipals();
                 if (principalNames == null) {
                     principalNames = new HashSet<String>();

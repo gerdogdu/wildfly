@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ee.injection.support.websocket;
 
@@ -25,8 +8,8 @@ import java.net.SocketPermission;
 import java.net.URI;
 import java.util.PropertyPermission;
 
-import javax.websocket.ContainerProvider;
-import javax.websocket.WebSocketContainer;
+import jakarta.websocket.ContainerProvider;
+import jakarta.websocket.WebSocketContainer;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
@@ -35,21 +18,29 @@ import org.jboss.as.test.integration.ee.injection.support.Bravo;
 import org.jboss.as.test.integration.ee.injection.support.ComponentInterceptor;
 import org.jboss.as.test.integration.ee.injection.support.ComponentInterceptorBinding;
 import org.jboss.as.test.integration.ee.injection.support.InjectionSupportTestCase;
+import org.jboss.as.test.shared.AssumeTestGroupUtil;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 /**
  * @author Matus Abaffy
  */
 @RunWith(Arquillian.class)
 public class WebSocketInjectionSupportTestCase {
+
+    @BeforeClass
+    public static void beforeClass() {
+        // TODO WFLY-16551
+        AssumeTestGroupUtil.assumeSecurityManagerDisabled();
+    }
 
     @Deployment
     public static WebArchive deploy() {
@@ -60,7 +51,7 @@ public class WebSocketInjectionSupportTestCase {
                         ComponentInterceptor.class).addClasses(InjectionSupportTestCase.constructTestsHelperClasses)
                 .addAsWebInfResource(new StringAsset("<beans bean-discovery-mode=\"all\"></beans>"), "beans.xml")
                 .addAsManifestResource(new StringAsset("io.undertow.websockets.jsr.UndertowContainerProvider"),
-                        "services/javax.websocket.ContainerProvider")
+                        "services/jakarta.websocket.ContainerProvider")
                 .addAsManifestResource(createPermissionsXmlAsset(
                         // Needed for the TestSuiteEnvironment.getServerAddress() and TestSuiteEnvironment.getHttpPort()
                         new PropertyPermission("management.address", "read"),

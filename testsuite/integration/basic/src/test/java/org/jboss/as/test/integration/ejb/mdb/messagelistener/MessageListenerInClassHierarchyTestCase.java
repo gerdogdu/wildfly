@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ejb.mdb.messagelistener;
@@ -38,15 +21,15 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import javax.annotation.Resource;
-import javax.ejb.EJB;
-import javax.jms.Message;
-import javax.jms.Queue;
-import javax.jms.TextMessage;
+import jakarta.annotation.Resource;
+import jakarta.ejb.EJB;
+import jakarta.jms.Message;
+import jakarta.jms.Queue;
+import jakarta.jms.TextMessage;
 
 import java.util.PropertyPermission;
 
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 
 /**
  * Tests that if a message listener interface is implemented by the base class of a message driven bean, then
@@ -105,7 +88,7 @@ public class MessageListenerInClassHierarchyTestCase {
 
 
     /**
-     * Test that if a {@link javax.jms.MessageListener} interface is implemented by the base class of a
+     * Test that if a {@link jakarta.jms.MessageListener} interface is implemented by the base class of a
      * message driven bean, then it's taken into consideration while looking for potential message listener
      * interface
      * <p>See https://issues.jboss.org/browse/AS7-2638</p>

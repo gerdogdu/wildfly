@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.domain.management.cli;
 
@@ -27,12 +10,12 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.URL;
 import java.util.Date;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.jboss.logging.Logger;
 
@@ -62,13 +45,13 @@ public class RolloutPlanTestServlet extends HttpServlet {
 
         String op = request.getParameter(OP_PARAM);
         if (OP_BIND.equals(op)) {
-            bindPort = Integer.valueOf(request.getParameter(BIND_PORT_PARAM));
+            bindPort = Integer.parseInt(request.getParameter(BIND_PORT_PARAM));
             bind();
         } else if (OP_UNBIND.equals(op)) { unbind(); }
 
         response.setContentType("text/plain");
         PrintWriter out = response.getWriter();
-        out.print(String.valueOf(initDate.getTime()));
+        out.print(initDate.getTime());
         out.close();
     }
 
@@ -76,7 +59,7 @@ public class RolloutPlanTestServlet extends HttpServlet {
     public void init(ServletConfig config) throws ServletException {
         initDate = new Date();
         super.init(config);
-        log.trace("RolloutServlet initialized: " + String.valueOf(initDate.getTime()));
+        log.trace("RolloutServlet initialized: " + initDate.getTime());
     }
 
     @Override
@@ -84,7 +67,9 @@ public class RolloutPlanTestServlet extends HttpServlet {
         if (socket != null) {
             try {
                 unbind();
-            } catch (ServletException se) {}
+            } catch (ServletException se) {
+                // ignore
+            }
         }
         super.destroy();
     }

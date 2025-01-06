@@ -1,26 +1,11 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.managedbean.processors;
+
+import java.util.List;
 
 import org.jboss.as.ee.structure.DeploymentType;
 import org.jboss.as.ee.structure.DeploymentTypeMarker;
@@ -35,22 +20,39 @@ import org.jboss.as.server.deployment.module.ResourceRoot;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.Index;
 
-import javax.annotation.ManagedBean;
-import java.util.List;
-
 /**
  * Processor that only runs for ear deployments where no application.xml is provided. It examines jars in the ear to determine
- * sub-deployments containing {@link ManagedBean managed beans}.
+ * sub-deployments containing {@code jakarta.annotation.ManagedBean managed beans}.
  *
  * @author Jaikiran Pai
  */
 public class ManagedBeanSubDeploymentMarkingProcessor implements DeploymentUnitProcessor {
 
 
-    private static final DotName MANAGED_BEAN = DotName.createSimple(ManagedBean.class.getName());
+    private static final DotName MANAGED_BEAN = DotName.createSimple("jakarta.annotation.ManagedBean");
+
+    /** Whether the jakarta.annotation.ManagedBean class exists. It was removed in Jakarta Annotations 3.0 */
+    private static final boolean HAS_MANAGED_BEAN;
+
+    static {
+        boolean hasManagedBean = false;
+        try {
+            ManagedBeanAnnotationProcessor.class.getClassLoader().loadClass("jakarta.annotation.ManagedBean");
+            hasManagedBean = true;
+        } catch (Throwable ignored) {
+            // ignore
+        }
+        HAS_MANAGED_BEAN = hasManagedBean;
+    }
 
     @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
+
+        if (!HAS_MANAGED_BEAN) {
+            // We're running Jakarta Annotations 3.0 or later. Managed beans no longer exist.
+            return;
+        }
+
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         if (!DeploymentTypeMarker.isType(DeploymentType.EAR, deploymentUnit)) {
             return;

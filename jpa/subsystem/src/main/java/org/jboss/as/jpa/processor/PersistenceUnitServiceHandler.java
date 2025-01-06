@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jpa.processor;
@@ -29,21 +12,20 @@ import static org.jboss.as.weld.Capabilities.WELD_CAPABILITY_NAME;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import javax.persistence.SynchronizationType;
-import javax.persistence.ValidationMode;
-import javax.persistence.spi.PersistenceProvider;
-import javax.persistence.spi.PersistenceProviderResolverHolder;
+import jakarta.persistence.SynchronizationType;
+import jakarta.persistence.ValidationMode;
+import jakarta.persistence.spi.PersistenceProvider;
+import jakarta.persistence.spi.PersistenceProviderResolverHolder;
 import javax.sql.DataSource;
-import javax.transaction.TransactionManager;
-import javax.transaction.TransactionSynchronizationRegistry;
-import javax.validation.ValidatorFactory;
+import jakarta.transaction.TransactionManager;
+import jakarta.transaction.TransactionSynchronizationRegistry;
+import jakarta.validation.ValidatorFactory;
 
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.PathElement;
@@ -89,6 +71,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUtils;
 import org.jboss.as.server.deployment.JPADeploymentMarker;
 import org.jboss.as.server.deployment.SubDeploymentMarker;
+import org.jboss.as.server.deployment.annotation.CompositeIndex;
 import org.jboss.as.server.deployment.module.ResourceRoot;
 import org.jboss.as.weld.WeldCapability;
 import org.jboss.dmr.ModelNode;
@@ -97,16 +80,15 @@ import org.jboss.jandex.Index;
 import org.jboss.modules.Module;
 import org.jboss.modules.ModuleClassLoader;
 import org.jboss.modules.ModuleLoadException;
-import org.jboss.msc.inject.CastingInjector;
 import org.jboss.msc.inject.InjectionException;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceRegistryException;
 import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
 import org.jipijapa.plugin.spi.ManagementAdaptor;
 import org.jipijapa.plugin.spi.PersistenceProviderAdaptor;
+import org.jipijapa.plugin.spi.PersistenceProviderIntegratorAdaptor;
 import org.jipijapa.plugin.spi.PersistenceUnitMetadata;
 import org.jipijapa.plugin.spi.Platform;
 import org.jipijapa.plugin.spi.TwoPhaseBootstrapCapable;
@@ -115,7 +97,7 @@ import org.wildfly.transaction.client.ContextTransactionManager;
 /**
  * Handle the installation of the Persistence Unit service
  *
- * NOTE: References in this document to Java Persistence API(JPA) refer to the Jakarta Persistence unless otherwise noted.
+ * NOTE: References in this document to Java Persistence API (JPA) refer to the Jakarta Persistence unless otherwise noted.
  *
  * @author Scott Marlow
  */
@@ -265,11 +247,13 @@ public class PersistenceUnitServiceHandler {
                         final PersistenceProviderDeploymentHolder persistenceProviderDeploymentHolder = getPersistenceProviderDeploymentHolder(deploymentUnit);
                         final PersistenceProvider provider = lookupProvider(pu, persistenceProviderDeploymentHolder, deploymentUnit);
                         final PersistenceProviderAdaptor adaptor = getPersistenceProviderAdaptor(pu, persistenceProviderDeploymentHolder, deploymentUnit, provider, platform);
+                        final List<PersistenceProviderIntegratorAdaptor> integratorAdaptors = getPersistenceProviderIntegratorAdaptors(deploymentUnit);
                         final boolean twoPhaseBootStrapCapable = (adaptor instanceof TwoPhaseBootstrapCapable) && Configuration.allowTwoPhaseBootstrap(pu);
 
                         if (startEarly) {
                             if (twoPhaseBootStrapCapable) {
-                                deployPersistenceUnitPhaseOne(deploymentUnit, eeModuleDescription, serviceTarget, classLoader, pu, adaptor);
+                                deployPersistenceUnitPhaseOne(deploymentUnit, eeModuleDescription, serviceTarget,
+                                        classLoader, pu, adaptor, integratorAdaptors);
                             }
                             else if (false == Configuration.needClassFileTransformer(pu)) {
                                 // will start later when startEarly == false
@@ -280,16 +264,18 @@ public class PersistenceUnitServiceHandler {
                                 // we need class file transformer to work, don't allow Jakarta Contexts and Dependency Injection bean manager to be access since that
                                 // could cause application classes to be loaded (workaround by setting jboss.as.jpa.classtransformer to false).  WFLY-1463
                                 final boolean allowCdiBeanManagerAccess = false;
-                                deployPersistenceUnit(deploymentUnit, eeModuleDescription, serviceTarget, classLoader, pu, provider, adaptor, allowCdiBeanManagerAccess);
+                                deployPersistenceUnit(deploymentUnit, eeModuleDescription, serviceTarget,
+                                        classLoader, pu, provider, adaptor, integratorAdaptors, allowCdiBeanManagerAccess);
                             }
                         }
                         else { // !startEarly
                             if (twoPhaseBootStrapCapable) {
-                                deployPersistenceUnitPhaseTwo(deploymentUnit, eeModuleDescription, serviceTarget, classLoader, pu, provider, adaptor);
+                                deployPersistenceUnitPhaseTwo(deploymentUnit, eeModuleDescription, serviceTarget, classLoader, pu, provider, adaptor, integratorAdaptors);
                             } else if (false == Configuration.needClassFileTransformer(pu)) {
                                 final boolean allowCdiBeanManagerAccess = true;
                                 // PUs that have Configuration.JPA_CONTAINER_CLASS_TRANSFORMER = false will start during INSTALL phase
-                                deployPersistenceUnit(deploymentUnit, eeModuleDescription, serviceTarget, classLoader, pu, provider, adaptor, allowCdiBeanManagerAccess);
+                                deployPersistenceUnit(deploymentUnit, eeModuleDescription, serviceTarget,
+                                        classLoader, pu, provider, adaptor, integratorAdaptors, allowCdiBeanManagerAccess);
                             }
                         }
 
@@ -313,6 +299,7 @@ public class PersistenceUnitServiceHandler {
      * @param pu
      * @param provider
      * @param adaptor
+     * @param integratorAdaptors Adapters for integrators, e.g. Hibernate Search.
      * @param allowCdiBeanManagerAccess
      * @throws DeploymentUnitProcessingException
      */
@@ -324,6 +311,7 @@ public class PersistenceUnitServiceHandler {
             final PersistenceUnitMetadata pu,
             final PersistenceProvider provider,
             final PersistenceProviderAdaptor adaptor,
+            final List<PersistenceProviderIntegratorAdaptor> integratorAdaptors,
             final boolean allowCdiBeanManagerAccess) throws DeploymentUnitProcessingException {
         pu.setClassLoader(classLoader);
         TransactionManager transactionManager = ContextTransactionManager.getInstance();
@@ -331,7 +319,7 @@ public class PersistenceUnitServiceHandler {
         CapabilityServiceSupport capabilitySupport = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
         try {
             ValidatorFactory validatorFactory = null;
-            final HashMap<String, ValidatorFactory> properties = new HashMap<>();
+            final HashMap<String, Object> properties = new HashMap<>();
 
             CapabilityServiceSupport css = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
             if (!ValidationMode.NONE.equals(pu.getValidationMode())
@@ -347,6 +335,11 @@ public class PersistenceUnitServiceHandler {
             // add persistence provider specific properties
             adaptor.addProviderProperties(properties, pu);
 
+            // add persistence provider integrator specific properties
+            for (PersistenceProviderIntegratorAdaptor integratorAdaptor : integratorAdaptors) {
+                integratorAdaptor.addIntegratorProperties(properties, pu);
+            }
+
             final ServiceName puServiceName = PersistenceUnitServiceImpl.getPUServiceName(pu);
             deploymentUnit.putAttachment(JpaAttachments.PERSISTENCE_UNIT_SERVICE_KEY, puServiceName);
 
@@ -355,8 +348,10 @@ public class PersistenceUnitServiceHandler {
             deploymentUnit.addToAttachmentList(Attachments.WEB_DEPENDENCIES, puServiceName);
 
             final PersistenceUnitServiceImpl service =
-                    new PersistenceUnitServiceImpl(properties, classLoader, pu, adaptor, provider, PersistenceUnitRegistryImpl.INSTANCE,
-                            deploymentUnit.getServiceName(), validatorFactory, deploymentUnit.getAttachment(org.jboss.as.ee.naming.Attachments.JAVA_NAMESPACE_SETUP_ACTION),
+                    new PersistenceUnitServiceImpl(properties, classLoader, pu, adaptor, integratorAdaptors, provider,
+                            PersistenceUnitRegistryImpl.INSTANCE,
+                            deploymentUnit.getServiceName(), validatorFactory,
+                            deploymentUnit.getAttachment(org.jboss.as.ee.naming.Attachments.JAVA_NAMESPACE_SETUP_ACTION),
                             beanManagerAfterDeploymentValidation );
 
             ServiceBuilder<PersistenceUnitService> builder = serviceTarget.addService(puServiceName, service);
@@ -446,6 +441,7 @@ public class PersistenceUnitServiceHandler {
      * @param classLoader
      * @param pu
      * @param adaptor
+     * @param integratorAdaptors Adapters for integrators, e.g. Hibernate Search.
      * @throws DeploymentUnitProcessingException
      */
     private static void deployPersistenceUnitPhaseOne(
@@ -454,11 +450,13 @@ public class PersistenceUnitServiceHandler {
             final ServiceTarget serviceTarget,
             final ModuleClassLoader classLoader,
             final PersistenceUnitMetadata pu,
-            final PersistenceProviderAdaptor adaptor) throws DeploymentUnitProcessingException {
+            final PersistenceProviderAdaptor adaptor,
+            final List<PersistenceProviderIntegratorAdaptor> integratorAdaptors)
+            throws DeploymentUnitProcessingException {
         CapabilityServiceSupport capabilitySupport = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
         pu.setClassLoader(classLoader);
         try {
-            final HashMap<String, ValidatorFactory> properties = new HashMap<>();
+            final HashMap<String, Object> properties = new HashMap<>();
 
             ProxyBeanManager proxyBeanManager = null;
             // JPA 2.1 sections 3.5.1 + 9.1 require the Jakarta Contexts and Dependency Injection bean manager to be passed to the peristence provider
@@ -479,6 +477,11 @@ public class PersistenceUnitServiceHandler {
 
             // add persistence provider specific properties
             adaptor.addProviderProperties(properties, pu);
+
+            // add persistence provider integrator specific properties
+            for (PersistenceProviderIntegratorAdaptor integratorAdaptor : integratorAdaptors) {
+                integratorAdaptor.addIntegratorProperties(properties, pu);
+            }
 
             final ServiceName puServiceName = PersistenceUnitServiceImpl.getPUServiceName(pu).append(FIRST_PHASE);
 
@@ -559,6 +562,7 @@ public class PersistenceUnitServiceHandler {
      * @param pu
      * @param provider
      * @param adaptor
+     * @param integratorAdaptors Adapters for integrators, e.g. Hibernate Search.
      * @throws DeploymentUnitProcessingException
      */
     private static void deployPersistenceUnitPhaseTwo(
@@ -568,14 +572,15 @@ public class PersistenceUnitServiceHandler {
             final ModuleClassLoader classLoader,
             final PersistenceUnitMetadata pu,
             final PersistenceProvider provider,
-            final PersistenceProviderAdaptor adaptor) throws DeploymentUnitProcessingException {
+            final PersistenceProviderAdaptor adaptor,
+            final List<PersistenceProviderIntegratorAdaptor> integratorAdaptors) throws DeploymentUnitProcessingException {
         TransactionManager transactionManager = ContextTransactionManager.getInstance();
         TransactionSynchronizationRegistry transactionSynchronizationRegistry = deploymentUnit.getAttachment(JpaAttachments.TRANSACTION_SYNCHRONIZATION_REGISTRY);
         CapabilityServiceSupport capabilitySupport = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
         pu.setClassLoader(classLoader);
         try {
             ValidatorFactory validatorFactory = null;
-            final HashMap<String, ValidatorFactory> properties = new HashMap<>();
+            final HashMap<String, Object> properties = new HashMap<>();
             if (!ValidationMode.NONE.equals(pu.getValidationMode())
                     && capabilitySupport.hasCapability("org.wildfly.bean-validation")) {
                 // Get the Jakarta Contexts and Dependency Injection enabled ValidatorFactory
@@ -588,6 +593,11 @@ public class PersistenceUnitServiceHandler {
             // add persistence provider specific properties
             adaptor.addProviderProperties(properties, pu);
 
+            // add persistence provider integrator specific properties
+            for (PersistenceProviderIntegratorAdaptor integratorAdaptor : integratorAdaptors) {
+                integratorAdaptor.addIntegratorProperties(properties, pu);
+            }
+
             final ServiceName puServiceName = PersistenceUnitServiceImpl.getPUServiceName(pu);
             deploymentUnit.putAttachment(JpaAttachments.PERSISTENCE_UNIT_SERVICE_KEY, puServiceName);
 
@@ -595,14 +605,18 @@ public class PersistenceUnitServiceHandler {
 
             deploymentUnit.addToAttachmentList(Attachments.WEB_DEPENDENCIES, puServiceName);
 
-            final PersistenceUnitServiceImpl service = new PersistenceUnitServiceImpl(properties, classLoader, pu, adaptor, provider, PersistenceUnitRegistryImpl.INSTANCE, deploymentUnit.getServiceName(), validatorFactory, deploymentUnit.getAttachment(org.jboss.as.ee.naming.Attachments.JAVA_NAMESPACE_SETUP_ACTION), beanManagerAfterDeploymentValidation);
+            final PersistenceUnitServiceImpl service = new PersistenceUnitServiceImpl(properties, classLoader, pu,
+                    adaptor, integratorAdaptors, provider, PersistenceUnitRegistryImpl.INSTANCE,
+                    deploymentUnit.getServiceName(), validatorFactory,
+                    deploymentUnit.getAttachment(org.jboss.as.ee.naming.Attachments.JAVA_NAMESPACE_SETUP_ACTION),
+                    beanManagerAfterDeploymentValidation);
             ServiceBuilder<PersistenceUnitService> builder = serviceTarget.addService(puServiceName, service);
             // the PU service has to depend on the JPAService which is responsible for setting up the necessary JPA infrastructure (like registering the cache EventListener(s))
             // @see https://issues.jboss.org/browse/WFLY-1531 for details
             builder.requires(JPAServiceNames.getJPAServiceName());
 
             // add dependency on first phase
-            builder.addDependency(puServiceName.append(FIRST_PHASE), Object.class, new CastingInjector<>(service.getPhaseOnePersistenceUnitServiceImplInjector(), PhaseOnePersistenceUnitServiceImpl.class));
+            builder.addDependency(puServiceName.append(FIRST_PHASE), PhaseOnePersistenceUnitServiceImpl.class, service.getPhaseOnePersistenceUnitServiceImplInjector());
 
             boolean useDefaultDataSource = Configuration.allowDefaultDataSourceUse(pu);
             final String jtaDataSource = adjustJndi(pu.getJtaDataSourceName());
@@ -701,12 +715,11 @@ public class PersistenceUnitServiceHandler {
                     public void inject(final PersistenceUnitServiceImpl value) throws
                             InjectionException {
                         binderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(
-                                new ImmediateValue<Object>(
                                         new TransactionScopedEntityManager(
                                                 pu.getScopedPersistenceUnitName(),
-                                                Collections.emptyMap(),
+                                                new HashMap(),      // WFLY-19973: pass empty HashMap that can be modified by application code.
                                                 value.getEntityManagerFactory(),
-                                                SynchronizationType.SYNCHRONIZED, transactionSynchronizationRegistry, transactionManager))));
+                                                SynchronizationType.SYNCHRONIZED, transactionSynchronizationRegistry, transactionManager)));
                     }
 
                     @Override
@@ -735,7 +748,7 @@ public class PersistenceUnitServiceHandler {
                     @Override
                     public void inject(final PersistenceUnitServiceImpl value) throws
                             InjectionException {
-                        binderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue<Object>(value.getEntityManagerFactory())));
+                        binderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(value.getEntityManagerFactory()));
                     }
 
                     @Override
@@ -848,6 +861,21 @@ public class PersistenceUnitServiceHandler {
             throw JpaLogger.ROOT_LOGGER.failedToGetAdapter(pu.getPersistenceProviderClassName());
         }
         return adaptor;
+    }
+
+    private static List<PersistenceProviderIntegratorAdaptor> getPersistenceProviderIntegratorAdaptors(DeploymentUnit deploymentUnit)
+            throws DeploymentUnitProcessingException {
+        List<String> integratorAdaptorModuleNames = deploymentUnit.getAttachmentList(JpaAttachments.INTEGRATOR_ADAPTOR_MODULE_NAMES);
+        List<PersistenceProviderIntegratorAdaptor> integratorAdaptorList = new ArrayList<>();
+        CompositeIndex compositeIndex = deploymentUnit.getAttachment(Attachments.COMPOSITE_ANNOTATION_INDEX);
+        for (String moduleName : integratorAdaptorModuleNames) {
+            try {
+                integratorAdaptorList.addAll(PersistenceProviderAdaptorLoader.loadPersistenceProviderIntegratorModule(moduleName, compositeIndex.getIndexes()));
+            } catch (RuntimeException | ModuleLoadException e) {
+                throw JpaLogger.ROOT_LOGGER.cannotLoadPersistenceProviderIntegratorModule(e, moduleName);
+            }
+        }
+        return integratorAdaptorList;
     }
 
     private static JtaManagerImpl createManager(DeploymentUnit deploymentUnit) {

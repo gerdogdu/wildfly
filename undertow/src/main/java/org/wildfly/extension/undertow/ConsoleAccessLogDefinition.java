@@ -1,17 +1,6 @@
 /*
- * Copyright 2019 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.extension.undertow;
 
@@ -27,6 +16,7 @@ import io.undertow.predicate.Predicates;
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.AbstractRemoveStepHandler;
 import org.jboss.as.controller.AttributeDefinition;
+import org.jboss.as.controller.CapabilityServiceBuilder;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
@@ -36,12 +26,11 @@ import org.jboss.as.controller.PropertiesAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
-import org.jboss.as.controller.capability.DynamicNameMappers;
+import org.jboss.as.controller.capability.BinaryCapabilityNameResolver;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 import org.jboss.dmr.Property;
-import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.xnio.XnioWorker;
 
@@ -51,9 +40,9 @@ import org.xnio.XnioWorker;
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
  */
 class ConsoleAccessLogDefinition extends PersistentResourceDefinition {
-    private static final RuntimeCapability<Void> CONSOLE_ACCESS_LOG_CAPABILITY = RuntimeCapability.Builder.of(
-            Capabilities.CAPABILITY_CONSOLE_ACCESS_LOG, true, EventLoggerService.class)
-            .setDynamicNameMapper(DynamicNameMappers.GRAND_PARENT)
+    static final PathElement PATH_ELEMENT = PathElement.pathElement(Constants.SETTING, Constants.CONSOLE_ACCESS_LOG);
+    private static final RuntimeCapability<Void> CONSOLE_ACCESS_LOG_CAPABILITY = RuntimeCapability.Builder.of(Capabilities.CAPABILITY_CONSOLE_ACCESS_LOG, true, Void.class)
+            .setDynamicNameMapper(BinaryCapabilityNameResolver.GRANDPARENT_PARENT)
             .build();
 
     static final SimpleAttributeDefinition INCLUDE_HOST_NAME = SimpleAttributeDefinitionBuilder.create("include-host-name", ModelType.BOOLEAN, true)
@@ -74,12 +63,9 @@ class ConsoleAccessLogDefinition extends PersistentResourceDefinition {
             AccessLogDefinition.PREDICATE,
             METADATA
     );
-    static final ConsoleAccessLogDefinition INSTANCE = new ConsoleAccessLogDefinition();
 
-
-    private ConsoleAccessLogDefinition() {
-        super(new SimpleResourceDefinition.Parameters(PathElement.pathElement(Constants.SETTING, Constants.CONSOLE_ACCESS_LOG),
-                UndertowExtension.getResolver(Constants.CONSOLE_ACCESS_LOG))
+    ConsoleAccessLogDefinition() {
+        super(new SimpleResourceDefinition.Parameters(PATH_ELEMENT, UndertowExtension.getResolver(PATH_ELEMENT.getValue()))
                 .setAddHandler(AddHandler.INSTANCE)
                 .setRemoveHandler(RemoveHandler.INSTANCE)
                 .addCapabilities(CONSOLE_ACCESS_LOG_CAPABILITY)
@@ -93,10 +79,6 @@ class ConsoleAccessLogDefinition extends PersistentResourceDefinition {
 
     private static class AddHandler extends AbstractAddStepHandler {
         static final AddHandler INSTANCE = new AddHandler();
-
-        private AddHandler() {
-            super(ATTRIBUTES);
-        }
 
         @Override
         protected void performRuntime(final OperationContext context, final ModelNode operation, final ModelNode model) throws OperationFailedException {
@@ -124,11 +106,9 @@ class ConsoleAccessLogDefinition extends PersistentResourceDefinition {
             final String serverName = serverAddress.getLastElement().getValue();
             final String hostName = hostAddress.getLastElement().getValue();
 
-            final ServiceBuilder<?> serviceBuilder = context.getServiceTarget()
-                    .addService(CONSOLE_ACCESS_LOG_CAPABILITY.getCapabilityServiceName(address));
+            final CapabilityServiceBuilder<?> serviceBuilder = context.getCapabilityServiceTarget().addCapability(CONSOLE_ACCESS_LOG_CAPABILITY);
 
-            final Supplier<Host> hostSupplier = serviceBuilder.requires(
-                    context.getCapabilityServiceName(Capabilities.CAPABILITY_HOST, Host.class, serverName, hostName));
+            final Supplier<Host> hostSupplier = serviceBuilder.requires(Host.SERVICE_DESCRIPTOR, serverName, hostName);
             final Supplier<XnioWorker> workerSupplier = serviceBuilder.requires(
                     context.getCapabilityServiceName(Capabilities.REF_IO_WORKER, XnioWorker.class, worker));
 

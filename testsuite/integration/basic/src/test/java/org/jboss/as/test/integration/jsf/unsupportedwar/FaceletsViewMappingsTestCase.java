@@ -1,17 +1,6 @@
 /*
- * Copyright 2021 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.jsf.unsupportedwar;
@@ -30,19 +19,18 @@ import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.as.arquillian.container.ManagementClient;
-import org.jboss.as.test.shared.util.AssumeTestGroupUtil;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
  * <p>Tests the Jakarta Server Faces deployment failure due to UnsupportedOperationException when
- * <em>javax.faces.FACELETS_VIEW_MAPPINGS</em> is defined with something that
+ * <em>jakarta.faces.FACELETS_VIEW_MAPPINGS</em> is defined with something that
  * does not include <em>*.xhtml</em>.</p>
  * <p>
  * For details check https://issues.redhat.com/browse/WFLY-13792
@@ -51,17 +39,10 @@ import org.junit.runner.RunWith;
  */
 @RunWith(Arquillian.class)
 @RunAsClient
+@Ignore("WFLY-16521")
 public class FaceletsViewMappingsTestCase {
 
     public static final String FACELETS_VIEW_MAPPINGS_TEST_CASE = "FaceletsViewMappingsTestCase";
-
-    // TODO: For now...
-    // The runtime behavior seems to have changed with Faces 4, resulting in a failed deployment. To prevent breaking testing from
-    // main, I'm disabling this test for now, and will update it once we make the flip to EE 10.
-    @BeforeClass
-    public static void beforeClass() {
-        AssumeTestGroupUtil.assumeNotWildFlyPreview();
-    }
 
     private static final String DEPLOYMENT = FaceletsViewMappingsTestCase.class.getSimpleName();
 
@@ -100,7 +81,7 @@ public class FaceletsViewMappingsTestCase {
             HttpResponse response = httpclient.execute(httpget);
             String result = EntityUtils.toString(response.getEntity());
 
-            Assert.assertEquals("Jakarta Server Faces deployment failed due to UnsupportedOperationException when javax.faces.FACELETS_VIEW_MAPPINGS valued wrong",
+            Assert.assertEquals("Jakarta Server Faces deployment failed due to UnsupportedOperationException when jakarta.faces.FACELETS_VIEW_MAPPINGS valued wrong",
                     HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
             MatcherAssert.assertThat("Hello World is in place", result, CoreMatchers.containsString("Hello World!"));
         }

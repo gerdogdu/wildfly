@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.messaging.activemq.deployment;
@@ -36,18 +19,17 @@ import static org.wildfly.extension.messaging.activemq.deployment.JMSConnectionF
 import static org.wildfly.extension.messaging.activemq.deployment.JMSConnectionFactoryDefinitionInjectionSource.getDefaulResourceAdapter;
 import static org.wildfly.extension.messaging.activemq.deployment.JMSConnectionFactoryDefinitionInjectionSource.targetsExternalPooledConnectionFactory;
 import static org.wildfly.extension.messaging.activemq.deployment.JMSConnectionFactoryDefinitionInjectionSource.targetsPooledConnectionFactory;
-import static org.wildfly.extension.messaging.activemq.logging.MessagingLogger.ROOT_LOGGER;
+import static org.wildfly.extension.messaging.activemq._private.MessagingLogger.ROOT_LOGGER;
 
 import java.util.Map;
 
-import javax.jms.Destination;
-import javax.jms.Queue;
-import javax.jms.Topic;
+import jakarta.jms.Destination;
+import jakarta.jms.Queue;
+import jakarta.jms.Topic;
 
 import org.jboss.as.connector.deployers.ra.AdministeredObjectDefinitionInjectionSource;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
-import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.resource.definition.ResourceDefinitionInjectionSource;
 import org.jboss.as.naming.ContextListAndJndiViewManagedReferenceFactory;
 import org.jboss.as.naming.ManagedReferenceFactory;
@@ -117,23 +99,16 @@ public class JMSDestinationDefinitionInjectionSource extends ResourceDefinitionI
         this.destinationName = destinationName;
     }
 
-    private String uniqueName(InjectionSource.ResolutionContext context) {
+    protected String uniqueName(ResolutionContext context) {
         if (destinationName != null && !destinationName.isEmpty()) {
             return destinationName;
         }
 
-        StringBuilder uniqueName = new StringBuilder();
-        uniqueName.append(context.getApplicationName()).append("_");
-        uniqueName.append(context.getModuleName()).append("_");
-        if (context.getComponentName() != null) {
-            uniqueName.append(context.getComponentName()).append("_");
-        }
-        uniqueName.append(jndiName);
-        return uniqueName.toString();
+        return super.uniqueName(context);
     }
 
     @Override
-    public void getResourceValue(final InjectionSource.ResolutionContext context, final ServiceBuilder<?> serviceBuilder, final DeploymentPhaseContext phaseContext, final Injector<ManagedReferenceFactory> injector) throws DeploymentUnitProcessingException {
+    public void getResourceValue(final ResolutionContext context, final ServiceBuilder<?> serviceBuilder, final DeploymentPhaseContext phaseContext, final Injector<ManagedReferenceFactory> injector) throws DeploymentUnitProcessingException {
         if(resourceAdapter == null || resourceAdapter.isEmpty()) {
             resourceAdapter = getDefaulResourceAdapter(phaseContext.getDeploymentUnit());
         }

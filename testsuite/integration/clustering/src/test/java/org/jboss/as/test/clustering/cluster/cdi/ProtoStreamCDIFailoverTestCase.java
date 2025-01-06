@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2022, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.clustering.cluster.cdi;
 
@@ -35,6 +18,7 @@ import org.jboss.as.test.clustering.single.web.Mutable;
 import org.jboss.as.test.clustering.single.web.SimpleServlet;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.EnterpriseArchive;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.runner.RunWith;
 
@@ -47,10 +31,11 @@ import org.junit.runner.RunWith;
 public class ProtoStreamCDIFailoverTestCase extends AbstractWebFailoverTestCase {
 
     private static final String MODULE_NAME = CDIFailoverTestCase.class.getSimpleName();
-    private static final String DEPLOYMENT_NAME = MODULE_NAME + ".war";
+    private static final String DEPLOYMENT_NAME = MODULE_NAME + ".ear";
+    private static final String WEB_DEPLOYMENT_NAME = MODULE_NAME + ".war";
 
     public ProtoStreamCDIFailoverTestCase() {
-        super(DEPLOYMENT_NAME, TransactionMode.TRANSACTIONAL);
+        super(DEPLOYMENT_NAME + '.' + WEB_DEPLOYMENT_NAME, TransactionMode.TRANSACTIONAL);
     }
 
     @Deployment(name = DEPLOYMENT_1, managed = false, testable = false)
@@ -72,13 +57,15 @@ public class ProtoStreamCDIFailoverTestCase extends AbstractWebFailoverTestCase 
     }
 
     private static Archive<?> createDeployment() {
-        WebArchive war = ShrinkWrap.create(WebArchive.class, DEPLOYMENT_NAME);
+        WebArchive war = ShrinkWrap.create(WebArchive.class, WEB_DEPLOYMENT_NAME);
         war.addPackage(IncrementorBean.class.getPackage());
         war.addClasses(Incrementor.class, SimpleServlet.class, Mutable.class);
         ClusterTestUtil.addTopologyListenerDependencies(war);
         war.setWebXML(CDIFailoverTestCase.class.getPackage(), "web.xml");
         war.addAsWebInfResource(CDIFailoverTestCase.class.getPackage(), "distributable-web.xml", "distributable-web.xml");
         war.addAsServiceProvider(SerializationContextInitializer.class.getName(), CDISerializationContextInitializer.class.getName() + "Impl");
-        return war;
+        EnterpriseArchive ear = ShrinkWrap.create(EnterpriseArchive.class, DEPLOYMENT_NAME);
+        ear.addAsModule(war);
+        return ear;
     }
 }

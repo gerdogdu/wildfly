@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.weld.services.bootstrap;
 
@@ -36,7 +19,6 @@ import org.jboss.as.weld.util.Reflections;
 import org.jboss.modules.ClassDefiner;
 import org.jboss.modules.Module;
 import org.jboss.modules.ModuleClassLoader;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.weld.interceptor.proxy.LifecycleMixin;
 import org.jboss.weld.logging.BeanLogger;
 import org.jboss.weld.proxy.WeldConstruct;
@@ -69,7 +51,7 @@ public class ProxyServicesImpl implements ProxyServices {
     };
 
     private final Module module;
-    private final ConcurrentMap<ModuleIdentifier, Boolean> processedStaticModules = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Boolean> processedStaticModules = new ConcurrentHashMap<>();
     private final ClassDefiner classDefiner;
 
     public ProxyServicesImpl(Module module) {
@@ -107,12 +89,12 @@ public class ProxyServicesImpl implements ProxyServices {
                 // this class comes from a static module
                 // first, check if we can use its classloader to load proxy classes
                 final Module definingModule = loader.getModule();
-                Boolean hasWeldDependencies = processedStaticModules.get(definingModule.getIdentifier());
+                Boolean hasWeldDependencies = processedStaticModules.get(definingModule.getName());
                 boolean logWarning = false; // only log for the first class in the module
 
                 if (hasWeldDependencies == null) {
                     hasWeldDependencies = canLoadWeldProxies(definingModule); // may be run multiple times but that does not matter
-                    logWarning = processedStaticModules.putIfAbsent(definingModule.getIdentifier(), hasWeldDependencies) == null;
+                    logWarning = processedStaticModules.putIfAbsent(definingModule.getName(), hasWeldDependencies) == null;
                 }
                 if (hasWeldDependencies) {
                     // this module declares weld dependencies - we can use module's classloader to load the proxy class
@@ -124,7 +106,7 @@ public class ProxyServicesImpl implements ProxyServices {
                     // pros: proxy classes unloaded with undeployment
                     // cons: package-private methods and constructors will yield IllegalAccessException
                     if (logWarning) {
-                        WeldLogger.ROOT_LOGGER.loadingProxiesUsingDeploymentClassLoader(definingModule.getIdentifier(), Arrays.toString(REQUIRED_WELD_DEPENDENCIES));
+                        WeldLogger.ROOT_LOGGER.loadingProxiesUsingDeploymentClassLoader(definingModule.getName(), Arrays.toString(REQUIRED_WELD_DEPENDENCIES));
                     }
                     return this.module.getClassLoader();
                 }
@@ -146,11 +128,11 @@ public class ProxyServicesImpl implements ProxyServices {
             return module;
         } else {
             Module definingModule = Module.forClass(originalClass);
-            Boolean hasWeldDependencies = processedStaticModules.get(definingModule.getIdentifier());
+            Boolean hasWeldDependencies = processedStaticModules.get(definingModule.getName());
             boolean logWarning = false; // only log for the first class in the module
             if (hasWeldDependencies == null) {
                 hasWeldDependencies = canLoadWeldProxies(definingModule); // may be run multiple times but that does not matter
-                logWarning = processedStaticModules.putIfAbsent(definingModule.getIdentifier(), hasWeldDependencies) == null;
+                logWarning = processedStaticModules.putIfAbsent(definingModule.getName(), hasWeldDependencies) == null;
             }
             if (hasWeldDependencies) {
                 // this module declares Weld dependencies - we can use module's classloader to load the proxy class
@@ -162,7 +144,7 @@ public class ProxyServicesImpl implements ProxyServices {
                 // pros: proxy classes unloaded with undeployment
                 // cons: package-private methods and constructors will yield IllegalAccessException
                 if (logWarning) {
-                    WeldLogger.ROOT_LOGGER.loadingProxiesUsingDeploymentClassLoader(definingModule.getIdentifier(), Arrays.toString(REQUIRED_WELD_DEPENDENCIES));
+                    WeldLogger.ROOT_LOGGER.loadingProxiesUsingDeploymentClassLoader(definingModule.getName(), Arrays.toString(REQUIRED_WELD_DEPENDENCIES));
                 }
                 return this.module;
             }
@@ -208,7 +190,7 @@ public class ProxyServicesImpl implements ProxyServices {
     public Class<?> loadClass(Class<?> originalClass, String classBinaryName) throws ClassNotFoundException {
         Module module = getModule(originalClass);
         if (module == null) {
-            throw new IllegalArgumentException("Original " + originalClass + " does not have a module");
+            throw WeldLogger.ROOT_LOGGER.originalClassDoesNotHaveAModule(originalClass);
         }
         return module.getClassLoader().loadClass(classBinaryName);
     }

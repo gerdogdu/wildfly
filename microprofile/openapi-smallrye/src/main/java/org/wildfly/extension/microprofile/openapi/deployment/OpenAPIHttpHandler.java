@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.microprofile.openapi.deployment;
@@ -31,19 +14,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
-import javax.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MediaType;
 
-import org.eclipse.microprofile.openapi.models.OpenAPI;
 import org.jboss.resteasy.util.AcceptParser;
 
+import io.smallrye.openapi.api.SmallRyeOpenAPI;
 import io.smallrye.openapi.runtime.io.Format;
-import io.smallrye.openapi.runtime.io.OpenApiSerializer;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.HeaderMap;
@@ -73,10 +57,11 @@ public class OpenAPIHttpHandler implements HttpHandler {
         }
     }
 
-    private final OpenAPI model;
+    private final Map<Format, Supplier<String>> formatters = new EnumMap<>(Format.class);
 
-    public OpenAPIHttpHandler(OpenAPI model) {
-        this.model = model;
+    public OpenAPIHttpHandler(SmallRyeOpenAPI model) {
+        this.formatters.put(Format.JSON, model::toJSON);
+        this.formatters.put(Format.YAML, model::toYAML);
     }
 
     @Override
@@ -120,7 +105,7 @@ public class OpenAPIHttpHandler implements HttpHandler {
             // Use format preferred by Accept header if unambiguous, otherwise determine format from query parameter
             Format format = (preferredTypes.size() == 1) ? ACCEPTED_TYPES.get(preferredTypes.get(0)) : parseFormatParameter(exchange);
 
-            byte[] result = OpenApiSerializer.serialize(this.model, format).getBytes(charset);
+            byte[] result = this.formatters.get(format).get().getBytes(charset);
 
             responseHeaders.put(Headers.CONTENT_TYPE, format.getMimeType());
             responseHeaders.put(Headers.CONTENT_LENGTH, result.length);
@@ -135,7 +120,7 @@ public class OpenAPIHttpHandler implements HttpHandler {
         }
     }
 
-    private static final Comparator<MediaType> MEDIA_TYPE_SORTER = new Comparator<MediaType>() {
+    private static final Comparator<MediaType> MEDIA_TYPE_SORTER = new Comparator<>() {
         @Override
         public int compare(MediaType type1, MediaType type2) {
             float quality1 = Float.parseFloat(type1.getParameters().getOrDefault("q", "1"));

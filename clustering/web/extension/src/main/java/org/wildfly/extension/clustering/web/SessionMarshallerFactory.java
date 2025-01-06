@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2020, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.web;
@@ -29,8 +12,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.infinispan.protostream.FileDescriptorSource;
-import org.infinispan.protostream.SerializationContext;
-import org.infinispan.protostream.SerializationContextInitializer;
 import org.jboss.as.ee.component.ComponentConfiguration;
 import org.jboss.as.ee.component.EEModuleConfiguration;
 import org.jboss.as.ee.component.ViewConfiguration;
@@ -38,13 +19,16 @@ import org.jboss.as.ee.component.serialization.WriteReplaceInterface;
 import org.jboss.as.server.deployment.Attachments;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.modules.Module;
+import org.wildfly.clustering.marshalling.ByteBufferMarshaller;
 import org.wildfly.clustering.marshalling.jboss.JBossByteBufferMarshaller;
-import org.wildfly.clustering.marshalling.jboss.SimpleMarshallingConfigurationRepository;
-import org.wildfly.clustering.marshalling.protostream.ModuleClassLoaderMarshaller;
+import org.wildfly.clustering.marshalling.jboss.MarshallingConfigurationRepository;
+import org.wildfly.clustering.marshalling.protostream.DefaultSerializationContext;
 import org.wildfly.clustering.marshalling.protostream.ProtoStreamByteBufferMarshaller;
+import org.wildfly.clustering.marshalling.protostream.SerializationContext;
 import org.wildfly.clustering.marshalling.protostream.SerializationContextBuilder;
+import org.wildfly.clustering.marshalling.protostream.SerializationContextInitializer;
+import org.wildfly.clustering.marshalling.protostream.modules.ModuleClassLoaderMarshaller;
 import org.wildfly.clustering.marshalling.protostream.reflect.ProxyMarshaller;
-import org.wildfly.clustering.marshalling.spi.ByteBufferMarshaller;
 
 /**
  * @author Paul Ferraro
@@ -55,14 +39,14 @@ public enum SessionMarshallerFactory implements Function<DeploymentUnit, ByteBuf
         @Override
         public ByteBufferMarshaller apply(DeploymentUnit unit) {
             Module module = unit.getAttachment(Attachments.MODULE);
-            return new JBossByteBufferMarshaller(new SimpleMarshallingConfigurationRepository(JBossMarshallingVersion.class, JBossMarshallingVersion.CURRENT, module), module.getClassLoader());
+            return new JBossByteBufferMarshaller(MarshallingConfigurationRepository.from(JBossMarshallingVersion.CURRENT, module), module.getClassLoader());
         }
     },
     PROTOSTREAM() {
         @Override
         public ByteBufferMarshaller apply(DeploymentUnit unit) {
             Module module = unit.getAttachment(Attachments.MODULE);
-            SerializationContextBuilder builder = new SerializationContextBuilder(new ModuleClassLoaderMarshaller(module.getModuleLoader())).load(module.getClassLoader());
+            SerializationContextBuilder<SerializationContextInitializer> builder = SerializationContextBuilder.newInstance(new ModuleClassLoaderMarshaller(module.getModuleLoader()), DefaultSerializationContext::new).load(module.getClassLoader());
 
             EEModuleConfiguration configuration = unit.getAttachment(org.jboss.as.ee.component.Attachments.EE_MODULE_CONFIGURATION);
             // Sort component views by view class
@@ -93,17 +77,6 @@ public enum SessionMarshallerFactory implements Function<DeploymentUnit, ByteBuf
                     }
                     String schema = schemaBuilder.toString();
                     builder.register(new SerializationContextInitializer() {
-                        @Deprecated
-                        @Override
-                        public String getProtoFileName() {
-                            return null;
-                        }
-
-                        @Deprecated
-                        @Override
-                        public String getProtoFile() {
-                            return null;
-                        }
 
                         @Override
                         public void registerSchema(SerializationContext context) {
@@ -113,7 +86,9 @@ public enum SessionMarshallerFactory implements Function<DeploymentUnit, ByteBuf
                         @Override
                         public void registerMarshallers(SerializationContext context) {
                             for (ViewConfiguration view : entry.getValue()) {
-                                context.registerMarshaller(new ProxyMarshaller<Object>(view.getProxyFactory().defineClass()) {
+                                @SuppressWarnings("unchecked")
+                                Class<Object> proxyClass = (Class<Object>) view.getProxyFactory().defineClass();
+                                context.registerMarshaller(new ProxyMarshaller<>(proxyClass) {
                                     @Override
                                     public String getTypeName() {
                                         return viewClassName + "." + view.getComponentConfiguration().getComponentName();
@@ -125,7 +100,7 @@ public enum SessionMarshallerFactory implements Function<DeploymentUnit, ByteBuf
                 }
             }
 
-            return new ProtoStreamByteBufferMarshaller(builder.build());
+            return new ProtoStreamByteBufferMarshaller(builder.build(), module.getClassLoader());
         }
     },
     ;

@@ -1,25 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.clustering;
+
+import java.util.Set;
 
 import org.jboss.arquillian.container.test.api.ContainerController;
 import org.jboss.arquillian.container.test.api.Deployer;
@@ -35,7 +20,7 @@ public final class NodeUtil {
 
     private static final Logger log = Logger.getLogger(NodeUtil.class);
 
-    public static void deploy(Deployer deployer, String... deployments) {
+    public static void deploy(Deployer deployer, Set<String> deployments) {
         for (String deployment : deployments) {
             deploy(deployer, deployment);
         }
@@ -47,7 +32,7 @@ public final class NodeUtil {
         log.tracef("Deployed %s", deployment);
     }
 
-    public static void undeploy(Deployer deployer, String... deployments) {
+    public static void undeploy(Deployer deployer, Set<String> deployments) {
         for (String deployment : deployments) {
             undeploy(deployer, deployment);
         }
@@ -59,7 +44,7 @@ public final class NodeUtil {
         log.tracef("Undeployed %s", deployment);
     }
 
-    public static void start(ContainerController controller, String... containers) {
+    public static void start(ContainerController controller, Set<String> containers) {
         // TODO do this in parallel.
         for (String container : containers) {
             start(controller, container);
@@ -76,7 +61,7 @@ public final class NodeUtil {
         }
     }
 
-    public static void stop(ContainerController controller, String... containers) {
+    public static void stop(ContainerController controller, Set<String> containers) {
         for (String container : containers) {
             stop(controller, container);
         }
@@ -96,13 +81,13 @@ public final class NodeUtil {
         return controller.isStarted(container);
     }
 
-    public static void stop(WildFlyContainerController controller, int timeout, String... containers) {
+    public static void stop(WildFlyContainerController controller, Set<String> containers, int timeout) {
         for (String container : containers) {
-            stop(controller, timeout, container);
+            stop(controller, container, timeout);
         }
     }
 
-    public static void stop(WildFlyContainerController controller, int timeout, String container) {
+    public static void stop(WildFlyContainerController controller, String container, int timeout) {
         if (controller.isStarted(container)) {
             log.tracef("Stopping container %s", container);
             controller.stop(container, timeout);

@@ -1,22 +1,6 @@
 /*
- * Copyright (C) 2016 Red Hat, inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301  USA
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.jaxrs;
 
@@ -41,14 +25,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.ws.rs.CookieParam;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.HeaderParam;
-import javax.ws.rs.MatrixParam;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
+import jakarta.ws.rs.CookieParam;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.FormParam;
+import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.MatrixParam;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
 
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.ObjectListAttributeDefinition;
@@ -90,8 +74,6 @@ import org.wildfly.extension.undertow.deployment.UndertowDeploymentService;
  */
 @SuppressWarnings("deprecation")
 public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
-
-    public static final DeploymentRestResourcesDefintion INSTANCE = new DeploymentRestResourcesDefintion();
 
     public static final String REST_RESOURCE_NAME = "rest-resource";
 
@@ -138,7 +120,7 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
     private AttachmentKey<Map<PathAddress, Module>> deploymentModuleKey = AttachmentKey.create(Map.class);
     private AttachmentKey<Map<String, ResourceMeta>> resourceMetaKey = AttachmentKey.create(Map.class);
 
-    private DeploymentRestResourcesDefintion() {
+    DeploymentRestResourcesDefintion() {
         super(PathElement.pathElement(REST_RESOURCE_NAME), JaxrsExtension.getResolver("deployment"));
     }
 
@@ -189,7 +171,7 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
 
             Map<PathAddress, UndertowDeploymentService> deploymentServiceMap = context.getAttachment(undertowDeployServiceKey);
             if (deploymentServiceMap == null) {
-                deploymentServiceMap = Collections.synchronizedMap(new HashMap<PathAddress, UndertowDeploymentService>());
+                deploymentServiceMap = Collections.synchronizedMap(new HashMap<>());
                 context.attach(undertowDeployServiceKey, deploymentServiceMap);
             }
             UndertowDeploymentService undertowDeploymentService = deploymentServiceMap.get(parentAddress);
@@ -202,7 +184,7 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
 
             Map<String, ResourceMeta> resourceMetaMap = context.getAttachment(resourceMetaKey);
             if (resourceMetaMap == null) {
-                resourceMetaMap = Collections.synchronizedMap(new HashMap<String, ResourceMeta>());
+                resourceMetaMap = Collections.synchronizedMap(new HashMap<>());
                 context.attach(resourceMetaKey, resourceMetaMap);
             }
             ResourceMeta resMeta = resourceMetaMap.get(clsName);
@@ -215,13 +197,22 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
                 if(deploymentService.getDeployment() == null) {
                     return;
                 }
-                deploymentService.getDeployment().createThreadSetupAction(new ThreadSetupHandler.Action<Object, Object>() {
+                deploymentService.getDeployment().createThreadSetupAction(new ThreadSetupHandler.Action<>() {
                     @Override
                     public Object call(HttpServerExchange exchange, Object ctxObject) throws Exception {
                         List<HttpServletDispatcher> resteasyServlets = new ArrayList<>();
-                        for (Map.Entry<String, ServletHandler> servletHandler : deploymentService.getDeployment().getServlets().getServletHandlers().entrySet()) {
-                            if (HttpServletDispatcher.class.isAssignableFrom(servletHandler.getValue().getManagedServlet().getServletInfo().getServletClass())) {
-                                resteasyServlets.add((HttpServletDispatcher) servletHandler.getValue().getManagedServlet().getServlet().getInstance());
+                        for (Map.Entry<String, ServletHandler> servletHandler : deploymentService.getDeployment()
+                                .getServlets()
+                                .getServletHandlers()
+                                .entrySet()) {
+                            if (HttpServletDispatcher.class.isAssignableFrom(servletHandler.getValue()
+                                    .getManagedServlet()
+                                    .getServletInfo()
+                                    .getServletClass())) {
+                                resteasyServlets.add((HttpServletDispatcher) servletHandler.getValue()
+                                        .getManagedServlet()
+                                        .getServlet()
+                                        .getInstance());
                             }
                         }
                         if (!resteasyServlets.isEmpty()) {
@@ -231,12 +222,18 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
                                     final ModelNode response = new ModelNode();
                                     List<JaxrsResourceMethodDescription> resMethodInvokers = resourceMeta.methodInvokers;
                                     List<JaxrsResourceLocatorDescription> resLocatorInvokers = resourceMeta.resLocatorInvokers;
-                                    for (HttpServletDispatcher resteasyServlet: resteasyServlets) {
-                                        final Collection<String> servletMappings = resteasyServlet.getServletConfig().getServletContext().getServletRegistration(resteasyServlet.getServletConfig().getServletName()).getMappings();
+                                    for (HttpServletDispatcher resteasyServlet : resteasyServlets) {
+                                        final Collection<String> servletMappings = resteasyServlet.getServletConfig()
+                                                .getServletContext()
+                                                .getServletRegistration(resteasyServlet.getServletConfig()
+                                                        .getServletName())
+                                                .getMappings();
                                         if (!resourceMeta.metaComplete) {
                                             resourceMeta.metaComplete = true;
-                                            final ResourceMethodRegistry registry = (ResourceMethodRegistry) resteasyServlet.getDispatcher().getRegistry();
-                                            for (Map.Entry<String, List<ResourceInvoker>> resource : registry.getBounded().entrySet()) {
+                                            final ResourceMethodRegistry registry = (ResourceMethodRegistry) resteasyServlet.getDispatcher()
+                                                    .getRegistry();
+                                            for (Map.Entry<String, List<ResourceInvoker>> resource : registry.getBounded()
+                                                    .entrySet()) {
                                                 String mapping = resource.getKey();
                                                 List<ResourceInvoker> resouceInvokers = resource.getValue();
                                                 for (ResourceInvoker resourceInvoker : resouceInvokers) {
@@ -246,7 +243,7 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
                                                         if (resClass.getCanonicalName().equals(clsName)) {
                                                             JaxrsResourceMethodDescription resMethodDesc = resMethodDescription(methodInvoker, contextPath, mapping, servletMappings, clsName);
                                                             resMethodInvokers.add(resMethodDesc);
-                                                        } else if (resClass.isInterface()){
+                                                        } else if (resClass.isInterface()) {
                                                             Class<?> resClsInModel = getResourceClassInModel(clsName, context);
                                                             if (resClass.isAssignableFrom(resClsInModel)) {
                                                                 JaxrsResourceMethodDescription resMethodDesc = resMethodDescription(methodInvoker, contextPath, mapping, servletMappings, clsName);
@@ -255,16 +252,19 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
                                                         }
                                                     } else if (ResourceLocatorInvoker.class.isAssignableFrom(resourceInvoker.getClass())) {
                                                         ResourceLocatorInvoker locatorInvoker = (ResourceLocatorInvoker) resourceInvoker;
-                                                        Class<?> resLocatorClass = locatorInvoker.getMethod().getDeclaringClass();
+                                                        Class<?> resLocatorClass = locatorInvoker.getMethod()
+                                                                .getDeclaringClass();
                                                         if (clsName.equals(resLocatorClass.getCanonicalName())) {
-                                                            ResourceClass resClass = ResourceBuilder.locatorFromAnnotations(locatorInvoker.getMethod().getReturnType());
-                                                            JaxrsResourceLocatorDescription resLocatorDesc = resLocatorDescription(resClass, contextPath, mapping, servletMappings, new ArrayList<Class<?>>());
+                                                            ResourceClass resClass = ResourceBuilder.locatorFromAnnotations(locatorInvoker.getMethod()
+                                                                    .getReturnType());
+                                                            JaxrsResourceLocatorDescription resLocatorDesc = resLocatorDescription(resClass, contextPath, mapping, servletMappings, new ArrayList<>());
                                                             resLocatorInvokers.add(resLocatorDesc);
                                                         } else if (resLocatorClass.isInterface()) {
                                                             Class<?> resClsInModel = getResourceClassInModel(clsName, context);
                                                             if (resLocatorClass.isAssignableFrom(resClsInModel)) {
-                                                                ResourceClass resClass = ResourceBuilder.locatorFromAnnotations(locatorInvoker.getMethod().getReturnType());
-                                                                JaxrsResourceLocatorDescription resLocatorDesc = resLocatorDescription(resClass, contextPath, mapping, servletMappings, new ArrayList<Class<?>>());
+                                                                ResourceClass resClass = ResourceBuilder.locatorFromAnnotations(locatorInvoker.getMethod()
+                                                                        .getReturnType());
+                                                                JaxrsResourceLocatorDescription resLocatorDesc = resLocatorDescription(resClass, contextPath, mapping, servletMappings, new ArrayList<>());
                                                                 resLocatorInvokers.add(resLocatorDesc);
                                                             }
                                                         }
@@ -279,11 +279,11 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
                                     context.getResult().set(response);
                                 }
 
-                                private Class<?> getResourceClassInModel(String clsName, OperationContext context) throws OperationFailedException{
+                                private Class<?> getResourceClassInModel(String clsName, OperationContext context) throws OperationFailedException {
                                     try {
                                         Map<PathAddress, Module> deploymentModuleMap = context.getAttachment(deploymentModuleKey);
                                         if (deploymentModuleMap == null) {
-                                            deploymentModuleMap = Collections.synchronizedMap(new HashMap<PathAddress, Module>());
+                                            deploymentModuleMap = Collections.synchronizedMap(new HashMap<>());
                                             context.attach(deploymentModuleKey, deploymentModuleMap);
                                         }
                                         Module deployModule = deploymentModuleMap.get(parentAddress);
@@ -291,17 +291,23 @@ public class DeploymentRestResourcesDefintion extends SimpleResourceDefinition {
                                             final StringBuilder sb = new StringBuilder(ModelDescriptionConstants.DEPLOYMENT);
                                             sb.append(".");
                                             String deployRuntimeName = address.getElement(0).getValue();
-                                            final ModelNode deployModel = context.readResourceFromRoot(address.subAddress(0, 1)).getModel();
+                                            final ModelNode deployModel = context.readResourceFromRoot(address.subAddress(0, 1))
+                                                    .getModel();
                                             if (deployModel.isDefined() && deployModel.hasDefined(ModelDescriptionConstants.RUNTIME_NAME)) {
-                                                deployRuntimeName = deployModel.get(ModelDescriptionConstants.RUNTIME_NAME).asString();
+                                                deployRuntimeName = deployModel.get(ModelDescriptionConstants.RUNTIME_NAME)
+                                                        .asString();
                                             }
                                             sb.append(deployRuntimeName);
-                                            if (address.size() > 1 && address.getElement(1).getKey().equals(ModelDescriptionConstants.SUBDEPLOYMENT)) {
+                                            if (address.size() > 1 && address.getElement(1)
+                                                    .getKey()
+                                                    .equals(ModelDescriptionConstants.SUBDEPLOYMENT)) {
                                                 sb.append(".");
                                                 sb.append(address.getElement(1).getValue());
                                             }
                                             String moduleName = sb.toString();
-                                            ServiceModuleLoader srvModuleLoader = (ServiceModuleLoader) context.getServiceRegistry(false).getRequiredService(Services.JBOSS_SERVICE_MODULE_LOADER).getValue();
+                                            ServiceModuleLoader srvModuleLoader = (ServiceModuleLoader) context.getServiceRegistry(false)
+                                                    .getRequiredService(Services.JBOSS_SERVICE_MODULE_LOADER)
+                                                    .getValue();
                                             deployModule = srvModuleLoader.loadModule(moduleName);
                                             deploymentModuleMap.put(parentAddress, deployModule);
                                         }

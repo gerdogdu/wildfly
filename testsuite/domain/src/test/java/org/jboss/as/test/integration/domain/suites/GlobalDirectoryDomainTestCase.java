@@ -1,27 +1,9 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2019, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.domain.suites;
 
-import static org.jboss.as.test.integration.domain.util.EENamespaceTransformer.jakartaTransform;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -128,17 +110,17 @@ public class GlobalDirectoryDomainTestCase {
         OTHER_SERVER_GROUP_DEPLOYMENT_ADDRESS.add(SERVER_GROUP, "other-server-group");
         OTHER_SERVER_GROUP_DEPLOYMENT_ADDRESS.add(DEPLOYMENT, TEST);
         OTHER_SERVER_GROUP_DEPLOYMENT_ADDRESS.protect();
-        MAIN_RUNNING_SERVER_ADDRESS.add(HOST, "master");
+        MAIN_RUNNING_SERVER_ADDRESS.add(HOST, "primary");
         MAIN_RUNNING_SERVER_ADDRESS.add(SERVER, "main-one");
         MAIN_RUNNING_SERVER_ADDRESS.protect();
-        MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(HOST, "master");
+        MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(HOST, "primary");
         MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(SERVER, "main-one");
         MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.add(DEPLOYMENT, TEST);
         MAIN_RUNNING_SERVER_DEPLOYMENT_ADDRESS.protect();
-        OTHER_RUNNING_SERVER_ADDRESS.add(HOST, "slave");
+        OTHER_RUNNING_SERVER_ADDRESS.add(HOST, "secondary");
         OTHER_RUNNING_SERVER_ADDRESS.add(SERVER, "other-two");
         OTHER_RUNNING_SERVER_ADDRESS.protect();
-        OTHER_RUNNING_SERVER_GROUP_ADDRESS.add(HOST, "slave");
+        OTHER_RUNNING_SERVER_GROUP_ADDRESS.add(HOST, "secondary");
         OTHER_RUNNING_SERVER_GROUP_ADDRESS.add(SERVER, "other-two");
         OTHER_RUNNING_SERVER_GROUP_ADDRESS.add(DEPLOYMENT, TEST);
         OTHER_RUNNING_SERVER_GROUP_ADDRESS.protect();
@@ -159,7 +141,7 @@ public class GlobalDirectoryDomainTestCase {
 
         WebArchive webArchive = ShrinkWrap.create(WebArchive.class, TEST).addClasses(GlobalDirectoryDeployment.class)
                 .addAsWebInfResource(new StringAsset("<?xml version=\"1.0\" encoding=\"UTF-8\"?><web-app><servlet-mapping>\n" +
-                        "        <servlet-name>javax.ws.rs.core.Application</servlet-name>\n" +
+                        "        <servlet-name>jakarta.ws.rs.core.Application</servlet-name>\n" +
                         "        <url-pattern>/*</url-pattern>\n" +
                         "    </servlet-mapping></web-app>"), "web.xml");
 
@@ -174,12 +156,8 @@ public class GlobalDirectoryDomainTestCase {
         new File(tmpDir, "exploded").mkdirs();
 
         File archiveFile = new File(tmpDir, "archives/" + TEST);
-        jakartaTransform(webArchive.as(ZipExporter.class), archiveFile);
+        webArchive.as(ZipExporter.class).exportTo(archiveFile, true);
 
-        //webArchive.as(ZipExporter.class).exportTo(new File(tmpDir, "archives/" + TEST), true);
-
-        // Recreating means we detect the transformed version if needed.
-        webArchive = ShrinkWrap.createFromZipFile(WebArchive.class, archiveFile);
         webArchive.as(ExplodedExporter.class).exportExploded(new File(tmpDir, "exploded"));
 
         testSupport = DomainTestSuite.createSupport(GlobalDirectoryDomainTestCase.class.getSimpleName());
@@ -255,8 +233,8 @@ public class GlobalDirectoryDomainTestCase {
         registerGlobalDirectory(GLOBAL_DIRECTORY_NAME, "default");
         registerGlobalDirectory(GLOBAL_DIRECTORY_NAME, "other");
 
-        reloadServerGroup(testSupport.getDomainMasterLifecycleUtil(), PathAddress.pathAddress(MAIN_SERVER_GROUP_ADDRESS));
-        reloadServerGroup(testSupport.getDomainMasterLifecycleUtil(), PathAddress.pathAddress(OTHER_SERVER_GROUP_ADDRESS));
+        reloadServerGroup(testSupport.getDomainPrimaryLifecycleUtil(), PathAddress.pathAddress(MAIN_SERVER_GROUP_ADDRESS));
+        reloadServerGroup(testSupport.getDomainPrimaryLifecycleUtil(), PathAddress.pathAddress(OTHER_SERVER_GROUP_ADDRESS));
 
         verifyProperlyRegistered(GLOBAL_DIRECTORY_NAME, GLOBAL_DIRECTORY_PATH.toString(), "default");
         verifyProperlyRegistered(GLOBAL_DIRECTORY_NAME, GLOBAL_DIRECTORY_PATH.toString(), "other");
@@ -265,12 +243,12 @@ public class GlobalDirectoryDomainTestCase {
         ModelNode content = new ModelNode();
         content.get("url").set(url);
         ModelNode composite = createDeploymentOperation(content, MAIN_SERVER_GROUP_DEPLOYMENT_ADDRESS, OTHER_SERVER_GROUP_DEPLOYMENT_ADDRESS);
-        executeOnMaster(composite);
+        executeOnPrimary(composite);
 
-        String response = performHttpCall(DomainTestSupport.masterAddress, 8080, "test/global-directory/library");
+        String response = performHttpCall(DomainTestSupport.primaryAddress, 8080, "test/global-directory/library");
         assertEquals("HELLO WORLD", response);
 
-        response = performHttpCall(DomainTestSupport.slaveAddress, 8630, "test/global-directory/library");
+        response = performHttpCall(DomainTestSupport.secondaryAddress, 8630, "test/global-directory/library");
         assertEquals("HELLO WORLD", response);
 
         removeGlobalDirectory(GLOBAL_DIRECTORY_NAME, "default");
@@ -279,8 +257,8 @@ public class GlobalDirectoryDomainTestCase {
         verifyDoesNotExist(GLOBAL_DIRECTORY_NAME, "default");
         verifyDoesNotExist(GLOBAL_DIRECTORY_NAME, "other");
 
-        reloadServerGroup(testSupport.getDomainMasterLifecycleUtil(), PathAddress.pathAddress(MAIN_SERVER_GROUP_ADDRESS));
-        reloadServerGroup(testSupport.getDomainMasterLifecycleUtil(), PathAddress.pathAddress(OTHER_SERVER_GROUP_ADDRESS));
+        reloadServerGroup(testSupport.getDomainPrimaryLifecycleUtil(), PathAddress.pathAddress(MAIN_SERVER_GROUP_ADDRESS));
+        reloadServerGroup(testSupport.getDomainPrimaryLifecycleUtil(), PathAddress.pathAddress(OTHER_SERVER_GROUP_ADDRESS));
     }
 
     private void copyLibraryToGlobalDirectory(String name) throws IOException {
@@ -324,7 +302,7 @@ public class GlobalDirectoryDomainTestCase {
         operation.get(INCLUDE_RUNTIME).set(true);
         operation.get(OP_ADDR).set(address);
 
-        return testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(operation);
+        return testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(operation);
     }
 
     /**
@@ -369,7 +347,7 @@ public class GlobalDirectoryDomainTestCase {
         operation.get(OP_ADDR).set(address);
         operation.get(PATH).set(path);
 
-        ModelNode response = testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(operation);
+        ModelNode response = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(operation);
         ModelNode outcome = response.get(OUTCOME);
         if (expectSuccess) {
             assertThat("Registration of global directory " + name + " failure!", outcome.asString(), is(SUCCESS));
@@ -394,14 +372,14 @@ public class GlobalDirectoryDomainTestCase {
         operation.get(INCLUDE_RUNTIME).set(true);
         operation.get(OP_ADDR).set(address);
 
-        ModelNode response = testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(operation);
+        ModelNode response = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(operation);
         ModelNode outcome = response.get(OUTCOME);
         assertThat("Remove of global directory " + name + "  failure!", outcome.asString(), is(SUCCESS));
         return response;
     }
 
-    private static ModelNode executeOnMaster(ModelNode op) throws IOException {
-        return validateResponse(testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op));
+    private static ModelNode executeOnPrimary(ModelNode op) throws IOException {
+        return validateResponse(testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op));
     }
 
     private static ModelNode createDeploymentOperation(ModelNode content, ModelNode... serverGroupAddressses) {
@@ -423,7 +401,7 @@ public class GlobalDirectoryDomainTestCase {
         ModelNode op = getEmptyOperation("read-children-names", address);
         op.get("child-type").set("deployment");
 
-        ModelNode response = testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op);
+        ModelNode response = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op);
         ModelNode result = validateResponse(response);
         return result.isDefined() ? result.asList() : Collections.<ModelNode>emptyList();
     }
@@ -433,7 +411,7 @@ public class GlobalDirectoryDomainTestCase {
         deplAddr.set(address);
         deplAddr.add("deployment", deploymentName);
         ModelNode op = getEmptyOperation(REMOVE, deplAddr);
-        ModelNode response = testSupport.getDomainMasterLifecycleUtil().getDomainClient().execute(op);
+        ModelNode response = testSupport.getDomainPrimaryLifecycleUtil().getDomainClient().execute(op);
         validateResponse(response);
     }
 
@@ -470,9 +448,9 @@ public class GlobalDirectoryDomainTestCase {
         }
     }
 
-    private void reloadServerGroup(DomainLifecycleUtil domainMasterLifecycleUtil, PathAddress address) {
+    private void reloadServerGroup(DomainLifecycleUtil domainPrimaryLifecycleUtil, PathAddress address) {
         ModelNode reload = Util.createEmptyOperation("reload-servers", address);
         reload.get("blocking").set("true");
-        domainMasterLifecycleUtil.executeForResult(reload);
+        domainPrimaryLifecycleUtil.executeForResult(reload);
     }
 }

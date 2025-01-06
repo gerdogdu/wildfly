@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.connector.logging;
@@ -27,10 +10,12 @@ import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
+import java.lang.invoke.MethodHandles;
 import java.sql.Driver;
 import java.util.Set;
 
 import javax.security.auth.Subject;
+import javax.xml.stream.XMLStreamException;
 
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
@@ -58,42 +43,42 @@ public interface ConnectorLogger extends BasicLogger {
     /**
      * The root logger with a category of the default package.
      */
-    ConnectorLogger ROOT_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector");
+    ConnectorLogger ROOT_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector");
 
     /**
      * A logger with the category {@code org.jboss.as.connector.deployers.jdbc}.
      */
-    ConnectorLogger DEPLOYER_JDBC_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.deployers.jdbc");
+    ConnectorLogger DEPLOYER_JDBC_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.deployers.jdbc");
 
     /**
      * A logger with the category {@code org.jboss.as.deployment.connector}.
      */
-    ConnectorLogger DEPLOYMENT_CONNECTOR_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.deployment");
+    ConnectorLogger DEPLOYMENT_CONNECTOR_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.deployment");
 
     /**
      * A logger with the category {@code org.jboss.as.deployment.connector.registry}.
      */
-    ConnectorLogger DEPLOYMENT_CONNECTOR_REGISTRY_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.deployment.registry");
+    ConnectorLogger DEPLOYMENT_CONNECTOR_REGISTRY_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.deployment.registry");
 
     /**
      * A logger with the category {@code org.jboss.as.connector.deployer.dsdeployer}.
      */
-    ConnectorLogger DS_DEPLOYER_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.deployer.dsdeployer");
+    ConnectorLogger DS_DEPLOYER_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.deployer.dsdeployer");
 
     /**
      * A logger with the category {@code org.jboss.as.connector.services.mdr}.
      */
-    ConnectorLogger MDR_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.services.mdr");
+    ConnectorLogger MDR_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.services.mdr");
 
     /**
      * A logger with the category {@code org.jboss.as.connector.subsystems.datasources}.
      */
-    ConnectorLogger SUBSYSTEM_DATASOURCES_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.subsystems.datasources");
+    ConnectorLogger SUBSYSTEM_DATASOURCES_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.subsystems.datasources");
 
     /**
      * A logger with the category {@code org.jboss.as.connector.subsystems.resourceadapters}.
      */
-    ConnectorLogger SUBSYSTEM_RA_LOGGER = Logger.getMessageLogger(ConnectorLogger.class, "org.jboss.as.connector.subsystems.resourceadapters");
+    ConnectorLogger SUBSYSTEM_RA_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), ConnectorLogger.class, "org.jboss.as.connector.subsystems.resourceadapters");
 
     /**
      * Logs an informational message indicating the data source has been bound.
@@ -648,22 +633,22 @@ public interface ConnectorLogger extends BasicLogger {
     @Message(id = 69, value = "At least one xa-datasource-property is required for an xa-datasource")
     OperationFailedException xaDataSourcePropertiesNotPresent();
 
-    /**
-     * A message indicating that jndi-name is missing and it's a required attribute
-     *
-     * @return the message.
-     */
-    @Message(id = 70, value = "Jndi name is required")
-    OperationFailedException jndiNameRequired();
+//    /**
+//     * A message indicating that jndi-name is missing and it's a required attribute
+//     *
+//     * @return the message.
+//     */
+//    @Message(id = 70, value = "Jndi name is required")
+//    OperationFailedException jndiNameRequired();
 
 
-    /**
-     * A message indicating that jndi-name has an invalid format
-     *
-     * @return the message.
-     */
-    @Message(id = 71, value = "Jndi name have to start with java:/ or java:jboss/")
-    OperationFailedException jndiNameInvalidFormat();
+//    /**
+//     * A message indicating that jndi-name has an invalid format
+//     *
+//     * @return the message.
+//     */
+//    @Message(id = 71, value = "Jndi name have to start with java:/ or java:jboss/")
+//    OperationFailedException jndiNameInvalidFormat();
 
     /**
      * Creates an exception indicating the deployment failed.
@@ -681,8 +666,8 @@ public interface ConnectorLogger extends BasicLogger {
      * @param moduleName the module name.
      * @return the message.
      */
-    @Message(id = 73, value = "Failed to load module for RA [%s]")
-    String failedToLoadModuleRA(String moduleName);
+    @Message(id = 73, value = "Failed to load module for RA [%s] Cause: %s")
+    String failedToLoadModuleRA(String moduleName, String cause);
 
     /**
      * Creates an exception indicating a method is undefined.
@@ -977,4 +962,19 @@ public interface ConnectorLogger extends BasicLogger {
 
     @Message(id = 130, value = "Report directory %s does not exist")
     OperationFailedException reportDirectoryDoesNotExist(String reportDirectory);
+
+    @Message(id = 131, value = "Legacy security attribute %s is no longer supported. Please use Elytron configuration instead")
+    OperationFailedException legacySecurityAttributeNotSupported(String attribute);
+
+    @Message(id = 132, value = "Legacy security is no longer supported. Please use Elytron configuration instead")
+    String legacySecurityNotSupported();
+
+    @Message(id = 133, value = "Authorization failed")
+    SecurityException authorizationFailed();
+
+    @Message(id = 134, value = "name attribute is mandatory for workmanager element")
+    XMLStreamException nameAttributeIsMandatory();
+
+    @Message(id = 135, value = "The jdbc driver: %s is not installed")
+    OperationFailedException jdbcDriverNotInstalled(String jdbcDriver);
 }

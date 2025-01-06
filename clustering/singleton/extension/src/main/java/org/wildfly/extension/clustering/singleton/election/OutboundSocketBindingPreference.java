@@ -1,53 +1,63 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.clustering.singleton.election;
 
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.infinispan.remoting.transport.Address;
+import org.infinispan.remoting.transport.jgroups.JGroupsAddress;
 import org.jboss.as.network.OutboundSocketBinding;
-import org.wildfly.clustering.group.Node;
-import org.wildfly.clustering.singleton.election.Preference;
+import org.jgroups.Event;
+import org.jgroups.JChannel;
+import org.jgroups.stack.IpAddress;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.server.infinispan.CacheContainerGroupMember;
 
 /**
  * An election policy preference defined as an outbound socket binding.
  * @author Paul Ferraro
  */
-public class OutboundSocketBindingPreference implements Preference {
+public class OutboundSocketBindingPreference implements Predicate<GroupMember> {
 
     private final Supplier<OutboundSocketBinding> binding;
+    private final Supplier<JChannel> channel;
 
-    public OutboundSocketBindingPreference(Supplier<OutboundSocketBinding> binding) {
+    public OutboundSocketBindingPreference(Supplier<OutboundSocketBinding> binding, Supplier<JChannel> channel) {
         this.binding = binding;
+        this.channel = channel;
     }
 
     @Override
-    public boolean preferred(Node node) {
-        OutboundSocketBinding binding = this.binding.get();
-        try {
-            return binding.getResolvedDestinationAddress().equals(node.getSocketAddress().getAddress()) && (binding.getDestinationPort() == node.getSocketAddress().getPort());
-        } catch (UnknownHostException e) {
-            throw new IllegalArgumentException(e);
+    public boolean test(GroupMember member) {
+        if (member instanceof CacheContainerGroupMember) {
+            CacheContainerGroupMember infinispanMember = (CacheContainerGroupMember) member;
+            Address infinispanAddress = infinispanMember.getAddress();
+            if (infinispanAddress instanceof JGroupsAddress) {
+                org.jgroups.Address address = ((JGroupsAddress) infinispanAddress).getJGroupsAddress();
+                IpAddress physicalAddress = (IpAddress) this.channel.get().down(new Event(Event.GET_PHYSICAL_ADDRESS, address));
+                // Physical address might be null if node is no longer a member of the cluster
+                if (physicalAddress != null) {
+                    OutboundSocketBinding binding = this.binding.get();
+                    try {
+                        return binding.getResolvedDestinationAddress().equals(physicalAddress.getIpAddress()) && (binding.getDestinationPort() == physicalAddress.getPort());
+                    } catch (UnknownHostException e) {
+                        return false;
+                    }
+                }
+            }
         }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        OutboundSocketBinding binding = this.binding.get();
+        return InetSocketAddress.createUnresolved(binding.getUnresolvedDestinationAddress(), binding.getDestinationPort()).toString();
     }
 }

@@ -9,9 +9,16 @@ WildFly team;
 :doctype: book
 :icons: font
 :source-highlighter: coderay
-ifdef::env-github[:imagesdir: images/]
 
-(C) 2021 The original authors.
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
+(C) The WildFly Authors.
 
 ifdef::basebackend-html[toc::[]]
 :numbered:

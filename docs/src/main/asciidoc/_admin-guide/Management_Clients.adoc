@@ -1,6 +1,14 @@
 [[Management_Clients]]
 = Management Clients
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 WildFly offers three different approaches to configure and manage
 servers: a web interface, a command line client and a set of XML
 configuration files. Regardless of the approach you choose, the
@@ -112,6 +120,35 @@ Additionally as they have special handling within the management interface overr
 
 The configured headers are set at the very end of processing the request immediately before the response is returned to the client, this will mean any of the configured headers will override the same headers set by the corresponding endpoint.
 
+=== HTTP Interface Resource Constraints
+
+When the application server is running at the `Community` stability level or lower, four
+attributes are available to control the resource constraints for the HTTP management
+interface. These attributes are:
+
+* `backlog` - The number of connection requests allowed to build up in a backlog attempting
+to connect the open listener socket before being accepted by the server process (Default 50).
+* `connection-high-water` - The maximum number of concurrent connections that the server will
+accept before pausing the acceptance of new connections (Default 100).
+* `connection-low-water` - After the high water limit has been reached the server will not
+accept any more connections until the concurrent connection count drops below the value for
+`connection-low-water` (Default 75).
+* `no-request-timeout` - the time in milliseconds after which the server will close the
+connection if no new HTTP request has been received (Default 60000).
+
+When running at the stability level `Default` the management model attributes are not
+available but the default values defined here still apply. In this case the following
+system properties can be used to set the values:
+
+* `org.wildfly.management.backlog`
+* `org.wildfly.management.connection-high-water`
+* `org.wildfly.management.connection-low-water`
+* `org.wildfly.management.no-request-timeout`
+
+Although it is also possible to use the system properties with the lower stability levels,
+this is not recommended as the system properties are deprecated and will be removed in a
+future release. So where possible you should use the attributes defined in the management model.
+
 include::Command_Line_Interface.adoc[leveloffset=+1]
 
 include::Default_HTTP_Interface_Security.adoc[leveloffset=+1]
@@ -119,25 +156,13 @@ include::Default_HTTP_Interface_Security.adoc[leveloffset=+1]
 include::Default_Native_Interface_Security.adoc[leveloffset=+1]
 
 
-
-[[command-line-interface]]
-== Command Line Interface
-
-The Command Line Interface (CLI) is a management tool for a managed
-domain or standalone server. It allows a user to connect to the domain
-controller or a standalone server and execute management operations
-available through the de-typed management model.
-
-Details on how to use the CLI can be found in the
-<<Command_Line_Interface,Command Line Interface page>>.
-
 [[configuration-files]]
 == Configuration Files
 
 WildFly stores its configuration in centralized XML configuration files,
 one per server for standalone servers and, for managed domains, one per
-host with an additional domain wide policy controlled by the master
-host. These files are meant to be human-readable and human editable.
+host with an additional domain wide policy controlled by the Domain Controller.
+These files are meant to be human-readable and human editable.
 
 [TIP]
 
@@ -165,10 +190,33 @@ standard configuration files, e.g. `standalone-full.xml`,
 similar to the default `standalone.xml` file but includes additional
 subsystems not present in the default configuration. If you prefer to
 use one of these files as your server configuration, you can specify it
-with the _[line-through]*c*_ or _-server-config_ command line argument:
+with the *_-c_* or *_--server-config_* command line argument:
 
 * `bin/standalone.sh -c=standalone-full.xml`
 * `bin/standalone.sh --server-config=standalone-ha.xml`
+
+==== Aliases
+
+The configuration files can also be referenced by an alias instead of the file name:
+
+* `bin/standalone.sh -c ha`
+
+.Available aliases
+|===
+| Configuration file               | Aliases
+
+| standalone-full.xml              | full
+
+| standalone-ha.xml                | ha
+
+| standalone-full-ha.xml           | fha, full-ha
+
+| standalone-load-balancer.xml     | lb, load-balancer
+
+| standalone-microprofile.xml      | mp, microprofile
+
+| standalone-microprofile-ha.xml   | mpha, microprofile-ha
+|===
 
 [[managed-domain-configuration-files]]
 === Managed Domain Configuration Files
@@ -176,7 +224,7 @@ with the _[line-through]*c*_ or _-server-config_ command line argument:
 In a managed domain, the XML files are found in the
 `domain/configuration` directory. There are two types of configuration
 files – one per host, and then a single domain-wide file managed by the
-master host, aka the Domain Controller. (For more on the types of
+primary Host Controller, aka the Domain Controller. (For more on the types of
 processes in a managed domain, see <<Operating_modes,Operating
 Modes>>.)
 
@@ -197,6 +245,7 @@ standard variants:
 
 [cols=",",options="header"]
 |=======================================================================
+| Configuration file               | Use
 |host-primary.xml |A configuration that specifies the Host Controller
 should become the primary Host Controller, aka the Domain Controller.
 No servers will be started by this Host Controller, which is a recommended
@@ -210,7 +259,7 @@ and what server groups they belong to.
 
 |host.xml |The default host configuration, tailored for an easy out of
 the box experience experimenting with a managed domain. This
-configuration specifies the Host Controller should become the master,
+configuration specifies the Host Controller should become the primary Host Controller,
 aka the Domain Controller, but it also launches a couple of servers.
 |=======================================================================
 
@@ -226,7 +275,7 @@ $ bin/domain.sh --host-config=host-primary.xml
 ==== Domain Wide Configuration – domain.xml
 
 Once a Host Controller has processed its host-specific configuration, it
-knows whether it is configured to act as the master Domain Controller.
+knows whether it is configured to act as the Domain Controller.
 If it is, it must parse the domain wide configuration file, by default
 located at `domain/configuration/domain.xml`. This file contains the
 bulk of the settings that should be applied to the servers in the domain
@@ -243,16 +292,16 @@ $ bin/domain.sh --domain-config=domain-production.xml
 ----
 
 That argument is only relevant for hosts configured to act as the
-master.
+Domain Controller.
 
-A slave Host Controller does not usually parse the domain wide
-configuration file. A slave gets the domain wide configuration from the
-remote master Domain Controller when it registers with it. A slave also
+A secondary Host Controller does not usually parse the domain wide
+configuration file. A secondary Host Controller gets the domain wide configuration from the
+remote Domain Controller when it registers with it. A secondary Host Controller also
 will not persist changes to a `domain.xml` file if one is present on the
 filesystem. For that reason it is recommended that no `domain.xml` be
-kept on the filesystem of hosts that will only run as slaves.
+kept on the filesystem of hosts that will only run as secondary Host Controllers.
 
-A slave can be configured to keep a locally persisted copy of the domain
-wide configuration and then use it on boot (in case the master is not
+A secondary Host Controller can be configured to keep a locally persisted copy of the domain
+wide configuration and then use it on boot (in case the Domain Controller is not
 available.) See _--backup and --cached-dc_ under
 <<Command_line_parameters,Command line parameters>>.

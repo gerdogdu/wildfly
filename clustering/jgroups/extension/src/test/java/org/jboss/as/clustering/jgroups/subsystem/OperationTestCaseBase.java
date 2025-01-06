@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.jgroups.subsystem;
@@ -26,10 +9,10 @@ import java.io.IOException;
 import java.util.List;
 
 import org.jboss.as.clustering.controller.Attribute;
-import org.jboss.as.clustering.controller.CommonUnaryRequirement;
 import org.jboss.as.clustering.subsystem.AdditionalInitialization;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.operations.common.Util;
+import org.jboss.as.network.SocketBinding;
 import org.jboss.as.subsystem.test.AbstractSubsystemTest;
 import org.jboss.as.subsystem.test.KernelServices;
 import org.jboss.dmr.ModelNode;
@@ -41,7 +24,7 @@ import org.jboss.dmr.ModelNode;
 */
 public class OperationTestCaseBase extends AbstractSubsystemTest {
 
-    static final String SUBSYSTEM_XML_FILE = String.format("subsystem-jgroups-%d_%d.xml", JGroupsSchema.CURRENT.major(), JGroupsSchema.CURRENT.minor());
+    static final String SUBSYSTEM_XML_FILE = String.format("jgroups-%d.%d.xml", JGroupsSubsystemSchema.CURRENT.getVersion().major(), JGroupsSubsystemSchema.CURRENT.getVersion().minor());
 
     public OperationTestCaseBase() {
         super(JGroupsExtension.SUBSYSTEM_NAME, new JGroupsExtension());
@@ -82,7 +65,7 @@ public class OperationTestCaseBase extends AbstractSubsystemTest {
 
     protected static ModelNode getTransportAddOperation(String stackName, String protocol) {
         ModelNode operation = Util.createAddOperation(getTransportAddress(stackName, protocol));
-        operation.get(MulticastProtocolResourceDefinition.Attribute.SOCKET_BINDING.getName()).set("some-binding");
+        operation.get(MulticastSocketProtocolResourceDefinition.Attribute.SOCKET_BINDING.getName()).set("some-binding");
         return operation;
     }
 
@@ -197,6 +180,12 @@ public class OperationTestCaseBase extends AbstractSubsystemTest {
     }
 
     protected KernelServices buildKernelServices() throws Exception {
-        return createKernelServicesBuilder(new AdditionalInitialization().require(CommonUnaryRequirement.SOCKET_BINDING, "some-binding", "jgroups-diagnostics", "jgroups-mping", "jgroups-tcp-fd", "new-socket-binding")).setSubsystemXml(this.getSubsystemXml()).build();
+        return createKernelServicesBuilder(new AdditionalInitialization()
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "some-binding")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-diagnostics")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-mping")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "jgroups-tcp-fd")
+                .require(SocketBinding.SERVICE_DESCRIPTOR, "new-socket-binding")
+            ).setSubsystemXml(this.getSubsystemXml()).build();
     }
 }

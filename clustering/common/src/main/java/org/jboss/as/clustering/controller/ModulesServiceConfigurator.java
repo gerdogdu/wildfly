@@ -1,32 +1,20 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2020, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.controller;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.jboss.as.controller.AttributeDefinition;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.dmr.ModelNode;
 import org.jboss.modules.Module;
-import org.jboss.msc.service.ServiceName;
+import org.wildfly.subsystem.resource.ResourceModelResolver;
 
 /**
  * @author Paul Ferraro
@@ -35,8 +23,14 @@ public class ModulesServiceConfigurator extends AbstractModulesServiceConfigurat
 
     private final List<Module> defaultModules;
 
-    public ModulesServiceConfigurator(ServiceName name, Attribute attribute, List<Module> defaultModules) {
-        super(name, attribute, ModelNode::asListOrEmpty);
+    public ModulesServiceConfigurator(RuntimeCapability<Void> capability, AttributeDefinition attribute, List<Module> defaultModules) {
+        super(capability, new ResourceModelResolver<>() {
+            @Override
+            public List<String> resolve(OperationContext context, ModelNode model) throws OperationFailedException {
+                List<ModelNode> values = attribute.resolveModelAttribute(context, model).asListOrEmpty();
+                return !values.isEmpty() ? values.stream().map(ModelNode::asString).collect(Collectors.toUnmodifiableList()) : List.of();
+            }
+        });
         this.defaultModules = defaultModules;
     }
 

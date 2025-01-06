@@ -1,5 +1,10 @@
 <?xml version="1.0"?>
 
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <ejb-jar
         xmlns="http://java.sun.com/xml/ns/javaee"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -16,7 +21,7 @@
 		<resource-ref>
 			<description>Default Mail</description>
             <res-ref-name>MyDefaultMail</res-ref-name>
-            <res-type>javax.mail.Session</res-type>
+            <res-type>jakarta.mail.Session</res-type>
             <res-auth>Container</res-auth>
             <mapped-name>java:jboss/mail/Default</mapped-name>
             

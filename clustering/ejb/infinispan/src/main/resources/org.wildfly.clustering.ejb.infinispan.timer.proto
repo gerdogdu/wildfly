@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package org.wildfly.clustering.ejb.infinispan.timer;
+
+import "java.lang.proto";
+import "java.time.proto";
+import "java.util.proto";
+import "org.wildfly.clustering.ejb.cache.timer.proto";
+
+// IDs: 340-344
+
+/**
+ * @TypeId(340)
+ */
+message InfinispanTimerMetaDataKey {
+	java.util.UUID	id	 = 1;
+}
+
+/**
+ * @TypeId(341)
+ */
+message InfinispanTimerIndexKey {
+	string	className	= 1;
+	string	methodName	= 2;
+	uint32	parameters	= 3;
+	uint32	index	= 4;
+}
+
+/**
+ * @TypeId(342)
+ */
+enum TimerCacheKeyFilter {
+	META_DATA_KEY	= 0;
+}
+
+/**
+ * @TypeId(343)
+ */
+enum TimerCacheEntryFilter {
+	META_DATA_ENTRY	= 0;
+}
+
+/**
+ * @TypeId(344)
+ */
+message SimpleTimeoutMetaData {
+    uint64  nextTimeout = 1;
+}

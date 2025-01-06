@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.clustering.cluster.jsf;
 
@@ -30,9 +13,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.HttpGet;
@@ -44,6 +26,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.jboss.arquillian.container.test.api.OperateOnDeployment;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.as.test.clustering.cluster.AbstractClusteringTestCase;
@@ -65,12 +48,12 @@ public abstract class AbstractJSFFailoverTestCase extends AbstractClusteringTest
         Pattern smallestPattern = Pattern.compile("<span id=\"numberGuess:smallest\">([^<]+)</span>");
         Pattern biggestPattern = Pattern.compile("<span id=\"numberGuess:biggest\">([^<]+)</span>");
         Pattern remainingPattern = Pattern.compile("You have (\\d+) guesses remaining.");
-        Pattern viewStatePattern = Pattern.compile("id=\".*javax.faces.ViewState.*\" value=\"([^\"]*)\"");
+        Pattern viewStatePattern = Pattern.compile("id=\".*jakarta.faces.ViewState.*\" value=\"([^\"]*)\"");
 
         Matcher matcher;
 
         NumberGuessState state = new NumberGuessState();
-        String responseString = IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
+        String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
 
         Map.Entry<String, String> sessionRouteEntry = parseSessionRoute(response);
         state.sessionId = (sessionRouteEntry != null) ? sessionRouteEntry.getKey() : sessionId;
@@ -106,7 +89,7 @@ public abstract class AbstractJSFFailoverTestCase extends AbstractClusteringTest
 
         List<NameValuePair> list = new LinkedList<>();
 
-        list.add(new BasicNameValuePair("javax.faces.ViewState", viewState));
+        list.add(new BasicNameValuePair("jakarta.faces.ViewState", viewState));
         list.add(new BasicNameValuePair("numberGuess", "numberGuess"));
         list.add(new BasicNameValuePair("numberGuess:guessButton", "Guess"));
         list.add(new BasicNameValuePair("numberGuess:inputGuess", guess));

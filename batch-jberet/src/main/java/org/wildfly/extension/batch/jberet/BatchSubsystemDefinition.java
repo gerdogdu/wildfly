@@ -1,30 +1,14 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.batch.jberet;
 
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
 
-import java.util.Collections;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.jberet.repository.JobRepository;
 import org.jberet.spi.ContextClassLoaderJobOperatorContextSelector;
@@ -34,7 +18,6 @@ import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
 import org.jboss.as.controller.AbstractWriteAttributeHandler;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
-import org.jboss.as.controller.OperationStepHandler;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.ReloadRequiredRemoveStepHandler;
 import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
@@ -54,6 +37,7 @@ import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
 import org.wildfly.extension.batch.jberet._private.Capabilities;
 import org.wildfly.extension.batch.jberet.deployment.BatchAttachments;
@@ -140,11 +124,10 @@ public class BatchSubsystemDefinition extends SimpleResourceDefinition {
     @Override
     public void registerAttributes(final ManagementResourceRegistration resourceRegistration) {
         super.registerAttributes(resourceRegistration);
-        final OperationStepHandler writeHandler = new ReloadRequiredWriteAttributeHandler(DEFAULT_JOB_REPOSITORY, DEFAULT_THREAD_POOL, SECURITY_DOMAIN);
-        resourceRegistration.registerReadWriteAttribute(DEFAULT_JOB_REPOSITORY, null, writeHandler);
-        resourceRegistration.registerReadWriteAttribute(DEFAULT_THREAD_POOL, null, writeHandler);
-        resourceRegistration.registerReadWriteAttribute(SECURITY_DOMAIN, null, writeHandler);
-        resourceRegistration.registerReadWriteAttribute(RESTART_JOBS_ON_RESUME, null, new AbstractWriteAttributeHandler<Boolean>(RESTART_JOBS_ON_RESUME) {
+        resourceRegistration.registerReadWriteAttribute(DEFAULT_JOB_REPOSITORY, null, ReloadRequiredWriteAttributeHandler.INSTANCE);
+        resourceRegistration.registerReadWriteAttribute(DEFAULT_THREAD_POOL, null, ReloadRequiredWriteAttributeHandler.INSTANCE);
+        resourceRegistration.registerReadWriteAttribute(SECURITY_DOMAIN, null, ReloadRequiredWriteAttributeHandler.INSTANCE);
+        resourceRegistration.registerReadWriteAttribute(RESTART_JOBS_ON_RESUME, null, new AbstractWriteAttributeHandler<Boolean>() {
             @Override
             protected boolean applyUpdateToRuntime(final OperationContext context, final ModelNode operation, final String attributeName, final ModelNode resolvedValue, final ModelNode currentValue, final HandbackHolder<Boolean> handbackHolder) throws OperationFailedException {
                 setValue(context, resolvedValue);
@@ -172,7 +155,6 @@ public class BatchSubsystemDefinition extends SimpleResourceDefinition {
         private final ContextClassLoaderJobOperatorContextSelector selector;
 
         private BatchSubsystemAdd() {
-            super(Collections.singleton(Capabilities.BATCH_CONFIGURATION_CAPABILITY), DEFAULT_JOB_REPOSITORY, DEFAULT_THREAD_POOL, RESTART_JOBS_ON_RESUME, SECURITY_DOMAIN);
             selector = new ContextClassLoaderJobOperatorContextSelector(() -> JobOperatorContext.create(DefaultBatchEnvironment.INSTANCE));
             JobOperatorContext.setJobOperatorContextSelector(selector);
         }
@@ -181,7 +163,7 @@ public class BatchSubsystemDefinition extends SimpleResourceDefinition {
         protected void performBoottime(final OperationContext context, final ModelNode operation, final ModelNode model)
                 throws OperationFailedException {
             // Check if the request-controller subsystem exists
-            final boolean rcPresent = context.hasOptionalCapability("org.wildfly.request-controller", null, null);
+            final boolean rcPresent = context.hasOptionalCapability(BatchServiceNames.REQUEST_CONTROLLER_CAPABILITY, Capabilities.BATCH_CONFIGURATION_CAPABILITY.getName(), null);
 
             context.addStep(new AbstractDeploymentChainStep() {
                 public void execute(DeploymentProcessorTarget processorTarget) {
@@ -211,31 +193,24 @@ public class BatchSubsystemDefinition extends SimpleResourceDefinition {
             final boolean restartOnResume = RESTART_JOBS_ON_RESUME.resolveModelAttribute(context, model).asBoolean();
 
             final ServiceTarget target = context.getServiceTarget();
-            final BatchConfigurationService service = new BatchConfigurationService();
-            service.setRestartOnResume(restartOnResume);
-            final ServiceBuilder<BatchConfiguration> serviceBuilder = target.addService(context.getCapabilityServiceName(Capabilities.BATCH_CONFIGURATION_CAPABILITY.getName(), BatchConfiguration.class), service)
-                    .addDependency(
-                            context.getCapabilityServiceName(Capabilities.JOB_REPOSITORY_CAPABILITY.getName(), defaultJobRepository.asString(), JobRepository.class),
-                            JobRepository.class,
-                            service.getJobRepositoryInjector()
-                    )
-                    .addDependency(
-                            context.getCapabilityServiceName(Capabilities.THREAD_POOL_CAPABILITY.getName(), defaultThreadPool.asString(), JobExecutor.class),
-                            JobExecutor.class,
-                            service.getJobExecutorInjector()
-                    );
-            if (securityDomain.isDefined()) {
-                serviceBuilder.addDependency(
-                        context.getCapabilityServiceName(Capabilities.SECURITY_DOMAIN_CAPABILITY, securityDomain.asString(), SecurityDomain.class),
-                        SecurityDomain.class,
-                        service.getSecurityDomainInjector()
-                );
-            }
+            final ServiceName sn = context.getCapabilityServiceName(Capabilities.BATCH_CONFIGURATION_CAPABILITY.getName(), BatchConfiguration.class);
+            final ServiceBuilder<?> serviceBuilder = target.addService(sn);
+            final Consumer<BatchConfiguration> batchConfigurationConsumer = serviceBuilder.provides(sn);
+            final Supplier<JobRepository> jobRepositorySupplier = serviceBuilder.requires(
+                    context.getCapabilityServiceName(Capabilities.JOB_REPOSITORY_CAPABILITY.getName(), defaultJobRepository.asString(), JobRepository.class));
+            final Supplier<JobExecutor> jobExecutorSupplier = serviceBuilder.requires(
+                    context.getCapabilityServiceName(Capabilities.THREAD_POOL_CAPABILITY.getName(), defaultThreadPool.asString(), JobExecutor.class));
+            final Supplier<SecurityDomain> securityDomainSupplier = securityDomain.isDefined()
+                    ? serviceBuilder.requires(context.getCapabilityServiceName(Capabilities.SECURITY_DOMAIN_CAPABILITY, securityDomain.asString(), SecurityDomain.class))
+                    : null;
 
             // Only start this service if there are deployments present, allow it to be stopped as deployments
             // are removed.
-            serviceBuilder.setInitialMode(ServiceController.Mode.ON_DEMAND)
-                    .install();
+            serviceBuilder.setInitialMode(ServiceController.Mode.ON_DEMAND);
+            final BatchConfigurationService service = new BatchConfigurationService(batchConfigurationConsumer, jobRepositorySupplier, jobExecutorSupplier, securityDomainSupplier);
+            service.setRestartOnResume(restartOnResume);
+            serviceBuilder.setInstance(service);
+            serviceBuilder.install();
         }
     }
 }

@@ -1,44 +1,27 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.messaging.jms.context.auxiliary;
 
-import static javax.ejb.TransactionManagementType.BEAN;
+import static jakarta.ejb.TransactionManagementType.BEAN;
 import static org.jboss.as.test.integration.messaging.jms.context.ScopedInjectedJMSContextTestCase.QUEUE_NAME_FOR_REQUEST_SCOPE;
 import static org.jboss.as.test.integration.messaging.jms.context.ScopedInjectedJMSContextTestCase.QUEUE_NAME_FOR_TRANSACTION_SCOPE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import javax.annotation.Resource;
-import javax.ejb.Stateless;
-import javax.ejb.TransactionManagement;
-import javax.inject.Inject;
-import javax.jms.Destination;
-import javax.jms.JMSConsumer;
-import javax.jms.JMSContext;
-import javax.jms.JMSDestinationDefinition;
-import javax.jms.JMSDestinationDefinitions;
-import javax.jms.JMSRuntimeException;
-import javax.transaction.UserTransaction;
+import jakarta.annotation.Resource;
+import jakarta.ejb.Stateless;
+import jakarta.ejb.TransactionManagement;
+import jakarta.inject.Inject;
+import jakarta.jms.Destination;
+import jakarta.jms.JMSConsumer;
+import jakarta.jms.JMSContext;
+import jakarta.jms.JMSDestinationDefinition;
+import jakarta.jms.JMSDestinationDefinitions;
+import jakarta.jms.JMSRuntimeException;
+import jakarta.transaction.UserTransaction;
 
 import org.jboss.as.test.shared.TimeoutUtil;
 import org.junit.Assert;
@@ -50,11 +33,11 @@ import org.junit.Assert;
         value =  {
                 @JMSDestinationDefinition(
                         name = QUEUE_NAME_FOR_TRANSACTION_SCOPE,
-                        interfaceName = "javax.jms.Queue",
+                        interfaceName = "jakarta.jms.Queue",
                         destinationName = "ScopedInjectedJMSContextTestCaseQueue-transactionScope"),
                 @JMSDestinationDefinition(
                         name = QUEUE_NAME_FOR_REQUEST_SCOPE,
-                        interfaceName = "javax.jms.Queue",
+                        interfaceName = "jakarta.jms.Queue",
                         destinationName = "ScopedInjectedJMSContextTestCaseQueue-requestScope")
         }
 )

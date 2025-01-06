@@ -1,6 +1,14 @@
 [[Spring_applications_development_and_migration_guide]]
 = Spring applications development and migration guide
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 This document details the main points that need to be considered by
 Spring developers that wish to develop new applications or to migrate
 existing applications to be run into WildFly {wildflyVersion}.
@@ -55,7 +63,7 @@ Spring applications using Jakarta Persistence may choose between:
 
 Applications that use a server-deployed persistence unit must observe
 the typical Jakarta EE rules in what concerns dependency management, i.e.
-the javax.persistence classes and persistence provider (Hibernate) are
+the jakarta.persistence classes and persistence provider (Hibernate) are
 contained in modules which are added automatically by the application
 when the persistence unit is deployed.
 
@@ -87,7 +95,7 @@ to be looked up in JNDI, as follows:
 [source,xml,options="nowrap"]
 ----
 <jee:jndi-lookup id="entityManager" jndi-name="java:comp/env/persistence/petclinic-em" 
-            expected-type="javax.persistence.EntityManager"/>
+            expected-type="jakarta.persistence.EntityManager"/>
 ----
 
 or
@@ -95,7 +103,7 @@ or
 [source,xml,options="nowrap"]
 ----
 <jee:jndi-lookup id="entityManagerFactory" jndi-name="java:comp/env/persistence/petclinic-emf" 
-            expected-type="javax.persistence.EntityManagerFactory"/>
+            expected-type="jakarta.persistence.EntityManagerFactory"/>
 ----
 
 JNDI binding

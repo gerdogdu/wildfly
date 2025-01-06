@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2014, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.timerservice.persistence.database;
@@ -60,14 +43,16 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import javax.ejb.ScheduleExpression;
+import jakarta.ejb.ScheduleExpression;
 import javax.sql.DataSource;
-import javax.transaction.HeuristicMixedException;
-import javax.transaction.HeuristicRollbackException;
-import javax.transaction.NotSupportedException;
-import javax.transaction.RollbackException;
-import javax.transaction.SystemException;
+import jakarta.transaction.HeuristicMixedException;
+import jakarta.transaction.HeuristicRollbackException;
+import jakarta.transaction.NotSupportedException;
+import jakarta.transaction.RollbackException;
+import jakarta.transaction.SystemException;
 
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.as.ejb3.timerservice.CalendarTimer;
@@ -87,11 +72,10 @@ import org.jboss.marshalling.OutputStreamByteOutput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.river.RiverMarshallerFactory;
 import org.jboss.modules.ModuleLoader;
-import org.jboss.msc.service.Service;
+import org.jboss.msc.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
-import org.jboss.msc.value.InjectedValue;
 import org.wildfly.security.manager.WildFlySecurityManager;
 import org.wildfly.transaction.client.ContextTransactionManager;
 
@@ -104,12 +88,13 @@ import org.wildfly.transaction.client.ContextTransactionManager;
  * @author Wolf-Dieter Fink
  * @author Joerg Baesner
  */
-public class DatabaseTimerPersistence implements TimerPersistence, Service<DatabaseTimerPersistence> {
-    private final InjectedValue<ManagedReferenceFactory> dataSourceInjectedValue = new InjectedValue<ManagedReferenceFactory>();
-    private final InjectedValue<ModuleLoader> moduleLoader = new InjectedValue<ModuleLoader>();
+public class DatabaseTimerPersistence implements TimerPersistence, Service {
+    private final Consumer<DatabaseTimerPersistence> dbConsumer;
+    private final Supplier<ManagedReferenceFactory> dataSourceSupplier;
+    private final Supplier<ModuleLoader> moduleLoaderSupplier;
+    private final Supplier<Timer> timerSupplier;
     private final Map<String, TimerChangeListener> changeListeners = Collections.synchronizedMap(new HashMap<String, TimerChangeListener>());
 
-    private final InjectedValue<java.util.Timer> timerInjectedValue = new InjectedValue<java.util.Timer>();
 
     private final Map<String, Set<String>> knownTimerIds = new HashMap<>();
 
@@ -143,6 +128,7 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
     private static final String MSSQL = "mssql";
     private static final String SYBASE = "sybase";
     private static final String JCONNECT = "jconnect";
+    private static final String ENTERPRISEDB = "enterprisedb";
 
     /** Names for the different SQL commands stored in the properties*/
     private static final String CREATE_TABLE = "create-table";
@@ -181,7 +167,15 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
     private final long clearTimerInfoCacheBeyond = TimeUnit.MINUTES.toMillis(Long.parseLong(
             WildFlySecurityManager.getPropertyPrivileged("jboss.ejb.timer.database.clearTimerInfoCacheBeyond", "15")));
 
-    public DatabaseTimerPersistence(final String database, String partition, String nodeName, int refreshInterval, boolean allowExecution) {
+    public DatabaseTimerPersistence(final Consumer<DatabaseTimerPersistence> dbConsumer,
+                                    final Supplier<ManagedReferenceFactory> dataSourceSupplier,
+                                    final Supplier<ModuleLoader> moduleLoaderSupplier,
+                                    final Supplier<Timer> timerSupplier,
+                                    final String database, String partition, String nodeName, int refreshInterval, boolean allowExecution) {
+        this.dbConsumer = dbConsumer;
+        this.dataSourceSupplier = dataSourceSupplier;
+        this.moduleLoaderSupplier = moduleLoaderSupplier;
+        this.timerSupplier = timerSupplier;
         this.database = database;
         this.partition = partition;
         this.nodeName = nodeName;
@@ -191,24 +185,25 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
 
     @Override
     public void start(final StartContext context) throws StartException {
-
+        dbConsumer.accept(this);
         factory = new RiverMarshallerFactory();
         configuration = new MarshallingConfiguration();
-        configuration.setClassResolver(ModularClassResolver.getInstance(moduleLoader.getValue()));
+        configuration.setClassResolver(ModularClassResolver.getInstance(moduleLoaderSupplier.get()));
 
-        managedReference = dataSourceInjectedValue.getValue().getReference();
+        managedReference = dataSourceSupplier.get().getReference();
         dataSource = (DataSource) managedReference.getInstance();
         investigateDialect();
         loadSqlProperties();
         checkDatabase();
         refreshTask = new RefreshTask();
         if (refreshInterval > 0) {
-            timerInjectedValue.getValue().schedule(refreshTask, refreshInterval, refreshInterval);
+            timerSupplier.get().schedule(refreshTask, refreshInterval, refreshInterval);
         }
     }
 
     @Override
     public synchronized void stop(final StopContext context) {
+        dbConsumer.accept(null);
         refreshTask.cancel();
         knownTimerIds.clear();
         managedReference.release();
@@ -242,13 +237,15 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
         }
 
         // Update the create-auto-timer statements for DB specifics
-        switch (database) {
-            case DB2:
-                adjustCreateAutoTimerStatement("FROM SYSIBM.SysDummy1 ");
-            break;
-            case ORACLE:
-                adjustCreateAutoTimerStatement("FROM DUAL ");
-            break;
+        if (database != null) {
+            switch (database) {
+                case DB2:
+                    adjustCreateAutoTimerStatement("FROM SYSIBM.SysDummy1 ");
+                    break;
+                case ORACLE:
+                    adjustCreateAutoTimerStatement("FROM DUAL ");
+                    break;
+            }
         }
 
         final Iterator<Map.Entry<Object, Object>> iterator = sql.entrySet().iterator();
@@ -296,15 +293,17 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
             } finally {
                 safeClose(connection);
             }
-            if (database == null) {
-                EjbLogger.EJB3_TIMER_LOGGER.databaseDialectNotConfiguredOrDetected();
-            } else {
+            if (database != null) {
                 EjbLogger.EJB3_TIMER_LOGGER.debugf("Detect database dialect as '%s'.  If this is incorrect, please specify the correct dialect using the 'database' attribute in your configuration.", database);
             }
         } else {
             EjbLogger.EJB3_TIMER_LOGGER.debugf("Database dialect '%s' read from configuration, adjusting it to match the final database valid value.", database);
             database = identifyDialect(database);
             EjbLogger.EJB3_TIMER_LOGGER.debugf("New Database dialect is '%s'.", database);
+        }
+
+        if (database == null) {
+            EjbLogger.EJB3_TIMER_LOGGER.databaseDialectNotConfiguredOrDetected();
         }
     }
 
@@ -319,7 +318,7 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
 
         if (name != null) {
             name = name.toLowerCase(Locale.ROOT);
-            if (name.contains(POSTGRES)) {
+            if (name.contains(POSTGRES) || name.contains(ENTERPRISEDB)) {
                unified = POSTGRESQL;
             } else if (name.contains(MYSQL)) {
                 unified = MYSQL;
@@ -337,6 +336,8 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
                 unified = MSSQL;
             } else if (name.contains(SYBASE) || name.contains(JCONNECT)) {
                 unified = SYBASE;
+            } else {
+                EjbLogger.EJB3_TIMER_LOGGER.unknownDatabaseName(name);
             }
          }
         EjbLogger.EJB3_TIMER_LOGGER.debugf("Check dialect for '%s', result is '%s'", name, unified);
@@ -380,14 +381,11 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
                 try {
                     String createTable = sql.getProperty(CREATE_TABLE);
                     String[] statements = createTable.split(";");
+                    statement = connection.createStatement();
                     for (final String sql : statements) {
-                        try {
-                            statement = connection.createStatement();
-                            statement.executeUpdate(sql);
-                        } finally {
-                            safeClose(statement);
-                        }
+                        statement.addBatch(sql);
                     }
+                    statement.executeBatch();
                 } catch (SQLException e1) {
                     EjbLogger.EJB3_TIMER_LOGGER.couldNotCreateTable(e1);
                 }
@@ -673,11 +671,6 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
         };
     }
 
-    @Override
-    public DatabaseTimerPersistence getValue() throws IllegalStateException, IllegalArgumentException {
-        return this;
-    }
-
     public void refreshTimers() {
         refreshTask.run();
     }
@@ -727,7 +720,7 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
             if (methodName != null) {
                 final String paramString = resultSet.getString(23);
                 final String[] params = paramString == null || paramString.isEmpty() ? EMPTY_STRING_ARRAY : TIMER_PARAM_1_ARRAY;
-                final Method timeoutMethod = CalendarTimer.getTimeoutMethod(new TimeoutMethod(clazz, methodName, params), timerService.getTimedObjectInvoker().getValue().getClassLoader());
+                final Method timeoutMethod = CalendarTimer.getTimeoutMethod(new TimeoutMethod(clazz, methodName, params), timerService.getInvoker().getClassLoader());
                 if (timeoutMethod == null) {
                     EjbLogger.EJB3_TIMER_LOGGER.timerReinstatementFailed(resultSet.getString(2), timerId, new NoSuchMethodException());
                     return null;
@@ -1036,19 +1029,6 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
         }
     }
 
-
-    public InjectedValue<ManagedReferenceFactory> getDataSourceInjectedValue() {
-        return dataSourceInjectedValue;
-    }
-
-    public InjectedValue<ModuleLoader> getModuleLoader() {
-        return moduleLoader;
-    }
-
-    public InjectedValue<Timer> getTimerInjectedValue() {
-        return timerInjectedValue;
-    }
-
     private class RefreshTask extends TimerTask {
 
         private volatile AtomicBoolean running = new AtomicBoolean();
@@ -1119,11 +1099,14 @@ public class DatabaseTimerPersistence implements TimerPersistence, Service<Datab
                                 }
                             }
 
+                            Set<String> timers;
                             synchronized (DatabaseTimerPersistence.this) {
-                                Set<String> timers = knownTimerIds.get(timedObjectId);
-                                for (String timer : existing) {
-                                    TimerImpl timer1 = timerService.getTimer(timer);
-                                    if (timer1 != null && timer1.getState() != TimerState.CREATED) {
+                                 timers = knownTimerIds.get(timedObjectId);
+                            }
+                            for (String timer : existing) {
+                                TimerImpl timer1 = timerService.getTimer(timer);
+                                if (timer1 != null && timer1.getState() != TimerState.CREATED) {
+                                    synchronized (DatabaseTimerPersistence.this) {
                                         timers.remove(timer);
                                         listener.timerRemoved(timer);
                                     }

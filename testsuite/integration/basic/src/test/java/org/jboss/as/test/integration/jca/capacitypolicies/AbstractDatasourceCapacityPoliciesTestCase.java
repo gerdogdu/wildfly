@@ -1,25 +1,6 @@
 /*
- *
- *  * JBoss, Home of Professional Open Source.
- *  * Copyright 2015, Red Hat, Inc., and individual contributors
- *  * as indicated by the @author tags. See the copyright.txt file in the
- *  * distribution for a full listing of individual contributors.
- *  *
- *  * This is free software; you can redistribute it and/or modify it
- *  * under the terms of the GNU Lesser General Public License as
- *  * published by the Free Software Foundation; either version 2.1 of
- *  * the License, or (at your option) any later version.
- *  *
- *  * This software is distributed in the hope that it will be useful,
- *  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *  * Lesser General Public License for more details.
- *  *
- *  * You should have received a copy of the GNU Lesser General Public
- *  * License along with this software; if not, write to the Free
- *  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- *  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
- *
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.jca.capacitypolicies;
@@ -29,7 +10,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ENA
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
-import static org.jboss.as.test.shared.integration.ejb.security.PermissionUtils.createPermissionsXmlAsset;
+import static org.jboss.as.test.shared.PermissionUtils.createPermissionsXmlAsset;
 import static org.junit.Assert.fail;
 import static org.wildfly.common.Assert.checkNotNullParamWithNullPointerException;
 
@@ -40,7 +21,7 @@ import java.util.Map;
 import java.io.FilePermission;
 import java.util.PropertyPermission;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import javax.sql.DataSource;
 
 import org.jboss.arquillian.container.test.api.Deployment;
@@ -250,11 +231,7 @@ public abstract class AbstractDatasourceCapacityPoliciesTestCase extends JcaMgmt
 
                     if (!capacityConfiguration.getCapacityDecrementerProperties().isEmpty()) {
                         Map<String, String> properties = capacityConfiguration.getCapacityDecrementerProperties();
-                        for (String key : properties.keySet()) {
-                            ModelNode props = new ModelNode();
-                            props.add(key, properties.get(key));
-                            addOperation.get("capacity-incrementer-properties").set(props);
-                        }
+                        addProperties(addOperation, properties);
                     }
                 }
 
@@ -264,11 +241,7 @@ public abstract class AbstractDatasourceCapacityPoliciesTestCase extends JcaMgmt
 
                     if (!capacityConfiguration.getCapacityIncrementerProperties().isEmpty()) {
                         Map<String, String> properties = capacityConfiguration.getCapacityIncrementerProperties();
-                        for (String key : properties.keySet()) {
-                            ModelNode props = new ModelNode();
-                            props.add(key, properties.get(key));
-                            addOperation.get("capacity-incrementer-properties").set(props);
-                        }
+                        addProperties(addOperation, properties);
                     }
                 }
             }
@@ -289,6 +262,14 @@ public abstract class AbstractDatasourceCapacityPoliciesTestCase extends JcaMgmt
 
             writeAttribute(xa ? XA_DS_ADDRESS : DS_ADDRESS, ENABLED, "true");
             reload();
+        }
+
+        private static void addProperties(ModelNode addOperation, Map<String, String> properties) {
+            for (Map.Entry<String, String> entry : properties.entrySet()) {
+                ModelNode props = new ModelNode();
+                props.add(entry.getKey(), entry.getValue());
+                addOperation.get("capacity-incrementer-properties").set(props);
+            }
         }
     }
 

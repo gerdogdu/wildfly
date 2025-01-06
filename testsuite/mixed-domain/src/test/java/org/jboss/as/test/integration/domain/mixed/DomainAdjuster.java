@@ -1,30 +1,12 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.domain.mixed;
 
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADDRESS;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.AUTO_START;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.CHILD_TYPE;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.EXTENSION;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.HOST;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PROFILE;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.READ_CHILDREN_NAMES_OPERATION;
@@ -33,7 +15,6 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.RES
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SERVER_CONFIG;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SERVER_GROUP;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SYSTEM_PROPERTY;
 import static org.jboss.as.test.integration.domain.management.util.DomainTestUtils.executeForResult;
 
@@ -41,7 +22,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +33,7 @@ import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.test.integration.domain.management.util.DomainTestUtils;
 import org.jboss.as.test.integration.domain.mixed.eap740.DomainAdjuster740;
+import org.jboss.as.test.integration.domain.mixed.eap800.DomainAdjuster800;
 import org.jboss.as.test.integration.management.util.MgmtOperationException;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.Property;
@@ -78,20 +59,23 @@ public class DomainAdjuster {
     private final String OTHER_SERVER_GROUP = "other-server-group";
     private static final Set<String> UNUSED_SERVER_GROUP_ATTRIBUTES = new HashSet<>(Arrays.asList("management-subsystem-endpoint", "deployment", "deployment-overlay", "jvm", "system-property"));
 
-    static void adjustForVersion(final DomainClient client, final Version.AsVersion asVersion, final String profile, final boolean withMasterServers) throws Exception {
+    static void adjustForVersion(final DomainClient client, final Version.AsVersion asVersion, final String profile, final boolean withPrimaryServers) throws Exception {
 
         final DomainAdjuster adjuster;
         switch (asVersion) {
             case EAP_7_4_0:
                 adjuster = new DomainAdjuster740();
                 break;
+            case EAP_8_0_0:
+                adjuster = new DomainAdjuster800();
+                break;
             default:
                 adjuster = new DomainAdjuster();
         }
-        adjuster.adjust(client, profile, withMasterServers);
+        adjuster.adjust(client, profile, withPrimaryServers);
     }
 
-    final void adjust(final DomainClient client, String profile, boolean withMasterServers) throws Exception {
+    final void adjust(final DomainClient client, String profile, boolean withPrimaryServers) throws Exception {
         //Trim it down so we have only
         //profile=full-ha,
         //the main-server-group and other-server-group
@@ -111,22 +95,15 @@ public class DomainAdjuster {
         removeIpv4SystemProperty(client);
 
         // We don't want any standard host-excludes as the tests are meant to see what happens
-        // with the current configs on legacy slaves
+        // with the current configs on legacy secondaries
         removeHostExcludes(client);
 
-        // Mixed Domain tests always use the full build instead of alternating between ee-dist and dist. If the DC is not an EAP server, we need to remove here
-        // the pre-configured extensions provided by WildFly full build to adjust the current domain to work with a node running EAP which does not contain
-        // those extensions.
-        // We remove here these extensions and subsystems configured by default if they are in the current configuration, this makes this code capable to work for wildfly and EAP
         final PathAddress profileAddress = PathAddress.pathAddress(PROFILE, profile);
-        removeSubsystemExtensionIfExist(client, profileAddress.append(SUBSYSTEM, "microprofile-opentracing-smallrye"), PathAddress.pathAddress(EXTENSION, "org.wildfly.extension.microprofile.opentracing-smallrye"));
-        removeSubsystemExtensionIfExist(client, profileAddress.append(SUBSYSTEM, "microprofile-jwt-smallrye"), PathAddress.pathAddress(EXTENSION, "org.wildfly.extension.microprofile.jwt-smallrye"));
-        removeSubsystemExtensionIfExist(client, profileAddress.append(SUBSYSTEM, "microprofile-config-smallrye"), PathAddress.pathAddress(EXTENSION, "org.wildfly.extension.microprofile.config-smallrye"));
-        removeSubsystemExtensionIfExist(client, profileAddress.append(SUBSYSTEM, "opentelemetry"), PathAddress.pathAddress(EXTENSION, "org.wildfly.extension.opentelemetry"));
+        adjustExpansionExtensions(client, profileAddress);
 
         //Version specific changes
-        final List<ModelNode> adjustments = adjustForVersion(client, PathAddress.pathAddress(PROFILE, profile), withMasterServers);
-        if (withMasterServers) {
+        final List<ModelNode> adjustments = adjustForVersion(client, PathAddress.pathAddress(PROFILE, profile), withPrimaryServers);
+        if (withPrimaryServers) {
             adjustments.addAll(reconfigureServers());
         }
 
@@ -149,16 +126,16 @@ public class DomainAdjuster {
     }
 
     /**
-     * Adjust the Domain configuration to work properly with the expected slave.
+     * Adjust the Domain configuration to work properly with the expected secondary.
      *
      * @param client           The domain client.
      * @param profileAddress   The address of the profile that is being used.
-     * @param withMasterServer Whether the Dc has managed servers.
+     * @param withPrimaryServer Whether the Dc has managed servers.
      * @return The List of Operations that need to be executed to adjust the domain.
      * @throws Exception
      */
-    protected List<ModelNode> adjustForVersion(final DomainClient client, final PathAddress profileAddress, final boolean withMasterServer) throws Exception {
-        return Collections.emptyList();
+    protected List<ModelNode> adjustForVersion(final DomainClient client, final PathAddress profileAddress, final boolean withPrimaryServer) throws Exception {
+        return new ArrayList<>();
     }
 
     private void removeProfile(final DomainClient client, final String name) throws Exception {
@@ -262,17 +239,17 @@ public class DomainAdjuster {
 
     private Collection<? extends ModelNode> reconfigureServers() {
         final List<ModelNode> list = new ArrayList<>();
-        //Reconfigure master servers
-        final PathAddress masterHostAddress = PathAddress.pathAddress(HOST, "master");
-        list.add(Util.getWriteAttributeOperation(masterHostAddress.append(SERVER_CONFIG, "server-one"), AUTO_START, true));
-        list.add(Util.getWriteAttributeOperation(masterHostAddress.append(SERVER_CONFIG, "server-one"), ModelDescriptionConstants.GROUP, "main-server-group"));
-        list.add(Util.getUndefineAttributeOperation(masterHostAddress.append(SERVER_CONFIG, "server-one"), ModelDescriptionConstants.SOCKET_BINDING_PORT_OFFSET));
-        list.add(Util.getWriteAttributeOperation(masterHostAddress.append(SERVER_CONFIG, "server-two"), AUTO_START, true));
-        list.add(Util.getWriteAttributeOperation(masterHostAddress.append(SERVER_CONFIG, "server-two"), ModelDescriptionConstants.SOCKET_BINDING_PORT_OFFSET, 100));
+        //Reconfigure primary servers
+        final PathAddress primaryHostAddress = PathAddress.pathAddress(HOST, "primary");
+        list.add(Util.getWriteAttributeOperation(primaryHostAddress.append(SERVER_CONFIG, "server-one"), AUTO_START, true));
+        list.add(Util.getWriteAttributeOperation(primaryHostAddress.append(SERVER_CONFIG, "server-one"), ModelDescriptionConstants.GROUP, "main-server-group"));
+        list.add(Util.getUndefineAttributeOperation(primaryHostAddress.append(SERVER_CONFIG, "server-one"), ModelDescriptionConstants.SOCKET_BINDING_PORT_OFFSET));
+        list.add(Util.getWriteAttributeOperation(primaryHostAddress.append(SERVER_CONFIG, "server-two"), AUTO_START, true));
+        list.add(Util.getWriteAttributeOperation(primaryHostAddress.append(SERVER_CONFIG, "server-two"), ModelDescriptionConstants.SOCKET_BINDING_PORT_OFFSET, 100));
         return list;
     }
 
-    private void removeSubsystemExtensionIfExist(DomainClient client, PathAddress subsystem, PathAddress extension) throws IOException {
+    protected void removeSubsystemExtensionIfExist(DomainClient client, PathAddress subsystem, PathAddress extension) throws IOException {
         try {
             DomainTestUtils.executeForResult(Util.getReadResourceOperation(subsystem), client);
             DomainTestUtils.executeForResult(Util.createRemoveOperation(subsystem), client);
@@ -285,5 +262,9 @@ public class DomainAdjuster {
         } catch (MgmtOperationException e) {
             // ignored, the extension does not exist
         }
+    }
+
+    protected void adjustExpansionExtensions(DomainClient client, PathAddress profileAddress) throws Exception {
+       // no-op, it is expected to be implemented by the subclasses if they require to adjust the XP extensions before starting the secondary Host Controller.
     }
 }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.security;
@@ -26,7 +9,6 @@ import static java.security.AccessController.doPrivileged;
 
 import java.lang.reflect.Method;
 import java.security.AccessController;
-import java.security.Policy;
 import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
@@ -37,7 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import javax.security.jacc.EJBMethodPermission;
+import jakarta.security.jacc.EJBMethodPermission;
 
 import org.jboss.as.ee.component.Component;
 import org.jboss.as.ee.component.ComponentView;
@@ -49,6 +31,7 @@ import org.jboss.metadata.ejb.spec.MethodInterfaceType;
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
+import org.wildfly.security.authz.jacc.PolicyUtil;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
@@ -113,8 +96,8 @@ public class JaccInterceptor implements Interceptor {
         MethodInterfaceType methodIntfType = componentView.getPrivateData(MethodInterfaceType.class);
         EJBMethodPermission permission = createEjbMethodPermission(method, ejbComponent, methodIntfType);
         ProtectionDomain domain = new ProtectionDomain (componentView.getProxyClass().getProtectionDomain().getCodeSource(), null, null, getGrantedRoles(securityIdentity));
-        Policy policy = WildFlySecurityManager.isChecking() ? doPrivileged((PrivilegedAction<Policy>) Policy::getPolicy) : Policy.getPolicy();
-        if (!policy.implies(domain, permission)) {
+        PolicyUtil policyUtil = WildFlySecurityManager.isChecking() ? doPrivileged((PrivilegedAction<PolicyUtil>) PolicyUtil::getPolicyUtil) : PolicyUtil.getPolicyUtil();
+        if (!policyUtil.implies(domain, permission)) {
             throw EjbLogger.ROOT_LOGGER.invocationOfMethodNotAllowed(method,ejbComponent.getComponentName());
         }
     }

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.webservices.service;
 
@@ -86,7 +69,6 @@ import org.wildfly.security.auth.server.SecurityDomain;
 public final class EndpointService implements Service {
 
     private static final ServiceName SECURITY_DOMAIN_SERVICE = ServiceName.JBOSS.append("security", "security-domain");
-    private static final String LEGACY_SECURITY_CAPABILITY = "org.wildfly.legacy-security";
     private static final String ELYTRON_SECURITY_CAPABILITY = "org.wildfly.security.elytron";
     private static final String WEB_APPLICATION_SECURITY_DOMAIN = "org.wildfly.undertow.application-security-domain";
     private static final String EJB_APPLICATION_SECURITY_DOMAIN = "org.wildfly.ejb3.application-security-domain";
@@ -347,9 +329,6 @@ public final class EndpointService implements Service {
 
     private static boolean isLegacySecurityDomain(DeploymentUnit unit, Endpoint endpoint, String domainName) {
         CapabilityServiceSupport capabilitySupport = unit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
-        if (capabilitySupport != null && !capabilitySupport.hasCapability(LEGACY_SECURITY_CAPABILITY)) {
-            return false;
-        }
         final ServiceName serviceName = SECURITY_DOMAIN_SERVICE.append(domainName);
         return currentServiceContainer().getService(serviceName) != null;
     }

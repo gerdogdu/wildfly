@@ -1,3 +1,8 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.web.handlers;
 
 import java.io.BufferedReader;
@@ -22,8 +27,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import javax.websocket.ContainerProvider;
-import javax.websocket.WebSocketContainer;
+import jakarta.websocket.ContainerProvider;
+import jakarta.websocket.WebSocketContainer;
 
 import org.apache.http.Header;
 import org.apache.http.HttpRequest;
@@ -384,11 +389,11 @@ public abstract class RequestDumpingHandlerTestImpl {
         private Header[] retrieveHeaders(Map<String, List<String>> headers) {
             //System.out.println("---- PRINTING HEADERS ----");
             LinkedList<Header> hdrsList = new LinkedList<Header>();
-            for (String header : headers.keySet()) {
-                for (String value : headers.get(header)) {
-                    if (header != null) {
+            for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+                for (String value : entry.getValue()) {
+                    if (entry.getKey() != null) {
                         //System.out.println(header + ": " + value);
-                        hdrsList.add(new BasicHeader(header, value));
+                        hdrsList.add(new BasicHeader(entry.getKey(), value));
                     }
                 }
             }

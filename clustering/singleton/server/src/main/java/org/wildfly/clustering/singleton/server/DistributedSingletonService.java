@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2018, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.singleton.server;
@@ -27,57 +10,41 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.jboss.msc.Service;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.service.StartContext;
-import org.jboss.msc.service.StartException;
+import org.wildfly.clustering.server.manager.Service;
 import org.wildfly.clustering.singleton.Singleton;
 
 /**
- * Distributed {@link org.wildfly.clustering.singleton.service.SingletonService} implementation that uses JBoss MSC 1.4.x service installation.
+ * Distributed singleton service implementation that uses JBoss MSC 1.4.x service installation.
  * @author Paul Ferraro
  */
-public class DistributedSingletonService extends AbstractDistributedSingletonService<SingletonContext> {
+public class DistributedSingletonService extends AbstractSingletonService<SingletonContext, Service> {
 
-    private final Consumer<Singleton> singleton;
-
-    public DistributedSingletonService(DistributedSingletonServiceContext context, Service service, Consumer<Singleton> singleton, List<Map.Entry<ServiceName[], DeferredInjector<?>>> injectors) {
-        super(context, new PrimaryServiceLifecycleFactory(context.getServiceName(), service, injectors));
-        this.singleton = singleton;
+    public DistributedSingletonService(SingletonServiceContext context, Function<ServiceTarget, ServiceBuilder<?>> builderFactory, List<Map.Entry<ServiceName[], Consumer<Consumer<?>>>> injectors, Consumer<Singleton> singleton) {
+        super(context, new ServiceFactory(context.getService(), builderFactory, injectors), DefaultSingletonContext::new, singleton);
     }
 
-    @Override
-    public void start(StartContext context) throws StartException {
-        super.start(context);
-        this.singleton.accept(this);
-    }
+    private static class ServiceFactory implements Function<ServiceTarget, Service> {
+        private final org.jboss.msc.Service service;
+        private final Function<ServiceTarget, ServiceBuilder<?>> builderFactory;
+        private final List<Map.Entry<ServiceName[], Consumer<Consumer<?>>>> injectors;
 
-    @Override
-    public SingletonContext get() {
-        return this;
-    }
-
-    private static class PrimaryServiceLifecycleFactory implements Function<ServiceTarget, Lifecycle> {
-        private final ServiceName name;
-        private final Service service;
-        private final List<Map.Entry<ServiceName[], DeferredInjector<?>>> injectors;
-
-        PrimaryServiceLifecycleFactory(ServiceName name, Service service, List<Map.Entry<ServiceName[], DeferredInjector<?>>> injectors) {
-            this.name = name;
+        ServiceFactory(org.jboss.msc.Service service, Function<ServiceTarget, ServiceBuilder<?>> builderFactory, List<Map.Entry<ServiceName[], Consumer<Consumer<?>>>> injectors) {
             this.service = service;
+            this.builderFactory = builderFactory;
             this.injectors = injectors;
         }
 
         @Override
-        public Lifecycle apply(ServiceTarget target) {
-            ServiceBuilder<?> builder = target.addService(this.name);
-            for (Map.Entry<ServiceName[], DeferredInjector<?>> entry : this.injectors) {
-                entry.getValue().setConsumer(builder.provides(entry.getKey()));
+        public Service apply(ServiceTarget target) {
+            ServiceBuilder<?> builder = this.builderFactory.apply(target);
+            for (Map.Entry<ServiceName[], Consumer<Consumer<?>>> entry : this.injectors) {
+                entry.getValue().accept(builder.provides(entry.getKey()));
             }
-            return new ServiceLifecycle(builder.setInstance(this.service).setInitialMode(ServiceController.Mode.NEVER).install());
+            return new ServiceControllerService(builder.setInstance(this.service).setInitialMode(ServiceController.Mode.NEVER).install());
         }
     }
 }

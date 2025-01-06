@@ -1,24 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2011, Red Hat, Inc., and individual contributors
-  ~ as indicated by the @author tags. See the copyright.txt file in the
-  ~ distribution for a full listing of individual contributors.
-  ~
-  ~ This is free software; you can redistribute it and/or modify it
-  ~ under the terms of the GNU Lesser General Public License as
-  ~ published by the Free Software Foundation; either version 2.1 of
-  ~ the License, or (at your option) any later version.
-  ~
-  ~ This software is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  ~ Lesser General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU Lesser General Public
-  ~ License along with this software; if not, write to the Free
-  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -33,7 +16,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
     </parent>
 
     <artifactId>wildfly-testsuite-integration-domain</artifactId>
@@ -62,27 +45,15 @@
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-core-testsuite-shared</artifactId>
             <scope>compile</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-testsuite-shared</artifactId>
             <scope>compile</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.jboss.spec.javax.servlet</groupId>
-            <artifactId>jboss-servlet-api_4.0_spec</artifactId>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -95,12 +66,6 @@
         <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-process-controller</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>*</artifactId>
-                    <groupId>*</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.wildfly.core</groupId>
@@ -109,32 +74,14 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-messaging-activemq-injection</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>*</artifactId>
-                    <groupId>*</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-messaging-activemq-subsystem</artifactId>
-            <exclusions>
-                <exclusion>
-                    <artifactId>*</artifactId>
-                    <groupId>*</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-host-controller</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.jboss.shrinkwrap</groupId>
@@ -147,16 +94,6 @@
         <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-controller</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-launcher</artifactId>
         </dependency>
         <dependency>
             <groupId>org.wildfly.core</groupId>
@@ -165,12 +102,10 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-security</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.launcher</groupId>
+            <artifactId>wildfly-launcher</artifactId>
         </dependency>
         <dependency>
             <groupId>org.jboss.arquillian.junit</groupId>
@@ -190,25 +125,106 @@
             <artifactId>woodstox-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jboss.spec.javax.enterprise.concurrent</groupId>
-            <artifactId>jboss-concurrency-api_1.0_spec</artifactId>
+            <groupId>jakarta.enterprise.concurrent</groupId>
+            <artifactId>jakarta.enterprise.concurrent-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jboss.spec.javax.annotation</groupId>
-            <artifactId>jboss-annotations-api_1.3_spec</artifactId>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jboss.spec.javax.ws.rs</groupId>
-            <artifactId>jboss-jaxrs-api_2.1_spec</artifactId>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
-            <groupId>xom</groupId>
-            <artifactId>xom</artifactId>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-util</artifactId>
+            <scope>test</scope>
         </dependency>
+
         <dependency>
-            <groupId>org.wildfly.galleon-plugins</groupId>
-            <artifactId>transformer</artifactId>
+            <groupId>org.apache.sshd</groupId>
+            <artifactId>sshd-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-provider-util</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-auth</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-credential</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-asn1</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-auth-util</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-http</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-mechanism</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-sasl</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-sasl-anonymous</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-sasl-localuser</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron-ssl</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -230,7 +246,6 @@
                 <configuration>
                     <failIfNoTests>false</failIfNoTests>
                     <!-- parallel>none</parallel -->
-                    <redirectTestOutputToFile>${testLogToFile}</redirectTestOutputToFile>
 
                     <!-- System properties to forked surefire JVM which runs clients. The log manager is required to
                          be defined when building with the IBM JDK. -->
@@ -242,8 +257,8 @@
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <jboss.home>${project.basedir}/target/wildfly</jboss.home>
                         <module.path>${jboss.dist}/modules</module.path>
-                        <jboss.test.host.master.address>${node0}</jboss.test.host.master.address>
-                        <jboss.test.host.slave.address>${node1}</jboss.test.host.slave.address>
+                        <jboss.test.host.primary.address>${node0}</jboss.test.host.primary.address>
+                        <jboss.test.host.secondary.address>${node1}</jboss.test.host.secondary.address>
                         <server.jvm.args>${surefire.system.args} ${jvm.args.ip.server} ${jvm.args.other} ${jvm.args.timeouts} -Djbossas.ts.dir=${jbossas.ts.dir} ${extra.server.jvm.args}</server.jvm.args>
                         <testsuite.default.build.project.prefix>${testsuite.default.build.project.prefix}</testsuite.default.build.project.prefix>
                     </systemPropertyVariables>
@@ -278,7 +293,6 @@
                         <configuration>
                             <failIfNoTests>false</failIfNoTests>
                             <!-- parallel>none</parallel -->
-                            <redirectTestOutputToFile>${testLogToFile}</redirectTestOutputToFile>
 
                             <!-- System properties to forked surefire JVM which runs clients. -->
                             <argLine>${jvm.args.ip.client} ${jvm.args.timeouts} ${surefire.system.args}</argLine>
@@ -288,8 +302,8 @@
                                 <jboss.options>-ea</jboss.options>
                                 <jboss.home>${project.basedir}/target/wildfly</jboss.home>
                                 <module.path>${jboss.dist}/modules</module.path>
-                                <jboss.test.host.master.address>${node0}</jboss.test.host.master.address>
-                                <jboss.test.host.slave.address>${node1}</jboss.test.host.slave.address>
+                                <jboss.test.host.primary.address>${node0}</jboss.test.host.primary.address>
+                                <jboss.test.host.secondary.address>${node1}</jboss.test.host.secondary.address>
                                 <server.jvm.args>${surefire.system.args} ${jvm.args.ip.server} ${jvm.args.other} ${jvm.args.timeouts} -Djbossas.ts.dir=${jbossas.ts.dir} ${extra.server.jvm.args}</server.jvm.args>
                                 <jboss.test.rbac.soak.clients>${jboss.test.rbac.soak.clients}</jboss.test.rbac.soak.clients>
                                 <jboss.test.rbac.soak.iterations>${jboss.test.rbac.soak.iterations}</jboss.test.rbac.soak.iterations>
@@ -306,15 +320,12 @@
 
         <!-- Test against WildFly Preview dist -->
         <profile>
-            <id>ee9.profile</id>
+            <id>preview.profile</id>
             <activation>
                 <property>
-                    <name>ts.ee9</name>
+                    <name>ts.preview</name>
                 </property>
             </activation>
-            <properties>
-                <maven.local.repo>${wildfly.transformed.repo.dir}</maven.local.repo>
-            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -330,18 +341,14 @@
                                     <argLine>-Djava.util.logging.manager=org.jboss.logmanager.LogManager ${jvm.args.ip.client} ${jvm.args.timeouts} ${surefire.system.args}</argLine>
                                     
                                     <systemPropertyVariables>
-                                        <server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir}</server.jvm.args>
-                                        
                                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                         <jboss.home>${project.basedir}/target/wildfly</jboss.home>
                                         <module.path>${jboss.dist}/modules</module.path>
-                                        <jboss.test.host.master.address>${node0}</jboss.test.host.master.address>
-                                        <jboss.test.host.slave.address>${node1}</jboss.test.host.slave.address>
+                                        <jboss.test.host.primary.address>${node0}</jboss.test.host.primary.address>
+                                        <jboss.test.host.secondary.address>${node1}</jboss.test.host.secondary.address>
                                         <server.jvm.args>${surefire.system.args} ${jvm.args.ip.server} ${jvm.args.other} ${jvm.args.timeouts} -Djbossas.ts.dir=${jbossas.ts.dir} ${extra.server.jvm.args}</server.jvm.args>
                                         <testsuite.default.build.project.prefix>${testsuite.default.build.project.prefix}</testsuite.default.build.project.prefix>
                                     </systemPropertyVariables>
-                                    <!-- These include a module to be used which currently uses javax and is not transformed -->
-                                    <excludedGroups>org.jboss.as.test.shared.categories.RequiresTransformedClass</excludedGroups>
                                 </configuration>
                             </execution>
                         </executions>

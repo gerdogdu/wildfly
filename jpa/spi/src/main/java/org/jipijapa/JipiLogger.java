@@ -1,28 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jipijapa;
 
 import static org.jboss.logging.Logger.Level.WARN;
+
+import java.lang.invoke.MethodHandles;
 
 import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Logger;
@@ -42,12 +27,12 @@ public interface JipiLogger extends BasicLogger {
     /**
      * A logger with the category {@code org.jboss.jpa}.
      */
-    JipiLogger JPA_LOGGER = Logger.getMessageLogger(JipiLogger.class, "org.jipijapa");
+    JipiLogger JPA_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), JipiLogger.class, "org.jipijapa");
 
 
     /**
      * warn that the entity class could not be loaded with the
-     * {@link javax.persistence.spi.PersistenceUnitInfo#getClassLoader()}.
+     * {@link jakarta.persistence.spi.PersistenceUnitInfo#getClassLoader()}.
      *
      * @param cause     the cause of the error.
      * @param className the entity class name.

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat Middleware LLC, and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.webservices.deployers;
 
@@ -35,8 +18,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import javax.jws.WebService;
-import javax.xml.ws.WebServiceProvider;
+import jakarta.jws.WebService;
+import jakarta.xml.ws.WebServiceProvider;
 
 import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.EEModuleClassDescription;
@@ -114,8 +97,8 @@ public final class WSIntegrationProcessorJAXWS_EJB implements DeploymentUnitProc
     }
 
     private static WebContextAnnotationWrapper getWebContextWrapper(final ClassInfo webServiceClassInfo) {
-        if (!webServiceClassInfo.annotations().containsKey(WEB_CONTEXT_ANNOTATION)) return new WebContextAnnotationWrapper(null);
-        final AnnotationInstance webContextAnnotation = webServiceClassInfo.annotations().get(WEB_CONTEXT_ANNOTATION).get(0);
+        if (!webServiceClassInfo.annotationsMap().containsKey(WEB_CONTEXT_ANNOTATION)) return new WebContextAnnotationWrapper(null);
+        final AnnotationInstance webContextAnnotation = webServiceClassInfo.annotationsMap().get(WEB_CONTEXT_ANNOTATION).get(0);
         return new WebContextAnnotationWrapper(webContextAnnotation);
     }
 
@@ -150,8 +133,8 @@ public final class WSIntegrationProcessorJAXWS_EJB implements DeploymentUnitProc
         }
 
         // process @RolesAllowed annotation
-        if (webServiceClassInfo.annotations().containsKey(ROLES_ALLOWED_ANNOTATION)) {
-            final List<AnnotationInstance> allowedRoles = webServiceClassInfo.annotations().get(ROLES_ALLOWED_ANNOTATION);
+        if (webServiceClassInfo.annotationsMap().containsKey(ROLES_ALLOWED_ANNOTATION)) {
+            final List<AnnotationInstance> allowedRoles = webServiceClassInfo.annotationsMap().get(ROLES_ALLOWED_ANNOTATION);
             for (final AnnotationInstance allowedRole : allowedRoles) {
                 if (allowedRole.target().equals(webServiceClassInfo)) {
                    for (final String roleName : allowedRole.value().asStringArray()) {
@@ -162,8 +145,8 @@ public final class WSIntegrationProcessorJAXWS_EJB implements DeploymentUnitProc
         }
 
         // process @DeclareRoles annotation
-        if (webServiceClassInfo.annotations().containsKey(DECLARE_ROLES_ANNOTATION)) {
-            final List<AnnotationInstance> declareRoles = webServiceClassInfo.annotations().get(DECLARE_ROLES_ANNOTATION);
+        if (webServiceClassInfo.annotationsMap().containsKey(DECLARE_ROLES_ANNOTATION)) {
+            final List<AnnotationInstance> declareRoles = webServiceClassInfo.annotationsMap().get(DECLARE_ROLES_ANNOTATION);
             for (final AnnotationInstance declareRole : declareRoles) {
                 if (declareRole.target().equals(webServiceClassInfo)) {
                    for (final String roleName : declareRole.value().asStringArray()) {
@@ -174,8 +157,8 @@ public final class WSIntegrationProcessorJAXWS_EJB implements DeploymentUnitProc
         }
 
         // process @PermitAll annotation
-        if (webServiceClassInfo.annotations().containsKey(PERMIT_ALL_ANNOTATION)) {
-            for (AnnotationInstance permitAll : webServiceClassInfo.annotations().get(PERMIT_ALL_ANNOTATION)) {
+        if (webServiceClassInfo.annotationsMap().containsKey(PERMIT_ALL_ANNOTATION)) {
+            for (AnnotationInstance permitAll : webServiceClassInfo.annotationsMap().get(PERMIT_ALL_ANNOTATION)) {
                 if (permitAll.target().equals(webServiceClassInfo)) {
                     securityRoles.add("*");
                     break;

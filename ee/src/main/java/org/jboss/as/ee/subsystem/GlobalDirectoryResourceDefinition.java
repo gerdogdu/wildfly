@@ -1,17 +1,6 @@
 /*
- * Copyright 2019 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.subsystem;
@@ -20,7 +9,6 @@ import static org.jboss.as.controller.OperationContext.Stage.MODEL;
 import static org.jboss.as.controller.SimpleAttributeDefinitionBuilder.create;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.FILESYSTEM_PATH;
 import static org.jboss.as.ee.subsystem.EeCapabilities.EE_GLOBAL_DIRECTORY_CAPABILITY;
-import static org.jboss.as.ee.subsystem.EeCapabilities.PATH_MANAGER_CAPABILITY;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -73,11 +61,9 @@ public class GlobalDirectoryResourceDefinition extends PersistentResourceDefinit
     static final SimpleAttributeDefinition[] ATTRIBUTES = new SimpleAttributeDefinition[]{PATH, RELATIVE_TO};
 
     private static final AbstractAddStepHandler ADD = new GlobalDirectoryAddHandler();
-    private static final AbstractRemoveStepHandler REMOVE = new ReloadRequiredRemoveStepHandler();
+    private static final AbstractRemoveStepHandler REMOVE = ReloadRequiredRemoveStepHandler.INSTANCE;
 
-    public static final GlobalDirectoryResourceDefinition INSTANCE = new GlobalDirectoryResourceDefinition();
-
-    public GlobalDirectoryResourceDefinition() {
+    GlobalDirectoryResourceDefinition() {
         super(new SimpleResourceDefinition.Parameters(PathElement.pathElement(EESubsystemModel.GLOBAL_DIRECTORY), EeExtension.getResourceDescriptionResolver(EESubsystemModel.GLOBAL_DIRECTORY))
                 .setAddHandler(GlobalDirectoryResourceDefinition.ADD)
                 .setRemoveHandler(GlobalDirectoryResourceDefinition.REMOVE)
@@ -123,7 +109,7 @@ public class GlobalDirectoryResourceDefinition extends PersistentResourceDefinit
             final CapabilityServiceBuilder<?> serviceBuilder = context.getCapabilityServiceTarget()
                     .addCapability(EE_GLOBAL_DIRECTORY_CAPABILITY);
             final Consumer<GlobalDirectory> provides = serviceBuilder.provides(EE_GLOBAL_DIRECTORY_CAPABILITY);
-            final Supplier<PathManager> pathManagerSupplier = serviceBuilder.requiresCapability(PATH_MANAGER_CAPABILITY, PathManager.class);
+            final Supplier<PathManager> pathManagerSupplier = serviceBuilder.requires(PathManager.SERVICE_DESCRIPTOR);
 
             Service globalDirectoryService = new GlobalDirectoryService(pathManagerSupplier, provides, context.getCurrentAddressValue(), path, relativeTo);
 

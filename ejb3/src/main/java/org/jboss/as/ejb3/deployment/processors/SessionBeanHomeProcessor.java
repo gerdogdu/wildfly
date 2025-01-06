@@ -1,31 +1,14 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.deployment.processors;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import javax.ejb.EJBHome;
-import javax.ejb.Handle;
+import jakarta.ejb.EJBHome;
+import jakarta.ejb.Handle;
 
 import org.jboss.as.ee.component.ComponentConfiguration;
 import org.jboss.as.ee.component.ComponentDescription;
@@ -39,7 +22,6 @@ import org.jboss.as.ee.component.ViewService;
 import org.jboss.as.ee.component.deployers.AbstractComponentConfigProcessor;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
 import org.jboss.as.ee.utils.ClassLoadingUtils;
-import org.jboss.as.ejb3.component.EJBComponentDescription;
 import org.jboss.as.ejb3.component.EJBViewDescription;
 import org.jboss.as.ejb3.component.interceptors.EjbMetadataInterceptor;
 import org.jboss.as.ejb3.component.interceptors.HomeRemoveInterceptor;
@@ -101,7 +83,18 @@ public class SessionBeanHomeProcessor extends AbstractComponentConfigProcessor {
                             throw EjbLogger.ROOT_LOGGER.invalidEjbLocalInterface(componentDescription.getComponentName());
                         }
 
-                        Method initMethod = resolveInitMethod(ejbComponentDescription, method);
+                        Method initMethod;
+                        if (ejbComponentDescription instanceof StatelessComponentDescription) {
+                            initMethod = null;
+                        } else if (ejbComponentDescription instanceof StatefulComponentDescription) {
+                            initMethod = resolveStatefulInitMethod((StatefulComponentDescription) ejbComponentDescription, method);
+                            if (initMethod == null) {
+                                continue;
+                            }
+                        } else {
+                            throw EjbLogger.ROOT_LOGGER.localHomeNotAllow(ejbComponentDescription);
+                        }
+
                         final SessionBeanHomeInterceptorFactory factory = new SessionBeanHomeInterceptorFactory(initMethod);
                         //add a dependency on the view to create
 
@@ -152,17 +145,6 @@ public class SessionBeanHomeProcessor extends AbstractComponentConfigProcessor {
     }
 
 
-    private Method resolveInitMethod(final EJBComponentDescription description, final Method method) throws DeploymentUnitProcessingException {
-        if (description instanceof StatelessComponentDescription) {
-            return null;
-        } else if (description instanceof StatefulComponentDescription) {
-            return resolveStatefulInitMethod((StatefulComponentDescription) description, method);
-        } else {
-            throw EjbLogger.ROOT_LOGGER.localHomeNotAllow(description);
-        }
-    }
-
-
     private Method resolveStatefulInitMethod(final StatefulComponentDescription description, final Method method) throws DeploymentUnitProcessingException {
 
         //for a SFSB we need to resolve the corresponding init method for this create method
@@ -190,7 +172,11 @@ public class SessionBeanHomeProcessor extends AbstractComponentConfigProcessor {
             }
         }
         if (initMethod == null) {
-            throw EjbLogger.ROOT_LOGGER.failToCallEjbCreateForHomeInterface(method, description.getEJBClassName());
+            for (Class<?> exceptionClass : method.getExceptionTypes()) {
+                if (jakarta.ejb.CreateException.class == exceptionClass) {
+                    throw EjbLogger.ROOT_LOGGER.failToCallEjbCreateForHomeInterface(method, description.getEJBClassName());
+                }
+            }
         }
         return initMethod;
     }

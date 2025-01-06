@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.domain.suites;
 
@@ -42,7 +25,6 @@ import org.jboss.as.controller.client.OperationBuilder;
 import org.jboss.as.controller.client.helpers.domain.DomainClient;
 import org.jboss.as.test.integration.domain.management.util.DomainLifecycleUtil;
 import org.jboss.as.test.integration.domain.management.util.DomainTestSupport;
-import org.jboss.as.test.integration.domain.util.EENamespaceTransformer;
 import org.jboss.as.test.integration.management.util.MgmtOperationException;
 import org.jboss.as.test.integration.management.util.ModelUtil;
 import org.jboss.as.test.integration.management.util.SimpleServlet;
@@ -63,7 +45,7 @@ import org.junit.Test;
  */
 public class ModelPersistenceTestCase {
 
-    enum Host { MASTER, SLAVE }
+    enum Host { PRIMARY, SECONDARY }
 
     private class CfgFileDescription {
 
@@ -77,51 +59,51 @@ public class ModelPersistenceTestCase {
         public long hash;
     }
     private static DomainTestSupport domainSupport;
-    private static DomainLifecycleUtil domainMasterLifecycleUtil;
-    private static DomainLifecycleUtil domainSlaveLifecycleUtil;
+    private static DomainLifecycleUtil domainPrimaryLifecycleUtil;
+    private static DomainLifecycleUtil domainSecondaryLifecycleUtil;
     private static final String DOMAIN_HISTORY_DIR = "domain_xml_history";
     private static final String HOST_HISTORY_DIR = "host_xml_history";
     private static final String CONFIG_DIR = "configuration";
     private static final String CURRENT_DIR = "current";
-    private static final String MASTER_DIR = "master";
-    private static final String SLAVE_DIR = "slave";
+    private static final String PRIMARY_DIR = "primary";
+    private static final String SECONDARY_DIR = "secondary";
     private static final String DOMAIN_NAME = "testing-domain-standard";
-    private static final String MASTER_NAME = "testing-host-master";
-    private static final String SLAVE_NAME = "testing-host-slave";
+    private static final String PRIMARY_NAME = "testing-host-primary";
+    private static final String SECONDARY_NAME = "testing-host-secondary";
     private static File domainCurrentCfgDir;
-    private static File masterCurrentCfgDir;
-    private static File slaveCurrentCfgDir;
+    private static File primaryCurrentCfgDir;
+    private static File secondaryCurrentCfgDir;
     private static File domainLastCfgFile;
-    private static File masterLastCfgFile;
-    private static File slaveLastCfgFile;
+    private static File primaryLastCfgFile;
+    private static File secondaryLastCfgFile;
 
     @BeforeClass
     public static void initDomain() throws Exception {
         domainSupport = DomainTestSuite.createSupport(ModelPersistenceTestCase.class.getSimpleName());
-        domainMasterLifecycleUtil = domainSupport.getDomainMasterLifecycleUtil();
-        domainSlaveLifecycleUtil = domainSupport.getDomainSlaveLifecycleUtil();
+        domainPrimaryLifecycleUtil = domainSupport.getDomainPrimaryLifecycleUtil();
+        domainSecondaryLifecycleUtil = domainSupport.getDomainSecondaryLifecycleUtil();
 
-        File masterDir = new File(domainSupport.getDomainMasterConfiguration().getDomainDirectory());
-        File slaveDir = new File(domainSupport.getDomainSlaveConfiguration().getDomainDirectory());
-        domainCurrentCfgDir = new File(masterDir, CONFIG_DIR
+        File primaryDir = new File(domainSupport.getDomainPrimaryConfiguration().getDomainDirectory());
+        File secondaryDir = new File(domainSupport.getDomainSecondaryConfiguration().getDomainDirectory());
+        domainCurrentCfgDir = new File(primaryDir, CONFIG_DIR
                 + File.separator + DOMAIN_HISTORY_DIR + File.separator + CURRENT_DIR);
-        masterCurrentCfgDir = new File(masterDir,  CONFIG_DIR
+        primaryCurrentCfgDir = new File(primaryDir,  CONFIG_DIR
                 + File.separator + HOST_HISTORY_DIR + File.separator + CURRENT_DIR);
-        slaveCurrentCfgDir = new File(slaveDir, CONFIG_DIR
+        secondaryCurrentCfgDir = new File(secondaryDir, CONFIG_DIR
                 + File.separator + HOST_HISTORY_DIR + File.separator + CURRENT_DIR);
-        domainLastCfgFile = new File(masterDir, CONFIG_DIR + File.separator
+        domainLastCfgFile = new File(primaryDir, CONFIG_DIR + File.separator
                 + DOMAIN_HISTORY_DIR + File.separator + DOMAIN_NAME + ".last.xml");
-        masterLastCfgFile = new File(masterDir, CONFIG_DIR + File.separator
-                + HOST_HISTORY_DIR + File.separator + MASTER_NAME + ".last.xml");
-        slaveLastCfgFile = new File(slaveDir, CONFIG_DIR + File.separator
-                + HOST_HISTORY_DIR + File.separator + SLAVE_NAME + ".last.xml");
+        primaryLastCfgFile = new File(primaryDir, CONFIG_DIR + File.separator
+                + HOST_HISTORY_DIR + File.separator + PRIMARY_NAME + ".last.xml");
+        secondaryLastCfgFile = new File(secondaryDir, CONFIG_DIR + File.separator
+                + HOST_HISTORY_DIR + File.separator + SECONDARY_NAME + ".last.xml");
     }
 
     @AfterClass
     public static void shutdownDomain() {
         domainSupport = null;
-        domainMasterLifecycleUtil = null;
-        domainSlaveLifecycleUtil = null;
+        domainPrimaryLifecycleUtil = null;
+        domainSecondaryLifecycleUtil = null;
         DomainTestSuite.stopSupport();
     }
 
@@ -153,10 +135,10 @@ public class ModelPersistenceTestCase {
 
     private void testDomainOperation(ModelNode operation) throws Exception {
 
-        DomainClient client = domainMasterLifecycleUtil.getDomainClient();
+        DomainClient client = domainPrimaryLifecycleUtil.getDomainClient();
         CfgFileDescription lastBackupDesc = getLatestBackup(domainCurrentCfgDir);
-        CfgFileDescription lastMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-        CfgFileDescription lastSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
+        CfgFileDescription lastPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+        CfgFileDescription lastSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
         long lastFileHash = domainLastCfgFile.exists() ? FileUtils.checksumCRC32(domainLastCfgFile) : -1;
 
         // execute operation so the model gets updated
@@ -168,11 +150,11 @@ public class ModelPersistenceTestCase {
         // check that the version is incremented by one
         Assert.assertTrue(lastBackupDesc.version == newBackupDesc.version - 1);
 
-        // check that the both master and slave host snapshot have not been generated
-        CfgFileDescription newMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-        CfgFileDescription newSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
-        Assert.assertTrue(lastMasterBackupDesc.version == newMasterBackupDesc.version);
-        Assert.assertTrue(lastSlaveBackupDesc.version == newSlaveBackupDesc.version);
+        // check that the both primary and secondary host snapshot have not been generated
+        CfgFileDescription newPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+        CfgFileDescription newSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
+        Assert.assertTrue(lastPrimaryBackupDesc.version == newPrimaryBackupDesc.version);
+        Assert.assertTrue(lastSecondaryBackupDesc.version == newSecondaryBackupDesc.version);
 
         // check that the last cfg file has changed
         Assert.assertTrue(lastFileHash != FileUtils.checksumCRC32(domainLastCfgFile));
@@ -181,11 +163,11 @@ public class ModelPersistenceTestCase {
     @Test
     public void testDomainOperationRollback() throws Exception {
 
-        DomainClient client = domainMasterLifecycleUtil.getDomainClient();
+        DomainClient client = domainPrimaryLifecycleUtil.getDomainClient();
 
         CfgFileDescription lastDomainBackupDesc = getLatestBackup(domainCurrentCfgDir);
-        CfgFileDescription lastMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-        CfgFileDescription lastSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
+        CfgFileDescription lastPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+        CfgFileDescription lastSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
 
         // execute operation so the model gets updated
         ModelNode op = ModelUtil.createOpNode("system-property=model-persistence-test", "add");
@@ -194,120 +176,120 @@ public class ModelPersistenceTestCase {
 
         // check that the model has not been updated
         CfgFileDescription newDomainBackupDesc = getLatestBackup(domainCurrentCfgDir);
-        CfgFileDescription newMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-        CfgFileDescription newSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
+        CfgFileDescription newPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+        CfgFileDescription newSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
 
         // check that the configs did not change
         Assert.assertTrue(lastDomainBackupDesc.version == newDomainBackupDesc.version);
-        Assert.assertTrue(lastMasterBackupDesc.version == newMasterBackupDesc.version);
-        Assert.assertTrue(lastSlaveBackupDesc.version == newSlaveBackupDesc.version);
+        Assert.assertTrue(lastPrimaryBackupDesc.version == newPrimaryBackupDesc.version);
+        Assert.assertTrue(lastSecondaryBackupDesc.version == newSecondaryBackupDesc.version);
     }
 
     @Test
     public void testSimpleHostOperation() throws Exception {
 
-        // using master DC
-        ModelNode op = ModelUtil.createOpNode("host=master/system-property=model-persistence-test", ADD);
+        // using primary DC
+        ModelNode op = ModelUtil.createOpNode("host=primary/system-property=model-persistence-test", ADD);
         op.get(VALUE).set("test");
-        testHostOperation(op, Host.MASTER, Host.MASTER);
-        op = ModelUtil.createOpNode("host=master/system-property=model-persistence-test", REMOVE);
-        testHostOperation(op, Host.MASTER, Host.MASTER);
+        testHostOperation(op, Host.PRIMARY, Host.PRIMARY);
+        op = ModelUtil.createOpNode("host=primary/system-property=model-persistence-test", REMOVE);
+        testHostOperation(op, Host.PRIMARY, Host.PRIMARY);
 
-        op = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", ADD);
+        op = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", ADD);
         op.get(VALUE).set("test");
-        testHostOperation(op, Host.MASTER, Host.SLAVE);
-        op = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", REMOVE);
-        testHostOperation(op, Host.MASTER, Host.SLAVE);
+        testHostOperation(op, Host.PRIMARY, Host.SECONDARY);
+        op = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", REMOVE);
+        testHostOperation(op, Host.PRIMARY, Host.SECONDARY);
 
-        // using slave HC
-        op = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", ADD);
+        // using secondary HC
+        op = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", ADD);
         op.get(VALUE).set("test");
-        testHostOperation(op, Host.SLAVE, Host.SLAVE);
-        op = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", REMOVE);
-        testHostOperation(op, Host.SLAVE, Host.SLAVE);
+        testHostOperation(op, Host.SECONDARY, Host.SECONDARY);
+        op = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", REMOVE);
+        testHostOperation(op, Host.SECONDARY, Host.SECONDARY);
     }
 
     @Test
     public void testCompositeHostOperation() throws Exception {
 
-        // test op on master using master controller
+        // test op on primary using primary controller
         ModelNode[] steps = new ModelNode[2];
-        steps[0] = ModelUtil.createOpNode("host=master/system-property=model-persistence-test", ADD);
+        steps[0] = ModelUtil.createOpNode("host=primary/system-property=model-persistence-test", ADD);
         steps[0].get(VALUE).set("test");
-        steps[1] = ModelUtil.createOpNode("host=master/system-property=model-persistence-test", "write-attribute");
+        steps[1] = ModelUtil.createOpNode("host=primary/system-property=model-persistence-test", "write-attribute");
         steps[1].get(NAME).set("value");
         steps[1].get(VALUE).set("test2");
-        testHostOperation(ModelUtil.createCompositeNode(steps),Host.MASTER, Host.MASTER);
+        testHostOperation(ModelUtil.createCompositeNode(steps),Host.PRIMARY, Host.PRIMARY);
 
-        ModelNode op = ModelUtil.createOpNode("host=master/system-property=model-persistence-test", REMOVE);
-        testHostOperation(op,Host.MASTER,  Host.MASTER);
+        ModelNode op = ModelUtil.createOpNode("host=primary/system-property=model-persistence-test", REMOVE);
+        testHostOperation(op,Host.PRIMARY,  Host.PRIMARY);
 
-        // test op on slave using master controller
-        steps[0] = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", ADD);
+        // test op on secondary using primary controller
+        steps[0] = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", ADD);
         steps[0].get(VALUE).set("test");
-        steps[1] = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", "write-attribute");
+        steps[1] = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", "write-attribute");
         steps[1].get(NAME).set("value");
         steps[1].get(VALUE).set("test2");
-        testHostOperation(ModelUtil.createCompositeNode(steps),Host.MASTER,  Host.SLAVE);
+        testHostOperation(ModelUtil.createCompositeNode(steps),Host.PRIMARY,  Host.SECONDARY);
 
-        op = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", REMOVE);
-        testHostOperation(op,Host.MASTER,  Host.SLAVE);
+        op = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", REMOVE);
+        testHostOperation(op,Host.PRIMARY,  Host.SECONDARY);
 
-        // test op on slave using slave controller
-        steps[0] = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", ADD);
+        // test op on secondary using secondary controller
+        steps[0] = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", ADD);
         steps[0].get(VALUE).set("test");
-        steps[1] = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", "write-attribute");
+        steps[1] = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", "write-attribute");
         steps[1].get(NAME).set("value");
         steps[1].get(VALUE).set("test2");
-        testHostOperation(ModelUtil.createCompositeNode(steps), Host.SLAVE,  Host.SLAVE);
+        testHostOperation(ModelUtil.createCompositeNode(steps), Host.SECONDARY,  Host.SECONDARY);
 
-        op = ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", REMOVE);
-        testHostOperation(op, Host.SLAVE,  Host.SLAVE);
+        op = ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", REMOVE);
+        testHostOperation(op, Host.SECONDARY,  Host.SECONDARY);
 
     }
 
     @Test
     public void testHostOperationRollback() throws Exception {
 
-        DomainClient client = domainMasterLifecycleUtil.getDomainClient();
+        DomainClient client = domainPrimaryLifecycleUtil.getDomainClient();
 
         for (Host host : Host.values()) {
 
             CfgFileDescription lastDomainBackupDesc = getLatestBackup(domainCurrentCfgDir);
-            CfgFileDescription lastMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-            CfgFileDescription lastSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
+            CfgFileDescription lastPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+            CfgFileDescription lastSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
 
             // execute operation so the model gets updated
-            ModelNode op = host.equals(Host.MASTER) ?
-                    ModelUtil.createOpNode("host=master/system-property=model-persistence-test", "add") :
-                    ModelUtil.createOpNode("host=slave/system-property=model-persistence-test", "add") ;
+            ModelNode op = host.equals(Host.PRIMARY) ?
+                    ModelUtil.createOpNode("host=primary/system-property=model-persistence-test", "add") :
+                    ModelUtil.createOpNode("host=secondary/system-property=model-persistence-test", "add") ;
             op.get(VALUE).set("test");
             executeAndRollbackOperation(client, op);
 
             // check that the model has not been updated
             CfgFileDescription newDomainBackupDesc = getLatestBackup(domainCurrentCfgDir);
-            CfgFileDescription newMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-            CfgFileDescription newSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
+            CfgFileDescription newPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+            CfgFileDescription newSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
 
             // check that the configs did not change
             Assert.assertTrue(lastDomainBackupDesc.version == newDomainBackupDesc.version);
-            Assert.assertTrue(lastMasterBackupDesc.version == newMasterBackupDesc.version);
-            Assert.assertTrue(lastSlaveBackupDesc.version == newSlaveBackupDesc.version);
+            Assert.assertTrue(lastPrimaryBackupDesc.version == newPrimaryBackupDesc.version);
+            Assert.assertTrue(lastSecondaryBackupDesc.version == newSecondaryBackupDesc.version);
 
         }
     }
 
     private void testHostOperation(ModelNode operation, Host controller, Host target) throws Exception {
 
-        DomainClient client = controller.equals(Host.MASTER) ?
-                domainMasterLifecycleUtil.getDomainClient() : domainSlaveLifecycleUtil.getDomainClient();
+        DomainClient client = controller.equals(Host.PRIMARY) ?
+                domainPrimaryLifecycleUtil.getDomainClient() : domainSecondaryLifecycleUtil.getDomainClient();
 
         CfgFileDescription lastDomainBackupDesc = getLatestBackup(domainCurrentCfgDir);
-        CfgFileDescription lastMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-        CfgFileDescription lastSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
+        CfgFileDescription lastPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+        CfgFileDescription lastSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
         long lastDomainFileHash = domainLastCfgFile.exists() ? FileUtils.checksumCRC32(domainLastCfgFile) : -1;
-        long lastMasterFileHash = masterLastCfgFile.exists() ? FileUtils.checksumCRC32(masterLastCfgFile) : -1;
-        long lastSlaveFileHash = slaveLastCfgFile.exists() ? FileUtils.checksumCRC32(slaveLastCfgFile) : -1;
+        long lastPrimaryFileHash = primaryLastCfgFile.exists() ? FileUtils.checksumCRC32(primaryLastCfgFile) : -1;
+        long lastSecondaryFileHash = secondaryLastCfgFile.exists() ? FileUtils.checksumCRC32(secondaryLastCfgFile) : -1;
 
         // execute operation so the model gets updated
         executeOperation(client, operation);
@@ -317,18 +299,18 @@ public class ModelPersistenceTestCase {
         Assert.assertTrue(lastDomainBackupDesc.version == newDomainBackupDesc.version);
 
         // check that only the appropriate host snapshot has been generated
-        CfgFileDescription newMasterBackupDesc = getLatestBackup(masterCurrentCfgDir);
-        CfgFileDescription newSlaveBackupDesc = getLatestBackup(slaveCurrentCfgDir);
-        if (target == Host.MASTER) {
-            Assert.assertTrue(lastMasterBackupDesc.version == newMasterBackupDesc.version - 1);
-            Assert.assertTrue(lastSlaveBackupDesc.version == newSlaveBackupDesc.version);
-            Assert.assertTrue(lastMasterFileHash != FileUtils.checksumCRC32(masterLastCfgFile));
-            Assert.assertTrue(lastSlaveFileHash == FileUtils.checksumCRC32(slaveLastCfgFile));
+        CfgFileDescription newPrimaryBackupDesc = getLatestBackup(primaryCurrentCfgDir);
+        CfgFileDescription newSecondaryBackupDesc = getLatestBackup(secondaryCurrentCfgDir);
+        if (target == Host.PRIMARY) {
+            Assert.assertTrue(lastPrimaryBackupDesc.version == newPrimaryBackupDesc.version - 1);
+            Assert.assertTrue(lastSecondaryBackupDesc.version == newSecondaryBackupDesc.version);
+            Assert.assertTrue(lastPrimaryFileHash != FileUtils.checksumCRC32(primaryLastCfgFile));
+            Assert.assertTrue(lastSecondaryFileHash == FileUtils.checksumCRC32(secondaryLastCfgFile));
         } else {
-            Assert.assertTrue(lastMasterBackupDesc.version == newMasterBackupDesc.version);
-            Assert.assertTrue(lastSlaveBackupDesc.version == newSlaveBackupDesc.version - 1);
-            Assert.assertTrue(lastMasterFileHash == FileUtils.checksumCRC32(masterLastCfgFile));
-            Assert.assertTrue(lastSlaveFileHash != FileUtils.checksumCRC32(slaveLastCfgFile));
+            Assert.assertTrue(lastPrimaryBackupDesc.version == newPrimaryBackupDesc.version);
+            Assert.assertTrue(lastSecondaryBackupDesc.version == newSecondaryBackupDesc.version - 1);
+            Assert.assertTrue(lastPrimaryFileHash == FileUtils.checksumCRC32(primaryLastCfgFile));
+            Assert.assertTrue(lastSecondaryFileHash != FileUtils.checksumCRC32(secondaryLastCfgFile));
         }
         Assert.assertTrue(lastDomainBackupDesc.version == newDomainBackupDesc.version);
         Assert.assertTrue(lastDomainFileHash == FileUtils.checksumCRC32(domainLastCfgFile));
@@ -338,7 +320,7 @@ public class ModelPersistenceTestCase {
     @Test
     public void testTakeAndDeleteSnapshot() throws Exception {
 
-        DomainClient client = domainMasterLifecycleUtil.getDomainClient();
+        DomainClient client = domainPrimaryLifecycleUtil.getDomainClient();
 
         // take snapshot
         ModelNode op = ModelUtil.createOpNode(null, "take-snapshot");
@@ -376,7 +358,7 @@ public class ModelPersistenceTestCase {
 
                 String fileName = file.getName();
                 String[] nameParts = fileName.split("\\.");
-                if (! (nameParts[0].contains(DOMAIN_NAME) || nameParts[0].contains(MASTER_NAME) || nameParts[0].contains(SLAVE_NAME) )) {
+                if (! (nameParts[0].contains(DOMAIN_NAME) || nameParts[0].contains(PRIMARY_NAME) || nameParts[0].contains(SECONDARY_NAME) )) {
                     continue;
                 }
                 if (!nameParts[2].equals("xml")) {
@@ -437,7 +419,7 @@ public class ModelPersistenceTestCase {
         war.addAsWebInfResource(new StringAsset("Malformed"), "web.xml");
         File brokenWar = new File(System.getProperty("java.io.tmpdir") + File.separator + "malformedDeployment.war");
         brokenWar.deleteOnExit();
-        EENamespaceTransformer.jakartaTransform(new ZipExporterImpl(war), brokenWar);
+        new ZipExporterImpl(war).exportTo(brokenWar, true);
         return brokenWar;
     }
 }

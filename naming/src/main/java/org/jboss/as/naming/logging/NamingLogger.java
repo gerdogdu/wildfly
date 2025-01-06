@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.naming.logging;
@@ -26,6 +9,7 @@ import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
+import java.lang.invoke.MethodHandles;
 import java.security.Permission;
 
 import javax.naming.Context;
@@ -46,8 +30,8 @@ import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
-import org.jboss.modules.ModuleIdentifier;
 import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.StartException;
 
 /**
  * Date: 17.06.2011
@@ -60,7 +44,7 @@ public interface NamingLogger extends BasicLogger {
     /**
      * The root logger with a category of the package name.
      */
-    NamingLogger ROOT_LOGGER = Logger.getMessageLogger(NamingLogger.class, "org.jboss.as.naming");
+    NamingLogger ROOT_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), NamingLogger.class, "org.jboss.as.naming");
 
     /**
      * Logs an informational message indicating the naming subsystem is being activated.
@@ -497,7 +481,7 @@ public interface NamingLogger extends BasicLogger {
      * @return the exception
      */
     @Message(id = 52, value = "Could not load module %s")
-    OperationFailedException couldNotLoadModule(ModuleIdentifier moduleID);
+    OperationFailedException couldNotLoadModule(String moduleID);
 
     /**
      * Creates an exception indicating that a class could not be loaded from a module.
@@ -506,7 +490,7 @@ public interface NamingLogger extends BasicLogger {
      * @return the exception
      */
     @Message(id = 53, value = "Could not load class %s from module %s")
-    OperationFailedException couldNotLoadClassFromModule(String className, ModuleIdentifier moduleID);
+    OperationFailedException couldNotLoadClassFromModule(String className, String moduleID);
 
     /**
      * Creates an exception indicating that a class instance could not be instantiate, from the specified module.
@@ -515,7 +499,7 @@ public interface NamingLogger extends BasicLogger {
      * @return the exception
      */
     @Message(id = 54, value = "Could not instantiate instance of class %s from module %s")
-    OperationFailedException couldNotInstantiateClassInstanceFromModule(String className, ModuleIdentifier moduleID);
+    OperationFailedException couldNotInstantiateClassInstanceFromModule(String className, String moduleID);
 
     /**
      * Creates an exception indicating that a class is not an {@link javax.naming.spi.ObjectFactory} instance, from the specified module.
@@ -524,7 +508,7 @@ public interface NamingLogger extends BasicLogger {
      * @return the exception
      */
     @Message(id = 55, value = "Class %s from module %s is not an instance of ObjectFactory")
-    OperationFailedException notAnInstanceOfObjectFactory(String className, ModuleIdentifier moduleID);
+    OperationFailedException notAnInstanceOfObjectFactory(String className, String moduleID);
 
 //    /**
 //     * A "simple URL" binding add operation was failed by the operation transformer.
@@ -594,5 +578,11 @@ public interface NamingLogger extends BasicLogger {
     OperationFailedException cannotRebindExternalContext();
 
     @Message(id = 65, value = "Could not load module %s - the module or one of its dependencies is missing [%s]")
-    OperationFailedException moduleNotFound(ModuleIdentifier moduleID, String missingModule);
+    OperationFailedException moduleNotFound(String moduleID, String missingModule);
+
+    @Message(id = 66, value = "Failed to start remote naming service")
+    StartException failedToStartRemoteNamingService(@Cause Throwable cause);
+
+    @Message(id = 67, value = "Failed to stop remote naming service")
+    IllegalStateException failedToStopRemoteNamingService(@Cause Throwable cause);
 }

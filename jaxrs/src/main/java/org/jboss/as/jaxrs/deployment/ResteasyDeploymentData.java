@@ -1,30 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.jaxrs.deployment;
 
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 
-import javax.ws.rs.core.Application;
+import jakarta.ws.rs.core.Application;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,17 +21,17 @@ public class ResteasyDeploymentData {
     private boolean scanResources;
     private boolean scanProviders;
     private boolean dispatcherCreated;
-    private final Set<String> scannedResourceClasses = new LinkedHashSet<String>();
-    private final Set<String> scannedProviderClasses = new LinkedHashSet<String>();
-    private List<Class<? extends Application>> scannedApplicationClasses = new ArrayList<>();
+    private final Set<String> scannedResourceClasses = new LinkedHashSet<>();
+    private final Set<String> scannedProviderClasses = new LinkedHashSet<>();
+    private final List<Class<? extends Application>> scannedApplicationClasses = new ArrayList<>();
     private boolean bootClasses;
     private boolean unwrappedExceptionsParameterSet;
-    private final Set<String> scannedJndiComponentResources = new LinkedHashSet<String>();
+    private final Set<String> scannedJndiComponentResources = new LinkedHashSet<>();
 
     /**
      * Merges a list of additional Jakarta RESTful Web Services deployment data with this lot of deployment data.
      *
-     * @param deploymentData
+     * @param deploymentData the deployment data to merge
      */
     public void merge(final List<ResteasyDeploymentData> deploymentData) throws DeploymentUnitProcessingException {
         for (ResteasyDeploymentData data : deploymentData) {

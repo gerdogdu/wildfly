@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.weld.ejb;
@@ -26,12 +9,14 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.PrivilegedAction;
 
-import org.infinispan.protostream.SerializationContext;
 import org.jboss.weld.ejb.api.SessionObjectReference;
 import org.jboss.weld.manager.BeanManagerImpl;
 import org.jboss.weld.module.ejb.EnterpriseBeanInstance;
 import org.jboss.weld.serialization.spi.BeanIdentifier;
+import org.kohsuke.MetaInfServices;
 import org.wildfly.clustering.marshalling.protostream.AbstractSerializationContextInitializer;
+import org.wildfly.clustering.marshalling.protostream.SerializationContext;
+import org.wildfly.clustering.marshalling.protostream.SerializationContextInitializer;
 import org.wildfly.clustering.marshalling.protostream.reflect.TernaryFieldMarshaller;
 import org.wildfly.clustering.marshalling.protostream.reflect.TriFunction;
 import org.wildfly.security.ParametricPrivilegedAction;
@@ -40,6 +25,7 @@ import org.wildfly.security.manager.WildFlySecurityManager;
 /**
  * @author Paul Ferraro
  */
+@MetaInfServices(SerializationContextInitializer.class)
 public class WeldModuleEJBSerializationContextInitializer extends AbstractSerializationContextInitializer implements ParametricPrivilegedAction<Class<?>, String> {
 
     public WeldModuleEJBSerializationContextInitializer() {
@@ -63,7 +49,7 @@ public class WeldModuleEJBSerializationContextInitializer extends AbstractSerial
         TriFunction<BeanManagerImpl, BeanIdentifier, SessionObjectReference, Object> function = new TriFunction<>() {
             @Override
             public Object apply(BeanManagerImpl manager, BeanIdentifier identifier, SessionObjectReference reference) {
-                return WildFlySecurityManager.doUnchecked(new PrivilegedAction<Object>() {
+                return WildFlySecurityManager.doUnchecked(new PrivilegedAction<>() {
                     @Override
                     public Object run() {
                         try {

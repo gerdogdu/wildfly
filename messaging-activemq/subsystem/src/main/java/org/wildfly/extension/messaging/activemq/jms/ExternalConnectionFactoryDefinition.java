@@ -1,17 +1,6 @@
 /*
- * Copyright 2018 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.extension.messaging.activemq.jms;
 
@@ -87,14 +76,11 @@ public class ExternalConnectionFactoryDefinition extends PersistentResourceDefin
         Common.INITIAL_MESSAGE_PACKET_SIZE,
         Common.USE_TOPOLOGY};
 
-    private final boolean registerRuntimeOnly;
-
-    public ExternalConnectionFactoryDefinition(final boolean registerRuntimeOnly) {
+    public ExternalConnectionFactoryDefinition() {
         super(new SimpleResourceDefinition.Parameters(MessagingExtension.CONNECTION_FACTORY_PATH, MessagingExtension.getResourceDescriptionResolver(CommonAttributes.CONNECTION_FACTORY))
                 .setCapabilities(CAPABILITY)
                 .setAddHandler(ExternalConnectionFactoryAdd.INSTANCE)
                 .setRemoveHandler(ExternalConnectionFactoryRemove.INSTANCE));
-        this.registerRuntimeOnly = registerRuntimeOnly;
     }
 
     @Override
@@ -105,10 +91,6 @@ public class ExternalConnectionFactoryDefinition extends PersistentResourceDefin
     @Override
     public void registerOperations(ManagementResourceRegistration registry) {
         super.registerOperations(registry);
-
-        if (registerRuntimeOnly) {
-            ConnectionFactoryUpdateJndiHandler.registerOperations(registry, getResourceDescriptionResolver());
-        }
     }
 
     @Override

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2017, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.remote;
@@ -52,8 +35,9 @@ import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 import org.jboss.msc.value.InjectedValue;
 import org.jboss.msc.value.Value;
-import org.wildfly.clustering.group.Group;
-import org.wildfly.clustering.registry.Registry;
+import org.wildfly.clustering.server.Group;
+import org.wildfly.clustering.server.GroupMember;
+import org.wildfly.clustering.server.registry.Registry;
 import org.wildfly.discovery.AttributeValue;
 import org.wildfly.discovery.ServiceURL;
 import org.wildfly.discovery.impl.MutableDiscoveryProvider;
@@ -88,7 +72,7 @@ public final class AssociationService implements Service<AssociationService> {
     public void start(final StartContext context) throws StartException {
         // todo suspendController
         //noinspection unchecked
-        List<Map.Entry<ProtocolSocketBinding, Registry<String, List<ClientMapping>>>> clientMappingsRegistries = this.clientMappingsRegistries.isEmpty() ? Collections.emptyList() : new ArrayList<>(this.clientMappingsRegistries.size());
+        List<Map.Entry<ProtocolSocketBinding, Registry<GroupMember, String, List<ClientMapping>>>> clientMappingsRegistries = this.clientMappingsRegistries.isEmpty() ? Collections.emptyList() : new ArrayList<>(this.clientMappingsRegistries.size());
         for (Map.Entry<Value<ProtocolSocketBinding>, Value<Registry>> entry : this.clientMappingsRegistries) {
             clientMappingsRegistries.add(new SimpleImmutableEntry<>(entry.getKey().getValue(), entry.getValue().getValue()));
         }
@@ -123,8 +107,8 @@ public final class AssociationService implements Service<AssociationService> {
                         ServiceURL.Builder b = new ServiceURL.Builder();
                         b.setUri(Affinity.LOCAL.getUri()).setAbstractType("ejb").setAbstractTypeAuthority("jboss");
                         b.addAttribute(EJBClientContext.FILTER_ATTR_NODE, AttributeValue.fromString(ourNodeName));
-                        for (Map.Entry<ProtocolSocketBinding, Registry<String, List<ClientMapping>>> entry : clientMappingsRegistries) {
-                            Group group = entry.getValue().getGroup();
+                        for (Map.Entry<ProtocolSocketBinding, Registry<GroupMember, String, List<ClientMapping>>> entry : clientMappingsRegistries) {
+                            Group<GroupMember> group = entry.getValue().getGroup();
                             if (!group.isSingleton()) {
                                 b.addAttribute(EJBClientContext.FILTER_ATTR_CLUSTER, AttributeValue.fromString(group.getName()));
                             }

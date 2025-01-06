@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.component;
@@ -34,7 +17,6 @@ import java.util.Set;
 
 import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.interceptors.OrderedItemContainer;
-import org.jboss.as.ee.concurrent.ConcurrentContext;
 import org.jboss.as.naming.context.NamespaceContextSelector;
 import org.jboss.as.server.deployment.reflect.ClassReflectionIndex;
 import org.jboss.invocation.InterceptorFactory;
@@ -62,8 +44,6 @@ public class ComponentConfiguration {
     private final ModuleLoader moduleLoader;
     private final ClassLoader moduleClassLoader;
 
-    private final ConcurrentContext concurrentContext;
-
     private ComponentCreateServiceFactory componentCreateServiceFactory = ComponentCreateServiceFactory.BASIC;
 
     // Interceptor config
@@ -74,7 +54,7 @@ public class ComponentConfiguration {
     private final OrderedItemContainer<List<InterceptorFactory>> postActivateInterceptors = new OrderedItemContainer<>();
     private final Map<Method, OrderedItemContainer<List<InterceptorFactory>>> componentInterceptors = new IdentityHashMap<>();
 
-    //TODO: move this into an Jakarta Enterprise Beans specific configuration
+    //TODO: move this into a Jakarta Enterprise Beans bean specific configuration
     private final Map<Method, OrderedItemContainer<InterceptorFactory>> timeoutInterceptors = new IdentityHashMap<>();
 
     // Component instance management
@@ -102,7 +82,6 @@ public class ComponentConfiguration {
         this.classIndex = classIndex;
         this.moduleClassLoader = moduleClassLoader;
         this.moduleLoader = moduleLoader;
-        this.concurrentContext = new ConcurrentContext();
     }
 
     /**
@@ -566,10 +545,6 @@ public class ComponentConfiguration {
 
     public Set<Object> getInterceptorContextKeys() {
         return interceptorContextKeys;
-    }
-
-    public ConcurrentContext getConcurrentContext() {
-        return concurrentContext;
     }
 
     /**

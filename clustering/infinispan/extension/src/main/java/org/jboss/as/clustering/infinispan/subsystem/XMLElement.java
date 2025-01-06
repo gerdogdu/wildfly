@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.infinispan.subsystem;
@@ -44,16 +27,19 @@ public enum XMLElement {
     // must be first
     UNKNOWN((String) null),
 
-    ALIAS("alias"),
     @Deprecated ASYNC_OPERATIONS_THREAD_POOL("async-operations-thread-pool"),
     BACKUP(BackupResourceDefinition.WILDCARD_PATH),
+    @Deprecated BACKUP_FOR("backup-for"),
     BACKUPS(BackupsResourceDefinition.PATH),
     BINARY_KEYED_TABLE("binary-keyed-table"),
     BLOCKING_THREAD_POOL("blocking-thread-pool"),
+    @Deprecated BUCKET_TABLE("bucket-table"),
     CACHE_CONTAINER(CacheContainerResourceDefinition.WILDCARD_PATH),
     DATA_COLUMN(TableResourceDefinition.ColumnAttribute.DATA),
     DISTRIBUTED_CACHE(DistributedCacheResourceDefinition.WILDCARD_PATH),
     ENTRIES("entries"),
+    @Deprecated ENTRY_TABLE("entry-table"),
+    @Deprecated EVICTION("eviction"),
     @Deprecated BINARY_MEMORY("binary-memory"),
     HEAP_MEMORY("heap-memory"),
     @Deprecated OBJECT_MEMORY("object-memory"),
@@ -68,6 +54,7 @@ public enum XMLElement {
     STRING_KEYED_JDBC_STORE("string-keyed-jdbc-store"),
     BINARY_KEYED_JDBC_STORE("binary-keyed-jdbc-store"),
     MIXED_KEYED_JDBC_STORE("mixed-keyed-jdbc-store"),
+    @Deprecated INDEXING("indexing"),
     LOCAL_CACHE(LocalCacheResourceDefinition.WILDCARD_PATH),
     LOCKING(LockingResourceDefinition.PATH),
     NON_BLOCKING_THREAD_POOL("non-blocking-thread-pool"),
@@ -78,7 +65,7 @@ public enum XMLElement {
     REMOTE_SERVER("remote-server"),
     REMOTE_STORE("remote-store"),
     REPLICATED_CACHE(ReplicatedCacheResourceDefinition.WILDCARD_PATH),
-    SCATTERED_CACHE(ScatteredCacheResourceDefinition.WILDCARD_PATH),
+    @Deprecated SCATTERED_CACHE(ScatteredCacheResourceDefinition.WILDCARD_PATH),
     SEGMENT_COLUMN(TableResourceDefinition.ColumnAttribute.SEGMENT),
     SIZE("size"),
     STATE_TRANSFER(StateTransferResourceDefinition.PATH),

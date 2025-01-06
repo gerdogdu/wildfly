@@ -1,22 +1,27 @@
-<subsystem xmlns="urn:jboss:domain:resource-adapters:6.1">
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:resource-adapters:7.1">
   <!--Optional:-->
   <resource-adapters>
     <!--1 or more repetitions:-->
     <resource-adapter id="myRA">
       <!--Optional:-->
       <module id="moduleID" slot="main"/>
-      <!--Optional:-->
-      <bootstrap-context>${test.expr:bootstrapContext}</bootstrap-context>
       <bean-validation-groups>
         <!--1 or more repetitions:-->
         <bean-validation-group>${test.expr:group}</bean-validation-group>
       </bean-validation-groups>
       <!--Optional:-->
-      <transaction-support>${test.expr:NoTransaction}</transaction-support>
+      <bootstrap-context>${test.expr:bootstrapContext}</bootstrap-context>
       <!--Zero or more repetitions:-->
       <config-property name="config1">value</config-property>
+      <!--Optional:-->
+      <transaction-support>${test.expr:NoTransaction}</transaction-support>
       <workmanager>
-        <security>
+        <security enabled="${test.expr:true}">
           <domain>${test.expr:domain}</domain>
           <default-groups>
             <group>${test.expr:group}</group>
@@ -83,11 +88,7 @@
           <!--Optional:-->
           <recovery no-recovery="${test.expr:false}">
             <!--Optional:-->
-            <recover-credential>
-              <!--Optional:-->
-              <user-name>${test.expr:userName}</user-name>
-              <!--Optional:-->
-              <password>${test.expr:pwd}</password>
+            <recover-credential user-name="${test.expr:userName}" password="${test.expr:password}">
               <!--Optional:-->
               <security-domain>${test.expr:token}</security-domain>
             </recover-credential>

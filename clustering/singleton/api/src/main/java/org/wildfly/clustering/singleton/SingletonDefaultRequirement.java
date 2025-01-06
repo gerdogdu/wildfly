@@ -1,55 +1,41 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.clustering.singleton;
 
 import org.wildfly.clustering.service.Requirement;
+import org.wildfly.service.descriptor.NullaryServiceDescriptor;
 
 /**
  * Enumerates capability requirements for default singleton resources
  * @author Paul Ferraro
  */
+@Deprecated(forRemoval = true)
 public enum SingletonDefaultRequirement implements Requirement {
     /**
-     * @deprecated Use {@link SingletonDefaultRequirement#POLICY} instead.
+     * @deprecated Use {@link org.wildfly.clustering.singleton.SingletonPolicy#DEFAULT_SERVICE_DESCRIPTOR} instead.
      */
-    @Deprecated(forRemoval = true) SINGLETON_POLICY("org.wildfly.clustering.singleton.default-policy", org.wildfly.clustering.singleton.SingletonPolicy.class),
-    POLICY("org.wildfly.clustering.default-singleton-policy", org.wildfly.clustering.singleton.service.SingletonPolicy.class),
+    @Deprecated(forRemoval = true) SINGLETON_POLICY(org.wildfly.clustering.singleton.SingletonPolicy.DEFAULT_SERVICE_DESCRIPTOR),
+    /**
+     * @deprecated Use {@link org.wildfly.clustering.singleton.service.SingletonPolicy#DEFAULT_SERVICE_DESCRIPTOR} instead.
+     */
+    @Deprecated POLICY(org.wildfly.clustering.singleton.service.SingletonPolicy.DEFAULT_SERVICE_DESCRIPTOR),
     ;
-    private final String name;
-    private final Class<?> type;
+    private final NullaryServiceDescriptor<?> descriptor;
 
-    SingletonDefaultRequirement(String name, Class<?> type) {
-        this.name = name;
-        this.type = type;
+    SingletonDefaultRequirement(NullaryServiceDescriptor<?> descriptor) {
+        this.descriptor = descriptor;
     }
 
     @Override
     public String getName() {
-        return this.name;
+        return this.descriptor.getName();
     }
 
     @Override
     public Class<?> getType() {
-        return this.type;
+        return this.descriptor.getType();
     }
 }

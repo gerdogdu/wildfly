@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.clustering.jgroups.subsystem;
 
@@ -142,16 +125,16 @@ public class OperationsTestCase extends OperationTestCaseBase {
         Assert.assertEquals(result.toString(), SUCCESS, result.get(OUTCOME).asString());
 
         // read the socket binding attribute
-        result = services.executeOperation(getProtocolReadOperation("maximal", "MPING", MulticastProtocolResourceDefinition.Attribute.SOCKET_BINDING));
+        result = services.executeOperation(getProtocolReadOperation("maximal", "MPING", MulticastSocketProtocolResourceDefinition.Attribute.SOCKET_BINDING));
         Assert.assertEquals(result.toString(), SUCCESS, result.get(OUTCOME).asString());
         Assert.assertEquals("jgroups-mping", result.get(RESULT).asString());
 
         // write the attribute
-        result = services.executeOperation(getProtocolWriteOperation("maximal", "MPING", MulticastProtocolResourceDefinition.Attribute.SOCKET_BINDING, "new-socket-binding"));
+        result = services.executeOperation(getProtocolWriteOperation("maximal", "MPING", MulticastSocketProtocolResourceDefinition.Attribute.SOCKET_BINDING, "new-socket-binding"));
         Assert.assertEquals(result.toString(), SUCCESS, result.get(OUTCOME).asString());
 
         // re-read the attribute
-        result = services.executeOperation(getProtocolReadOperation("maximal", "MPING", MulticastProtocolResourceDefinition.Attribute.SOCKET_BINDING));
+        result = services.executeOperation(getProtocolReadOperation("maximal", "MPING", MulticastSocketProtocolResourceDefinition.Attribute.SOCKET_BINDING));
         Assert.assertEquals(result.toString(), SUCCESS, result.get(OUTCOME).asString());
         Assert.assertEquals("new-socket-binding", result.get(RESULT).asString());
     }

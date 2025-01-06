@@ -1,30 +1,12 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.subsystem;
 
 import static org.jboss.as.ejb3.subsystem.EJB3RemoteResourceDefinition.CONNECTOR_CAPABILITY_NAME;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.CLIENT_INTERCEPTORS;
-import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_ENTITY_BEAN_INSTANCE_POOL;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_ENTITY_BEAN_OPTIMISTIC_LOCKING;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_MDB_INSTANCE_POOL;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_RESOURCE_ADAPTER_NAME;
@@ -34,6 +16,7 @@ import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_SINGLETON_B
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_SLSB_INSTANCE_POOL;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.DEFAULT_STATEFUL_BEAN_ACCESS_TIMEOUT;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemModel.SERVER_INTERCEPTORS;
+import static org.jboss.as.ejb3.subsystem.EJB3SubsystemRootResourceDefinition.CLUSTERED_SINGLETON_BARRIER;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemRootResourceDefinition.CLUSTERED_SINGLETON_CAPABILITY;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemRootResourceDefinition.DEFAULT_CLUSTERED_SFSB_CACHE;
 import static org.jboss.as.ejb3.subsystem.EJB3SubsystemRootResourceDefinition.DEFAULT_MDB_POOL_CONFIG_CAPABILITY;
@@ -46,19 +29,25 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+import javax.naming.NamingException;
 
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
-import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.ProcessType;
+import org.jboss.as.controller.RequirementServiceTarget;
 import org.jboss.as.controller.RunningMode;
+import org.jboss.as.controller.ServiceNameFactory;
 import org.jboss.as.controller.capability.CapabilityServiceSupport;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.registry.Resource;
-import org.jboss.as.ejb3.clustering.SingletonBarrierService;
+import org.jboss.as.ejb3.component.allowedmethods.AllowedMethodsInformation;
+import org.jboss.as.ejb3.component.allowedmethods.MethodType;
 import org.jboss.as.ejb3.deployment.DeploymentRepository;
 import org.jboss.as.ejb3.deployment.DeploymentRepositoryService;
 import org.jboss.as.ejb3.deployment.processors.AnnotatedEJBComponentDescriptionDeploymentUnitProcessor;
@@ -134,6 +123,7 @@ import org.jboss.as.ejb3.remote.AssociationService;
 import org.jboss.as.ejb3.remote.EJBClientContextService;
 import org.jboss.as.ejb3.remote.LocalTransportProvider;
 import org.jboss.as.ejb3.remote.http.EJB3RemoteHTTPService;
+import org.jboss.as.ejb3.security.ApplicationSecurityDomainConfig;
 import org.jboss.as.ejb3.suspend.EJBSuspendHandlerService;
 import org.jboss.as.network.ProtocolSocketBinding;
 import org.jboss.as.server.AbstractDeploymentChainStep;
@@ -150,47 +140,53 @@ import org.jboss.ejb.client.EJBTransportProvider;
 import org.jboss.javax.rmi.RemoteObjectSubstitutionManager;
 import org.jboss.metadata.ejb.spec.EjbJarMetaData;
 import org.jboss.msc.inject.Injector;
+import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.service.ValueService;
-import org.jboss.msc.value.ImmediateValue;
+import org.jboss.msc.service.StartContext;
+import org.jboss.msc.service.StopContext;
 import org.jboss.remoting3.Endpoint;
 import org.omg.PortableServer.POA;
-import org.wildfly.clustering.registry.Registry;
-import org.wildfly.clustering.server.service.ClusteringCacheRequirement;
-import org.wildfly.clustering.singleton.SingletonDefaultRequirement;
-import org.wildfly.clustering.singleton.service.SingletonPolicy;
+import org.wildfly.clustering.server.registry.Registry;
+import org.wildfly.clustering.singleton.service.ServiceTargetFactory;
+import org.wildfly.common.function.Functions;
 import org.wildfly.iiop.openjdk.rmi.DelegatingStubFactoryFactory;
 import org.wildfly.iiop.openjdk.service.CorbaPOAService;
+import org.wildfly.subsystem.service.ServiceDependency;
+import org.wildfly.subsystem.service.ServiceInstaller;
 import org.wildfly.transaction.client.LocalTransactionContext;
+import org.wildfly.transaction.client.naming.txn.TxnNamingContextFactory;
 
 import io.undertow.server.handlers.PathHandler;
 
 /**
  * Add operation handler for the EJB3 subsystem.
  *
- * NOTE: References in this file to Enterprise JavaBeans(EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
+ * NOTE: References in this file to Enterprise JavaBeans (EJB) refer to the Jakarta Enterprise Beans unless otherwise noted.
  *
  * @author Emanuel Muckenhuber
  * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
 
-    private final EJBDefaultSecurityDomainProcessor defaultSecurityDomainDeploymentProcessor;
-    private final MissingMethodPermissionsDenyAccessMergingProcessor missingMethodPermissionsDenyAccessMergingProcessor;
     private static final String UNDERTOW_HTTP_INVOKER_CAPABILITY_NAME = "org.wildfly.undertow.http-invoker";
 
     private static final String REMOTING_ENDPOINT_CAPABILITY = "org.wildfly.remoting.endpoint";
 
-    private static final String LEGACY_JACC_CAPABILITY = "org.wildfly.legacy-security.jacc";
     private static final String ELYTRON_JACC_CAPABILITY = "org.wildfly.security.jacc-policy";
 
-    EJB3SubsystemAdd(final EJBDefaultSecurityDomainProcessor defaultSecurityDomainDeploymentProcessor, final MissingMethodPermissionsDenyAccessMergingProcessor missingMethodPermissionsDenyAccessMergingProcessor, AttributeDefinition... attributes) {
-        super(attributes);
-        this.defaultSecurityDomainDeploymentProcessor = defaultSecurityDomainDeploymentProcessor;
-        this.missingMethodPermissionsDenyAccessMergingProcessor = missingMethodPermissionsDenyAccessMergingProcessor;
+    private final AtomicReference<String> defaultSecurityDomainName;
+    private final Iterable<ApplicationSecurityDomainConfig> knownApplicationSecurityDomains;
+    private final Iterable<String> outflowSecurityDomains;
+    private final AtomicBoolean denyAccessByDefault;
+
+    EJB3SubsystemAdd(AtomicReference<String> defaultSecurityDomainName, Iterable<ApplicationSecurityDomainConfig> knownApplicationSecurityDomains, Iterable<String> outflowSecurityDomains, AtomicBoolean denyAccessByDefault) {
+        this.defaultSecurityDomainName = defaultSecurityDomainName;
+        this.knownApplicationSecurityDomains = knownApplicationSecurityDomains;
+        this.outflowSecurityDomains = outflowSecurityDomains;
+        this.denyAccessByDefault = denyAccessByDefault;
     }
 
     @Override
@@ -281,7 +277,6 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
 
         if (resource.hasChild(EJB3SubsystemModel.REMOTE_SERVICE_PATH)) {
             ModelNode remoteModel = resource.getChild(EJB3SubsystemModel.REMOTE_SERVICE_PATH).getModel();
-            String clusterName = EJB3RemoteResourceDefinition.CLIENT_MAPPINGS_CLUSTER_NAME.resolveModelAttribute(context, remoteModel).asString();
 
             // For each connector
             for (ModelNode connector : EJB3RemoteResourceDefinition.CONNECTORS.resolveModelAttribute(context, remoteModel).asList()) {
@@ -289,7 +284,7 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
 
                 Map.Entry<Injector<ProtocolSocketBinding>, Injector<Registry>> entry = associationService.addConnectorInjectors(connectorName);
                 associationServiceBuilder.addDependency(context.getCapabilityServiceName(CONNECTOR_CAPABILITY_NAME, connectorName, ProtocolSocketBinding.class), ProtocolSocketBinding.class, entry.getKey());
-                associationServiceBuilder.addDependency(ClusteringCacheRequirement.REGISTRY.getServiceName(context, clusterName, connectorName), Registry.class, entry.getValue());
+                associationServiceBuilder.addDependency(ServiceNameFactory.resolveServiceName(EJB3RemoteResourceDefinition.CLIENT_MAPPINGS_REGISTRY, connectorName), Registry.class, entry.getValue());
             }
         }
         associationServiceBuilder.install();
@@ -321,16 +316,16 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
         // set the default security domain name in the deployment unit processor, configured at the subsystem level
         final ModelNode defaultSecurityDomainModelNode = EJB3SubsystemRootResourceDefinition.DEFAULT_SECURITY_DOMAIN.resolveModelAttribute(context, model);
         final String defaultSecurityDomain = defaultSecurityDomainModelNode.isDefined() ? defaultSecurityDomainModelNode.asString() : null;
-        this.defaultSecurityDomainDeploymentProcessor.setDefaultSecurityDomainName(defaultSecurityDomain);
+        this.defaultSecurityDomainName.set(defaultSecurityDomain);
 
         // set the default security domain name in the deployment unit processor, configured at the subsytem level
         final ModelNode defaultMissingMethod = EJB3SubsystemRootResourceDefinition.DEFAULT_MISSING_METHOD_PERMISSIONS_DENY_ACCESS.resolveModelAttribute(context, model);
         final boolean defaultMissingMethodValue = defaultMissingMethod.asBoolean();
-        this.missingMethodPermissionsDenyAccessMergingProcessor.setDenyAccessByDefault(defaultMissingMethodValue);
+        this.denyAccessByDefault.set(defaultMissingMethodValue);
 
         final ModelNode defaultStatefulSessionTimeout = EJB3SubsystemRootResourceDefinition.DEFAULT_STATEFUL_BEAN_SESSION_TIMEOUT.resolveModelAttribute(context, model);
-        final ValueService<AtomicLong> defaultStatefulSessionTimeoutService = new ValueService<>(new ImmediateValue<>(
-                defaultStatefulSessionTimeout.isDefined() ? new AtomicLong(defaultStatefulSessionTimeout.asLong()) : DefaultStatefulBeanSessionTimeoutWriteHandler.INITIAL_TIMEOUT_VALUE));
+        final AtomicLong defaultTimeout = defaultStatefulSessionTimeout.isDefined() ? new AtomicLong(defaultStatefulSessionTimeout.asLong()) : DefaultStatefulBeanSessionTimeoutWriteHandler.INITIAL_TIMEOUT_VALUE;
+        final ValueService defaultStatefulSessionTimeoutService = new ValueService(defaultTimeout);
         context.getServiceTarget().addService(DefaultStatefulBeanSessionTimeoutWriteHandler.SERVICE_NAME, defaultStatefulSessionTimeoutService).install();
 
         final boolean defaultMdbPoolAvailable = model.hasDefined(DEFAULT_MDB_INSTANCE_POOL);
@@ -338,7 +333,6 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
 
         CapabilityServiceSupport capabilitySupport = context.getCapabilityServiceSupport();
         final boolean elytronJacc = capabilitySupport.hasCapability(ELYTRON_JACC_CAPABILITY);
-        final boolean legacyJacc = !elytronJacc && capabilitySupport.hasCapability(LEGACY_JACC_CAPABILITY);
 
         context.addStep(new AbstractDeploymentChainStep() {
             @Override
@@ -363,15 +357,13 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_JNDI_BINDINGS, new EjbJndiBindingsDeploymentUnitProcessor(appclient));
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_CLIENT_METADATA, new EJBClientDescriptorMetaDataProcessor(appclient));
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_DISCOVERY, new DiscoveryRegistrationProcessor(appclient));
-                processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_DEFAULT_SECURITY_DOMAIN, EJB3SubsystemAdd.this.defaultSecurityDomainDeploymentProcessor);
+                processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_DEFAULT_SECURITY_DOMAIN, new EJBDefaultSecurityDomainProcessor(EJB3SubsystemAdd.this.defaultSecurityDomainName, EJB3SubsystemAdd.this.knownApplicationSecurityDomains, EJB3SubsystemAdd.this.outflowSecurityDomains));
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_COMPONENT_SUSPEND, new EJBComponentSuspendDeploymentUnitProcessor());
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_COMPONENT_SUSPEND + 1, new EjbClientContextSetupProcessor()); //TODO: real phase numbers
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_COMPONENT_SUSPEND + 2, new StartupAwaitDeploymentUnitProcessor());
-
-                if (legacyJacc || elytronJacc) {
-                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_EJB_JACC_PROCESSING, new JaccEjbDeploymentProcessor(elytronJacc ? ELYTRON_JACC_CAPABILITY : LEGACY_JACC_CAPABILITY));
+                if (elytronJacc) {
+                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_EJB_JACC_PROCESSING, new JaccEjbDeploymentProcessor(ELYTRON_JACC_CAPABILITY));
                 }
-
                 processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.CLEANUP, Phase.CLEANUP_EJB, new EjbCleanUpProcessor());
 
                 if (!appclient) {
@@ -399,7 +391,7 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_REMOVE_METHOD, new RemoveMethodMergingProcessor());
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_STARTUP_MERGE, new StartupMergingProcessor());
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_SECURITY_DOMAIN, new SecurityDomainMergingProcessor());
-                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_SECURITY_MISSING_METHOD_PERMISSIONS, missingMethodPermissionsDenyAccessMergingProcessor);
+                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_SECURITY_MISSING_METHOD_PERMISSIONS, new MissingMethodPermissionsDenyAccessMergingProcessor(EJB3SubsystemAdd.this.denyAccessByDefault));
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_ROLES, new DeclareRolesMergingProcessor());
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_METHOD_PERMISSIONS, new MethodPermissionsMergingProcessor());
                     processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_STATEFUL_TIMEOUT, new StatefulTimeoutMergingProcessor());
@@ -435,6 +427,9 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
                                 new ServerInterceptorsBindingsProcessor(serverInterceptorCache));
                     }
 
+                    processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_GLOBAL_CLIENT_INTERCEPTORS,
+                            new IdentityInterceptorProcessor());
+
                     if (model.hasDefined(CLIENT_INTERCEPTORS)) {
                         final List<ServerInterceptorMetaData> clientInterceptors = new ArrayList<>();
 
@@ -447,7 +442,7 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
                                 new StaticInterceptorsDependenciesDeploymentUnitProcessor(clientInterceptors));
 
                         final ClientInterceptorCache clientInterceptorCache = new ClientInterceptorCache(clientInterceptors);
-                        processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.POST_MODULE_EJB_SERVER_INTERCEPTORS,
+                        processorTarget.addDeploymentProcessor(EJB3Extension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EJB_SERVER_INTERCEPTORS,
                                 new ClientInterceptorsBindingsProcessor(clientInterceptorCache));
                     }
                 }
@@ -463,17 +458,9 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
             EJB3SubsystemDefaultPoolWriteHandler.SLSB_POOL.updatePoolService(context, model);
         }
 
-        if (model.hasDefined(DEFAULT_ENTITY_BEAN_INSTANCE_POOL)) {
-            EJB3SubsystemDefaultPoolWriteHandler.ENTITY_BEAN_POOL.updatePoolService(context, model);
-        }
+        EJB3SubsystemDefaultCacheWriteHandler.SFSB_CACHE.updateCacheService(context, EJB3SubsystemRootResourceDefinition.DEFAULT_SFSB_CACHE.resolveModelAttribute(context, model).asStringOrNull());
 
-        if (model.hasDefined(DEFAULT_SFSB_CACHE)) {
-            EJB3SubsystemDefaultCacheWriteHandler.SFSB_CACHE.updateCacheService(context, model);
-        }
-
-        if (model.hasDefined(DEFAULT_SFSB_PASSIVATION_DISABLED_CACHE)) {
-            EJB3SubsystemDefaultCacheWriteHandler.SFSB_PASSIVATION_DISABLED_CACHE.updateCacheService(context, model);
-        }
+        EJB3SubsystemDefaultCacheWriteHandler.SFSB_PASSIVATION_DISABLED_CACHE.updateCacheService(context, EJB3SubsystemRootResourceDefinition.DEFAULT_SFSB_PASSIVATION_DISABLED_CACHE.resolveModelAttribute(context, model).asStringOrNull());
 
         if (model.hasDefined(DEFAULT_RESOURCE_ADAPTER_NAME)) {
             DefaultResourceAdapterWriteHandler.INSTANCE.updateDefaultAdapterService(context, model);
@@ -538,6 +525,17 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
                         .install();
             }
         }
+
+        TxnNamingContextFactory.setAccessChecker(new TxnNamingContextFactory.AccessChecker() {
+            @Override
+            public void checkAccessAllowed() throws NamingException {
+                try {
+                    AllowedMethodsInformation.checkAllowed(MethodType.GET_USER_TRANSACTION);
+                } catch (IllegalStateException e) {
+                    throw new NamingException(e.getMessage());
+                }
+            }
+        });
     }
 
     private static void addRemoteInvocationServices(final OperationContext context,
@@ -591,14 +589,52 @@ class EJB3SubsystemAdd extends AbstractBoottimeAddStepHandler {
     }
 
     private static void addClusteringServices(final OperationContext context, final boolean appclient) {
-        ServiceTarget target = context.getServiceTarget();
         if (appclient) {
             return;
         }
-        if (context.hasOptionalCapability(SingletonDefaultRequirement.POLICY.getName(), CLUSTERED_SINGLETON_CAPABILITY.getName(), null)) {
-            ServiceBuilder<?> builder = target.addService(SingletonBarrierService.SERVICE_NAME);
-            Supplier<SingletonPolicy> policy = builder.requires(context.getCapabilityServiceName(SingletonDefaultRequirement.POLICY.getName(), SingletonDefaultRequirement.POLICY.getType()));
-            builder.setInstance(new SingletonBarrierService(policy)).setInitialMode(ServiceController.Mode.ON_DEMAND).install();
+        if (context.hasOptionalCapability(ServiceTargetFactory.DEFAULT_SERVICE_DESCRIPTOR, CLUSTERED_SINGLETON_CAPABILITY, null)) {
+            ServiceDependency<ServiceTargetFactory> targetFactory = ServiceDependency.on(ServiceTargetFactory.DEFAULT_SERVICE_DESCRIPTOR);
+            ServiceInstaller installer = new ServiceInstaller() {
+                @Override
+                public ServiceController<?> install(RequirementServiceTarget target) {
+                    // Install on-demand singleton service
+                    // We don't want this to start until a deployment requires it
+                    ServiceController<?> controller = org.wildfly.service.ServiceInstaller.builder(Functions.constantSupplier(Boolean.TRUE))
+                            .provides(CLUSTERED_SINGLETON_CAPABILITY.getCapabilityServiceName())
+                            .build()
+                            .install(targetFactory.get().createSingletonServiceTarget(target));
+
+                    // Install well-known on-demand service that, once started, will force singleton service instrumentation to start.
+                    ServiceInstaller.builder(Functions.constantSupplier(Boolean.TRUE))
+                            .provides(ServiceNameFactory.resolveServiceName(CLUSTERED_SINGLETON_BARRIER))
+                            // N.B. Depend on ServiceName(s) provided by singleton service instrumentation
+                            .requires(controller.provides().stream().map(ServiceDependency::on).collect(Collectors.toList()))
+                            .build()
+                            .install(target);
+
+                    return controller;
+                }
+            };
+            ServiceInstaller.builder(installer, context.getCapabilityServiceSupport()).requires(targetFactory).build().install(context);
+        }
+    }
+
+    private static final class ValueService implements Service<AtomicLong> {
+        private final AtomicLong value;
+        public ValueService(final AtomicLong value) {
+            this.value = value;
+        }
+
+        public void start(final StartContext context) {
+            // noop
+        }
+
+        public void stop(final StopContext context) {
+            // noop
+        }
+
+        public AtomicLong getValue() throws IllegalStateException {
+            return value;
         }
     }
 }

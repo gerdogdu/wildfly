@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.connector.deployers.ra.processors;
@@ -35,7 +18,9 @@ import org.jboss.as.connector.metadata.xmldescriptors.IronJacamarXmlDescriptor;
 import org.jboss.as.connector.services.mdr.AS7MetadataRepository;
 import org.jboss.as.connector.services.resourceadapters.deployment.ResourceAdapterDeploymentService;
 import org.jboss.as.connector.services.resourceadapters.deployment.registry.ResourceAdapterDeploymentRegistry;
+import org.jboss.as.connector.subsystems.jca.Constants;
 import org.jboss.as.connector.subsystems.jca.JcaSubsystemConfiguration;
+import org.jboss.as.connector.subsystems.resourceadapters.Capabilities;
 import org.jboss.as.connector.subsystems.resourceadapters.ResourceAdaptersSubsystemService;
 import org.jboss.as.connector.util.ConnectorServices;
 import org.jboss.as.controller.PathAddress;
@@ -81,12 +66,6 @@ import org.jboss.msc.service.ServiceTarget;
  */
 public class ParsedRaDeploymentProcessor implements DeploymentUnitProcessor {
 
-    private final boolean appclient;
-
-    public ParsedRaDeploymentProcessor(final boolean appclient) {
-        this.appclient = appclient;
-    }
-
     /**
      * Process a deployment for a Connector. Will install a {@Code
      * JBossService} for this ResourceAdapter.
@@ -124,7 +103,7 @@ public class ParsedRaDeploymentProcessor implements DeploymentUnitProcessor {
 
         Map<ResourceRoot, Index> annotationIndexes = AnnotationIndexUtils.getAnnotationIndexes(deploymentUnit);
 
-        ServiceBuilder builder = process(connectorXmlDescriptor, ironJacamarXmlDescriptor, classLoader, serviceTarget, annotationIndexes, deploymentUnit.getServiceName(),registration, deploymentResource, support, appclient);
+        ServiceBuilder builder = process(connectorXmlDescriptor, ironJacamarXmlDescriptor, classLoader, serviceTarget, annotationIndexes, deploymentUnit.getServiceName(),registration, deploymentResource, support);
         if (builder != null) {
             String bootstrapCtx = null;
 
@@ -160,7 +139,7 @@ public class ParsedRaDeploymentProcessor implements DeploymentUnitProcessor {
 
     public static ServiceBuilder<ResourceAdapterDeployment> process(final ConnectorXmlDescriptor connectorXmlDescriptor, final IronJacamarXmlDescriptor ironJacamarXmlDescriptor, final ClassLoader classLoader,
                                          final ServiceTarget serviceTarget, final Map<ResourceRoot, Index> annotationIndexes, final ServiceName duServiceName,
-                                         final ManagementResourceRegistration registration, Resource deploymentResource, final CapabilityServiceSupport support, final boolean appclient) throws DeploymentUnitProcessingException {
+                                         final ManagementResourceRegistration registration, Resource deploymentResource, final CapabilityServiceSupport support) throws DeploymentUnitProcessingException {
 
         Connector cmd = connectorXmlDescriptor != null ? connectorXmlDescriptor.getConnector() : null;
         final Activation activation = ironJacamarXmlDescriptor != null ? ironJacamarXmlDescriptor.getIronJacamar() : null;
@@ -213,7 +192,7 @@ public class ParsedRaDeploymentProcessor implements DeploymentUnitProcessor {
                 .addDependency(support.getCapabilityServiceName(ConnectorServices.TRANSACTION_INTEGRATION_CAPABILITY_NAME), TransactionIntegration.class, raDeploymentService.getTxIntegrationInjector())
                 .addDependency(ConnectorServices.CONNECTOR_CONFIG_SERVICE, JcaSubsystemConfiguration.class, raDeploymentService.getConfigInjector());
 
-            if (!appclient) {
+            if (support.hasCapability(Capabilities.RESOURCE_ADAPTERS_SUBSYSTEM_CAPABILITY_NAME)) {
                 builder.addDependency(ConnectorServices.RESOURCEADAPTERS_SUBSYSTEM_SERVICE, ResourceAdaptersSubsystemService.class, raDeploymentService.getResourceAdaptersSubsystem());
             }
 
@@ -225,6 +204,7 @@ public class ParsedRaDeploymentProcessor implements DeploymentUnitProcessor {
             } else {
                 builder.addDependency(ConnectorServices.CCM_SERVICE, CachedConnectionManager.class, raDeploymentService.getCcmInjector());
             }
+            builder.requires(ConnectorServices.BOOTSTRAP_CONTEXT_SERVICE.append(Constants.DEFAULT_NAME));
 
             return builder;
         } catch (Throwable t) {

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.clustering.singleton.server;
 
@@ -25,11 +8,22 @@ import java.util.Optional;
 
 import org.wildfly.clustering.dispatcher.Command;
 
-public class SingletonValueCommand<T> implements Command<Optional<T>, LegacySingletonContext<T>> {
-    private static final long serialVersionUID = -2849349352107418635L;
+/**
+ * Command to support {@link org.wildfly.clustering.singleton.SingletonService#getValue()} invocations for legacy MSC singleton services.
+ * @author Paul Ferraro
+ * @param <T> the service value type
+ */
+@Deprecated
+public enum SingletonValueCommand implements Command<Optional<Object>, LegacySingletonContext<Object>> {
+    INSTANCE;
+
+    @SuppressWarnings("unchecked")
+    static <T> Command<Optional<T>, LegacySingletonContext<T>> getInstance() {
+        return (Command<Optional<T>, LegacySingletonContext<T>>) (Command<?, ?>) INSTANCE;
+    }
 
     @Override
-    public Optional<T> execute(LegacySingletonContext<T> context) {
+    public Optional<Object> execute(LegacySingletonContext<Object> context) {
         return context.getLocalValue();
     }
 }

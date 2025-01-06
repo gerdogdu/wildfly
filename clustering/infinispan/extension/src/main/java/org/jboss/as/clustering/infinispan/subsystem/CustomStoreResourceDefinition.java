@@ -1,42 +1,43 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.infinispan.subsystem;
 
-import org.jboss.as.clustering.controller.ResourceServiceConfigurator;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.infinispan.commons.util.AggregatedClassLoader;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.cache.StoreConfiguration;
+import org.infinispan.configuration.cache.StoreConfigurationBuilder;
 import org.jboss.as.clustering.controller.SimpleResourceDescriptorConfigurator;
+import org.jboss.as.clustering.infinispan.logging.InfinispanLogger;
 import org.jboss.as.controller.AttributeDefinition;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.RequirementServiceBuilder;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.registry.AttributeAccess;
+import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
+import org.jboss.modules.Module;
+import org.wildfly.clustering.server.util.MapEntry;
+import org.wildfly.subsystem.service.ServiceDependency;
 
 /**
  * Resource description for the addressable resource /subsystem=infinispan/cache-container=X/cache=Y/store=STORE
  *
  * @author Richard Achmatowicz (c) 2011 Red Hat Inc.
  */
-public class CustomStoreResourceDefinition extends StoreResourceDefinition {
+public class CustomStoreResourceDefinition<C extends StoreConfiguration, B extends StoreConfigurationBuilder<C, B>> extends StoreResourceDefinition<C, B> {
 
     static final PathElement PATH = pathElement("custom");
 
@@ -59,12 +60,38 @@ public class CustomStoreResourceDefinition extends StoreResourceDefinition {
         }
     }
 
+    @SuppressWarnings("unchecked")
     CustomStoreResourceDefinition() {
-        super(PATH, InfinispanExtension.SUBSYSTEM_RESOLVER.createChildResolver(PATH, WILDCARD_PATH), new SimpleResourceDescriptorConfigurator<>(Attribute.class));
+        super(PATH, InfinispanExtension.SUBSYSTEM_RESOLVER.createChildResolver(PATH, WILDCARD_PATH), new SimpleResourceDescriptorConfigurator<>(Attribute.class), (Class<B>) (Class<?>) StoreConfigurationBuilder.class);
     }
 
     @Override
-    public ResourceServiceConfigurator createServiceConfigurator(PathAddress address) {
-        return new CustomStoreServiceConfigurator(address);
+    public Map.Entry<Map.Entry<Supplier<B>, Consumer<B>>, Stream<Consumer<RequirementServiceBuilder<?>>>> resolve(OperationContext context, ModelNode model) throws OperationFailedException {
+        Map.Entry<Map.Entry<Supplier<B>, Consumer<B>>, Stream<Consumer<RequirementServiceBuilder<?>>>> entry = super.resolve(context, model);
+        Consumer<B> configurator = entry.getKey().getValue();
+        Stream<Consumer<RequirementServiceBuilder<?>>> dependencies = entry.getValue();
+
+        PathAddress cacheAddress = context.getCurrentAddress().getParent();
+        String containerName = cacheAddress.getParent().getLastElement().getValue();
+        String cacheName = cacheAddress.getLastElement().getValue();
+
+        String className = Attribute.CLASS.resolveModelAttribute(context, model).asString();
+
+        ServiceDependency<List<Module>> cacheModules = ServiceDependency.on(CacheResourceDefinition.CACHE_MODULES, containerName, cacheName);
+        Supplier<B> builderFactory = new Supplier<>() {
+            @Override
+            public B get() {
+                List<Module> modules = cacheModules.get();
+                ClassLoader loader = modules.size() > 1 ? new AggregatedClassLoader(modules.stream().map(Module::getClassLoader).collect(Collectors.toList())) : modules.get(0).getClassLoader();
+                try {
+                    @SuppressWarnings("unchecked")
+                    Class<B> storeClass = (Class<B>) loader.loadClass(className).asSubclass(StoreConfigurationBuilder.class);
+                    return new ConfigurationBuilder().persistence().addStore(storeClass);
+                } catch (ClassNotFoundException | ClassCastException e) {
+                    throw InfinispanLogger.ROOT_LOGGER.invalidCacheStore(e, className);
+                }
+            }
+        };
+        return MapEntry.of(MapEntry.of(builderFactory, configurator), Stream.concat(dependencies, Stream.of(cacheModules)));
     }
 }

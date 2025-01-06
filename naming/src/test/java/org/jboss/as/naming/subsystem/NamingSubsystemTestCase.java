@@ -1,26 +1,10 @@
 /*
-* JBoss, Home of Professional Open Source.
-* Copyright 2011, Red Hat Middleware LLC, and individual contributors
-* as indicated by the @author tags. See the copyright.txt file in the
-* distribution for a full listing of individual contributors.
-*
-* This is free software; you can redistribute it and/or modify it
-* under the terms of the GNU Lesser General Public License as
-* published by the Free Software Foundation; either version 2.1 of
-* the License, or (at your option) any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-* Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public
-* License along with this software; if not, write to the Free
-* Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-* 02110-1301 USA, or see the FSF site: http://www.fsf.org.
-*/
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.jboss.as.naming.subsystem;
 
+import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.List;
 
@@ -121,6 +105,37 @@ public class NamingSubsystemTestCase extends AbstractSubsystemBaseTest {
                 .addStep(Operations.createWriteAttributeOperation(addr, NamingSubsystemModel.LOOKUP, "java:global/b"))
                 .build().getOperation();
         ModelTestUtils.checkOutcome(services.executeOperation(compositeOp));
+    }
+
+    @Test
+    public void testExpressionInAttributeValue() throws Exception{
+
+        final KernelServices services = createKernelServicesBuilder(createAdditionalInitialization()).setSubsystemXml(readResource("subsystem_expression.xml")).build();
+        final ModelNode addr = Operations.createAddress("subsystem", "naming");
+        final ModelNode op = Operations.createReadResourceOperation(addr, true);
+        op.get(ModelDescriptionConstants.RESOLVE_EXPRESSIONS).set(true);
+        final ModelNode result = services.executeOperation(op).get("result");
+
+        ModelNode attribute = result.get(NamingSubsystemModel.BINDING).get("java:global/a");
+
+        final String value = attribute.get(NamingSubsystemModel.VALUE).asString();
+        assertEquals("100", value);
+
+        final String type = attribute.get(NamingSubsystemModel.TYPE).asString();
+        assertEquals("int", type);
+
+        attribute = result.get(NamingSubsystemModel.BINDING).get("java:global/b");
+
+        final String objclass = attribute.get(NamingSubsystemModel.CLASS).asString();
+        assertEquals("org.jboss.as.naming.ManagedReferenceObjectFactory", objclass);
+
+        final String module = attribute.get(NamingSubsystemModel.MODULE).asString();
+        assertEquals("org.jboss.as.naming", module);
+
+        attribute = result.get(NamingSubsystemModel.BINDING).get("java:global/c");
+
+        final String lookup = attribute.get(NamingSubsystemModel.LOOKUP).asString();
+        assertEquals("java:global/b", lookup);
     }
 
     @Override

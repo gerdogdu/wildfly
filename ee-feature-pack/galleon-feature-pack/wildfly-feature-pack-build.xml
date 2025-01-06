@@ -1,26 +1,9 @@
 <!--
-  ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2014, Red Hat, Inc., and individual contributors
-  ~ as indicated by the @author tags. See the copyright.txt file in the
-  ~ distribution for a full listing of individual contributors.
-  ~
-  ~ This is free software; you can redistribute it and/or modify it
-  ~ under the terms of the GNU Lesser General Public License as
-  ~ published by the Free Software Foundation; either version 2.1 of
-  ~ the License, or (at your option) any later version.
-  ~
-  ~ This software is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  ~ Lesser General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU Lesser General Public
-  ~ License along with this software; if not, write to the Free
-  ~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-  ~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
   -->
 
-<build xmlns="urn:wildfly:feature-pack-build:3.1" producer="wildfly-ee@maven(org.jboss.universe:community-universe):current">
+<build xmlns="urn:wildfly:feature-pack-build:3.4" producer="wildfly-ee@maven(org.jboss.universe:community-universe):current">
 
     <default-packages>
         <package name="modules.all"/>
@@ -30,6 +13,21 @@
         <package name="appclient"/>
         <package name="bin"/>
     </default-packages>
+
+    <stability-levels>
+        <minimum-stability-level>experimental</minimum-stability-level>
+        <config-stability-level>community</config-stability-level>
+        <package-stability-level>experimental</package-stability-level>
+    </stability-levels>
+    <!--
+      When building this feature pack the WildFly Galleon Plugin generates a docs.schema Galleon package,
+      which is used to provision the contents of the 'docs/schema' directory in a WildFly installation.
+      To do this the plugin inspects maven artifacts that would be provisioned by the feature pack,
+      looking for those whose Maven groupId matches one of the groupIds listed below.
+      For all matching artifacts, the plugin checks for the existence of a 'schema' directory at the artifact root.
+      If such a directory is found, the plugin copies out the directory contents and includes them
+      in the feature pack as part of the 'docs.schema' package it generates.
+     -->
     <package-schemas>
         <group name="org.jboss.metadata"/>
         <group name="org.wildfly"/>
@@ -50,9 +48,9 @@
         <plugin artifact="org.wildfly.galleon-plugins:wildfly-galleon-plugins"/>
     </plugins>
 
-    <resources>
-        <copy artifact="org.wildfly.galleon-plugins:wildfly-config-gen" to="wildfly/wildfly-config-gen.jar"/>
-    </resources>
+    <system-paths>
+        <system-path path="modules/system/layers/base/"/>
+    </system-paths>
 
     <generate-feature-specs>
         <extensions>
@@ -92,9 +90,10 @@
                 <extension>org.wildfly.extension.elytron</extension>
                 <extension>org.wildfly.extension.health</extension>
                 <extension>org.wildfly.extension.io</extension>
+                <extension>org.wildfly.extension.jakarta.data</extension>
                 <extension>org.wildfly.extension.messaging-activemq</extension>
                 <extension>org.wildfly.extension.metrics</extension>
-                <extension>org.wildfly.extension.opentelemetry</extension>
+                <extension>org.wildfly.extension.elytron-oidc-client</extension>
                 <extension>org.wildfly.extension.request-controller</extension>
                 <extension>org.wildfly.extension.rts</extension>
                 <extension>org.wildfly.extension.security.manager</extension>
@@ -135,8 +134,8 @@
                 <extension>org.wildfly.extension.ee-security</extension>
                 <extension>org.wildfly.extension.elytron</extension>
                 <extension>org.wildfly.extension.io</extension>
+                <extension>org.wildfly.extension.jakarta.data</extension>
                 <extension>org.wildfly.extension.messaging-activemq</extension>
-                <extension>org.wildfly.extension.opentelemetry</extension>
                 <extension>org.wildfly.extension.picketlink</extension>
                 <extension>org.wildfly.extension.request-controller</extension>
                 <extension>org.wildfly.extension.rts</extension>

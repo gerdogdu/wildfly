@@ -1,69 +1,96 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2021, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.test.integration.microprofile.reactive.messaging.kafka.ssl;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import static org.wildfly.test.integration.microprofile.reactive.KeystoreUtil.SERVER_KEYSTORE_PATH;
 
-import org.wildfly.test.integration.microprofile.reactive.RunKafkaSetupTask;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+
+import io.smallrye.reactive.messaging.kafka.companion.KafkaCompanion;
+import org.jboss.arquillian.testcontainers.api.DockerRequired;
+import org.jboss.as.arquillian.api.ServerSetupTask;
+import org.jboss.as.arquillian.container.ManagementClient;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.MountableFile;
+import org.wildfly.security.manager.WildFlySecurityManager;
+import org.wildfly.test.integration.microprofile.reactive.KeystoreUtil;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class RunKafkaWithSslSetupTask extends RunKafkaSetupTask {
-    private final String SERVER_KEYSTORE =
-            "src/test/resources/org/wildfly/test/integration/microprofile/reactive/messaging/kafka/server.keystore.p12";
-    private final String KEYSTORE_PWD = "serverks";
+@DockerRequired
+public class RunKafkaWithSslSetupTask implements ServerSetupTask {
+    volatile GenericContainer container;
+    volatile KafkaCompanion companion;
 
     @Override
-    protected WildFlyEmbeddedKafkaBroker augmentKafkaBroker(WildFlyEmbeddedKafkaBroker broker) {
+    public void setup(ManagementClient managementClient, String s) throws Exception {
+        try {
+            KeystoreUtil.createKeystores();
+            String kafkaVersion = WildFlySecurityManager.getPropertyPrivileged("wildfly.test.kafka.version", null);
+            if (kafkaVersion == null) {
+                throw new IllegalArgumentException("Specify Kafka version with -Dwildfly.test.kafka.version");
+            }
 
-        Path path = Paths.get(SERVER_KEYSTORE)
-                .toAbsolutePath()
-                .normalize();
-        if (!Files.exists(path)) {
-            throw new IllegalStateException(path.toString());
+            // The KafkaContainer class doesn't play nicely when trying to make it use SSL
+            container = new GenericContainer("apache/kafka-native:" + kafkaVersion);
+            container.setPortBindings(Arrays.asList("9092:9092", "19092:19092"));
+            container.withCopyFileToContainer(
+                    MountableFile.forHostPath(Path.of("src/test/resources/org/wildfly/test/integration/microprofile/reactive/messaging/kafka/ssl/server.properties")),
+                    "/mnt/shared/config/server.properties"
+            );
+            container.waitingFor(Wait.forLogMessage(".*Transitioning from RECOVERY to RUNNING.*", 1));
+
+
+            // Copy the keystore files to the expected container location
+            container.withCopyFileToContainer(
+                    MountableFile.forHostPath(SERVER_KEYSTORE_PATH.getParent()),
+                    "/etc/kafka/secrets/");
+
+//            // Set env vars which don't seem to have any effect when only in server.properties
+            container.addEnv("KAFKA_CONTROLLER_QUORUM_VOTERS", "1@localhost:29093");
+
+            container.start();
+
+            companion = new KafkaCompanion("INTERNAL://localhost:19092");
+            companion.topics().createAndWait("testing", 1, Duration.of(10, ChronoUnit.SECONDS));
+        } catch (Exception e) {
+            cleanupKafka();
+            throw e;
         }
+    }
 
-        // This sets up SSL on port 9092 and PLAINTEXT on 19092
-        Map<String, String> properties = new HashMap<>();
-        properties.put("listeners", "SSL://localhost:9092,PLAINTEXT://localhost:19092");
-        properties.put("advertised.listeners", "SSL://localhost:9092,PLAINTEXT://localhost:19092");
-        properties.put("security.inter.broker.protocol", "PLAINTEXT");
-        // TODO load from resources folder
-        properties.put("ssl.keystore.location", path.toString());
-        properties.put("ssl.keystore.password", KEYSTORE_PWD);
-        properties.put("ssl.key.password", KEYSTORE_PWD);
-        properties.put("ssl.keystore.type", "PKCS12");
-        properties.put("ssl.secure.random.implementation", "SHA1PRNG");
-        broker.brokerProperties(properties);
+    @Override
+    public void tearDown(ManagementClient managementClient, String s) throws Exception {
+        cleanupKafka();
+    }
 
-        // Set the port to the PLAINTEXT one, as this is the one the AdminClient will use to create the topics
-        broker.kafkaPorts(19092);
-
-        return broker;
+    private void cleanupKafka() throws IOException {
+        try {
+            if (companion != null) {
+                try {
+                    companion.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            if (container != null) {
+                try {
+                    container.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } finally {
+            KeystoreUtil.cleanUp();
+        }
     }
 }

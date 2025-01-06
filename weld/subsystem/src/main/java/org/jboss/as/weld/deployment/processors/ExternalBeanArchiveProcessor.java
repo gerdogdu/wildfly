@@ -1,27 +1,8 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.weld.deployment.processors;
-
-import static org.jboss.as.weld.util.Utils.getRootDeploymentUnit;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,6 +33,7 @@ import org.jboss.as.weld.deployment.BeanDeploymentArchiveImpl;
 import org.jboss.as.weld.deployment.BeanDeploymentArchiveImpl.BeanArchiveType;
 import org.jboss.as.weld.deployment.ExplicitBeanArchiveMetadata;
 import org.jboss.as.weld.deployment.ExplicitBeanArchiveMetadataContainer;
+import org.jboss.as.weld.deployment.PropertyReplacingBeansXmlParser;
 import org.jboss.as.weld.deployment.WeldAttachments;
 import org.jboss.as.weld.deployment.processors.UrlScanner.ClassFile;
 import org.jboss.as.weld.discovery.AnnotationType;
@@ -66,7 +48,6 @@ import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.Index;
 import org.jboss.jandex.IndexReader;
-import org.jboss.jandex.Indexer;
 import org.jboss.modules.DependencySpec;
 import org.jboss.modules.Module;
 import org.jboss.modules.ModuleDependencySpec;
@@ -76,7 +57,6 @@ import org.jboss.weld.bootstrap.api.Service;
 import org.jboss.weld.bootstrap.spi.BeanDiscoveryMode;
 import org.jboss.weld.bootstrap.spi.BeansXml;
 import org.jboss.weld.xml.BeansXmlParser;
-import org.wildfly.common.iteration.CompositeIterable;
 import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
@@ -103,7 +83,6 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
 
-
         if (!WeldDeploymentMarker.isPartOfWeldDeployment(deploymentUnit)) {
             return;
         }
@@ -121,11 +100,18 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
         // This set is used for external bean archives with annotated discovery mode
         final Set<AnnotationType> beanDefiningAnnotations = new HashSet<>(deploymentUnit.getAttachment(WeldAttachments.BEAN_DEFINING_ANNOTATIONS));
 
-        final List<DeploymentUnit> deploymentUnits = new ArrayList<DeploymentUnit>();
+        List<DeploymentUnit> subDeployments = deploymentUnit.getAttachmentList(Attachments.SUB_DEPLOYMENTS);
+        List<DeploymentUnit> deploymentUnits = new ArrayList<>(subDeployments.size() + 1);
         deploymentUnits.add(deploymentUnit);
-        deploymentUnits.addAll(deploymentUnit.getAttachmentList(Attachments.SUB_DEPLOYMENTS));
+        deploymentUnits.addAll(subDeployments);
 
-        BeansXmlParser parser = BeansXmlParserFactory.getPropertyReplacingParser(deploymentUnit,
+        List<ClassLoader> loaders = new ArrayList<>(deploymentUnits.size() + 1);
+        loaders.add(WildFlySecurityManager.getClassLoaderPrivileged(WeldDeploymentProcessor.class));
+        for (DeploymentUnit unit : deploymentUnits) {
+            loaders.add(unit.getAttachment(Attachments.MODULE).getClassLoader());
+        }
+
+        BeansXmlParser parser = new PropertyReplacingBeansXmlParser(deploymentUnit,
                 Utils.getRootDeploymentUnit(deploymentUnit).getAttachment(WeldConfiguration.ATTACHMENT_KEY)
                         .isLegacyEmptyBeansXmlTreatment());
 
@@ -163,10 +149,7 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
             }
         }
 
-        final ServiceLoader<ModuleServicesProvider> moduleServicesProviders = ServiceLoader.load(ModuleServicesProvider.class,
-                WildFlySecurityManager.getClassLoaderPrivileged(WeldDeploymentProcessor.class));
-
-        Set<String> skipPrecalculatedJandexModules = getSkipPrecalculatedJandexModules(deploymentUnit);
+        Iterable<ModuleServicesProvider> moduleServicesProviders = ServiceLoader.load(ModuleServicesProvider.class, new CompositeClassLoader(loaders));
 
         // This map is a cache that allows us to avoid repeated introspection of Module's exported resources
         // it is of little importance for small deployment, but makes a difference in massive ones, see WFLY-14055
@@ -176,7 +159,6 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
             if (module == null) {
                 return;
             }
-            Iterable<ModuleServicesProvider> providers = new CompositeIterable<>(moduleServicesProviders, module.loadService(ModuleServicesProvider.class));
 
             for (DependencySpec dep : module.getDependencies()) {
                 if (!(dep instanceof ModuleDependencySpec)) {
@@ -191,7 +173,6 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
                 if (dependency == null) {
                     continue;
                 }
-
                 Map<URL, URL> resourcesMap = findExportedResources(dependency, exportedResourcesCache);
                 if (!resourcesMap.isEmpty()) {
                     List<BeanDeploymentArchiveImpl> moduleBdas = new ArrayList<>();
@@ -229,9 +210,8 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
                             continue;
                         }
 
-                        final boolean skipPrecalculatedJandex = skipPrecalculatedJandexModules.contains(dependency.getName());
                         Map<String, List<String>> allAndBeanClasses = discover(beansXml.getBeanDiscoveryMode(), beansXmlUrl, entry.getValue(),
-                                beanDefiningAnnotations, skipPrecalculatedJandex);
+                                beanDefiningAnnotations);
                         Collection<String> discoveredBeanClasses = allAndBeanClasses.get(BEAN_CLASSES);
                         Collection<String> allKnownClasses = allAndBeanClasses.get(ALL_KNOWN_CLASSES);
                         if (discoveredBeanClasses == null) {
@@ -245,7 +225,7 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
 
                         // Add module services to external bean deployment archive
                         for (Entry<Class<? extends Service>, Service> moduleService : ServiceLoaders
-                                .loadModuleServices(providers, deploymentUnit, deployment, module, null).entrySet()) {
+                                .loadModuleServices(moduleServicesProviders, deploymentUnit, deployment, module, null).entrySet()) {
                             bda.getServices().add(moduleService.getKey(), Reflections.cast(moduleService.getValue()));
                         }
 
@@ -268,31 +248,22 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
         }
     }
 
-    private Set<String> getSkipPrecalculatedJandexModules(DeploymentUnit deploymentUnit) {
-        List<String> list = getRootDeploymentUnit(deploymentUnit).getAttachment(WeldAttachments.INGORE_PRECALCULATED_JANDEX_MODULES);
-        if (list != null) {
-            return new HashSet<>(list);
-        }
-        return Collections.emptySet();
-    }
-
     /**
      *
      * @param beanDiscoveryMode
      * @param beansXmlUrl
      * @param indexUrl
      * @param beanDefiningAnnotations
-     * @param skipPrecalculatedJandex
      * @return the set of discovered bean classes or null if unable to handle the provided beans.xml url
      */
-    private Map<String, List<String>> discover(BeanDiscoveryMode beanDiscoveryMode, URL beansXmlUrl, URL indexUrl, Set<AnnotationType> beanDefiningAnnotations, boolean skipPrecalculatedJandex) {
+    private Map<String, List<String>> discover(BeanDiscoveryMode beanDiscoveryMode, URL beansXmlUrl, URL indexUrl, Set<AnnotationType> beanDefiningAnnotations) {
         List<String> discoveredBeanClasses = new ArrayList<String>();
         List<String> allKnownClasses = new ArrayList<String>();
         BiConsumer<String, ClassFile> consumer;
 
         if (BeanDiscoveryMode.ANNOTATED.equals(beanDiscoveryMode)) {
             // We must only consider types with bean defining annotations
-            Index index = skipPrecalculatedJandex ? null : tryLoadIndex(indexUrl);
+            Index index = tryLoadIndex(indexUrl);
             if (index != null) {
                 // Use the provided index to find ClassInfo
                 consumer = (name, classFile) -> {
@@ -304,10 +275,9 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
                 };
             } else {
                 // Build ClassInfo on the fly
-                Indexer indexer = new Indexer();
                 consumer = (name, classFile) -> {
                     try (InputStream in = classFile.openStream()) {
-                        ClassInfo classInfo = indexer.index(in);
+                        ClassInfo classInfo = Index.singleClass(in);
                         allKnownClasses.add(name);
                         if (classInfo != null && hasBeanDefiningAnnotation(classInfo, beanDefiningAnnotations)) {
                             discoveredBeanClasses.add(name);
@@ -381,7 +351,7 @@ public class ExternalBeanArchiveProcessor implements DeploymentUnitProcessor {
     }
 
     private boolean hasBeanDefiningAnnotation(ClassInfo classInfo, Set<AnnotationType> beanDefiningAnnotations) {
-        Map<DotName, List<AnnotationInstance>> annotationsMap = classInfo.annotations();
+        Map<DotName, List<AnnotationInstance>> annotationsMap = classInfo.annotationsMap();
         for (AnnotationType beanDefiningAnnotation : beanDefiningAnnotations) {
             List<AnnotationInstance> annotations = annotationsMap.get(beanDefiningAnnotation.getName());
             if (annotations != null) {

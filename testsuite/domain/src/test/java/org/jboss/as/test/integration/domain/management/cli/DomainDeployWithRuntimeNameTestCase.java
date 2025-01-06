@@ -1,29 +1,12 @@
 /*
- * Copyright (C) 2013 Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file
- * in the distribution for a full listing of individual contributors.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301  USA
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.domain.management.cli;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.jboss.as.test.integration.domain.util.EENamespaceTransformer.jakartaTransform;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +14,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.jboss.as.domain.controller.logging.DomainControllerLogger;
@@ -41,8 +25,8 @@ import org.jboss.as.test.integration.management.base.AbstractCliTestBase;
 import org.jboss.as.test.integration.management.util.SimpleHelloWorldServlet;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
-import org.jboss.shrinkwrap.api.exporter.ZipExporter;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.impl.base.exporter.zip.ZipExporterImpl;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -68,7 +52,7 @@ public class DomainDeployWithRuntimeNameTestCase extends AbstractCliTestBase {
         List<String> groups = new ArrayList<>(CLITestSuite.serverGroups.keySet());
         Collections.sort(groups);
         serverGroups = groups.toArray(new String[groups.size()]);
-        AbstractCliTestBase.initCLI(DomainTestSupport.masterAddress);
+        AbstractCliTestBase.initCLI(DomainTestSupport.primaryAddress);
     }
 
    private File createWarFile(String content) throws IOException {
@@ -77,8 +61,8 @@ public class DomainDeployWithRuntimeNameTestCase extends AbstractCliTestBase {
         war.addAsWebInfResource(SimpleHelloWorldServlet.class.getPackage(), "web.xml", "web.xml");
         war.addAsWebResource(new StringAsset(content), "page.html");
         File tempFile = new File(System.getProperty("java.io.tmpdir"), "HelloServlet.war");
-        //new ZipExporterImpl(war).exportTo(tempFile, true);
-        jakartaTransform(war.as(ZipExporter.class), tempFile);
+        new ZipExporterImpl(war).exportTo(tempFile, true);
+
         return tempFile;
     }
 
@@ -153,9 +137,9 @@ public class DomainDeployWithRuntimeNameTestCase extends AbstractCliTestBase {
             groupServers.add(server);
         }
 
-        for (String host : CLITestSuite.hostAddresses.keySet()) {
-            String address = CLITestSuite.hostAddresses.get(host);
-            for (String server : CLITestSuite.hostServers.get(host)) {
+        for (Map.Entry<String, String> entry : CLITestSuite.hostAddresses.entrySet()) {
+            String address = entry.getValue();
+            for (String server : CLITestSuite.hostServers.get(entry.getKey())) {
                 if (!groupServers.contains(server)) {
                     continue;  // server not in the group
                 }

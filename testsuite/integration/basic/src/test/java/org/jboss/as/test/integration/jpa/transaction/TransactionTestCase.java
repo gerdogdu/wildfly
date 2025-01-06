@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2012, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.jpa.transaction;
@@ -28,9 +11,11 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
+
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-import javax.persistence.TransactionRequiredException;
+import jakarta.persistence.TransactionRequiredException;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
@@ -135,7 +120,7 @@ public class TransactionTestCase {
         } catch (Exception failed) {
             error = failed;
         }
-        // javax.ejb.EJBException: javax.persistence.TransactionRequiredException: no transaction is in progress
+        // jakarta.ejb.EJBException: jakarta.persistence.TransactionRequiredException: no transaction is in progress
         while (error != null && !(error instanceof TransactionRequiredException) && error.getCause() != null) {
             error = error.getCause();
         }
@@ -279,6 +264,36 @@ public class TransactionTestCase {
         } catch (/*EJBTransactionRolledbackException*/ Exception expected) {
             assertTrue("should of been caused by IllegalStateException", expected.getCause() instanceof IllegalStateException);
         }
+    }
+
+    /**
+     * testQueryLazyFetch ensures that entity collection marked as jakarta.persistence.FetchType.LAZY is using the correct internal Hibernate ORM proxy representation.
+     *
+     * Test failure could look like:
+     *
+     *    TransactionTestCase.testQueryLazyFetch:284 Customer class must be lazy proxy (org.hibernate.engine.spi.ManagedEntity) but actually Customer class interfaces are = [interface org.hibernate.spi.ManagedEntity, interface org.hibernate.engine.spi.PersistentAttributeInterceptable, interface org.hibernate.engine.spi.ExtendedSelfDirtinessTracker]
+     *
+     * The above test failure was likely caused by the Hibernate ORM internal interface "org.hibernate.engine.spi.ManagedEntity" being renamed to "org.hibernate.spi.ManagedEntity".
+     * Solution:  Change this test to check for the new (SPI) interface name "org.hibernate.spi.ManagedEntity".
+     *
+     * @throws Exception
+     */
+    @Test
+    @InSequence(12)
+    public void testQueryLazyFetch() throws Exception {
+        SFSB1 sfsb1 = lookup("SFSB1", SFSB1.class);
+        Company company = sfsb1.createEmployee("Mad", "57343 LazilyFetched Lane", 205);
+        boolean lazyProxy = false;
+        Class<?>[] interfaces = company.getClass().getInterfaces();
+        for(int looper = 0; looper < interfaces.length; looper++) {
+            // Warning: If Hibernate ORM changes the internal proxy representation for lazy fetched entities, the checked interface may change.
+            //          If this test starts failing, open a debugger and examine the interfaces returned and see if a different class should be
+            //          checked for.
+            if (interfaces[looper].getName().equals("org.hibernate.engine.spi.ManagedEntity")) {
+                lazyProxy = true;
+            }
+        }
+        assertTrue("Customer class must be lazy proxy (org.hibernate.engine.spi.ManagedEntity) but actually Customer class interfaces are = " + Arrays.toString(company.getClass().getInterfaces()), lazyProxy);
     }
 
 }

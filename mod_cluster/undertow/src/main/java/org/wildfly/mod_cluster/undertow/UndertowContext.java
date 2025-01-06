@@ -1,39 +1,21 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.mod_cluster.undertow;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequestEvent;
+import jakarta.servlet.ServletRequestListener;
+import jakarta.servlet.http.HttpSessionEvent;
+import jakarta.servlet.http.HttpSessionListener;
 
 import io.undertow.servlet.api.Deployment;
 import io.undertow.servlet.api.ListenerInfo;
 import io.undertow.servlet.core.InMemorySessionManagerFactory;
 import io.undertow.servlet.core.ManagedListener;
 import io.undertow.servlet.util.ImmediateInstanceFactory;
-
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequestEvent;
-import javax.servlet.ServletRequestListener;
-import javax.servlet.http.HttpSessionEvent;
-import javax.servlet.http.HttpSessionListener;
-
 import org.jboss.modcluster.container.Context;
 import org.jboss.modcluster.container.Host;
 
@@ -46,8 +28,8 @@ import org.jboss.modcluster.container.Host;
  */
 public class UndertowContext implements Context {
 
-    private Deployment deployment;
-    private UndertowHost host;
+    private final Deployment deployment;
+    private final UndertowHost host;
 
     public UndertowContext(Deployment deployment, UndertowHost host) {
         this.deployment = deployment;

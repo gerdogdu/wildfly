@@ -1,6 +1,14 @@
 [[management-resources]]
 = Management resources
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 When WildFly parses your configuration files at boot, or when you use
 one of the AS's <<Management_Clients,Management Clients>> you are
 adding, removing or modifying _management resources_ in the AS's
@@ -81,29 +89,53 @@ details of one of them, via the CLI one would:
     "result" => [
         "add-namespace",
         "add-schema-location",
+        "clean-obsolete-content",
+        "composite",
         "delete-snapshot",
         "full-replace-deployment",
+        "list-add",
+        "list-clear",
+        "list-get",
+        "list-remove",
         "list-snapshots",
+        "map-clear",
+        "map-get",
+        "map-put",
+        "map-remove",
+        "product-info",
+        "query",
         "read-attribute",
+        "read-attribute-group",
+        "read-attribute-group-names",
         "read-children-names",
         "read-children-resources",
         "read-children-types",
         "read-config-as-xml",
+        "read-config-as-xml-file",
         "read-operation-description",
         "read-operation-names",
         "read-resource",
         "read-resource-description",
         "reload",
+        "reload-enhanced",
         "remove-namespace",
         "remove-schema-location",
         "replace-deployment",
+        "resolve-expression",
+        "resolve-internet-address",
+        "resume",
         "shutdown",
+        "suspend",
         "take-snapshot",
+        "undefine-attribute",
         "upload-deployment-bytes",
         "upload-deployment-stream",
         "upload-deployment-url",
         "validate-address",
-        "write-attribute"
+        "validate-operation",
+        "whoami",
+        "write-attribute",
+        "write-config"
     ]
 }
 [standalone@localhost:9990 /] :read-operation-description(name=upload-deployment-url)
@@ -115,17 +147,28 @@ details of one of them, via the CLI one would:
         "request-properties" => {"url" => {
             "type" => STRING,
             "description" => "The URL at which the deployment content is available for upload to the domain's or standalone server's deployment content repository.. Note that the URL must be accessible from the target of the operation (i.e. the Domain Controller or standalone server).",
+            "expressions-allowed" => false,
             "required" => true,
-            "min-length" => 1,
-            "nillable" => false
+            "nillable" => false,
+            "min-length" => 1L,
+            "max-length" => 2147483647L,
+            "web-url" => true,
+            "stability" => "default"
         }},
         "reply-properties" => {
             "type" => BYTES,
             "description" => "The hash of managed deployment content that has been uploaded to the domain's or standalone server's deployment content repository.",
-            "min-length" => 20,
-            "max-length" => 20,
-            "nillable" => false
-        }
+            "expressions-allowed" => false,
+            "required" => true,
+            "nillable" => false,
+            "min-length" => 20L,
+            "max-length" => 20L,
+            "stability" => "default"
+        },
+        "access-constraints" => {"application" => {"deployment" => {"type" => "core"}}},
+        "stability" => "default",
+        "read-only" => false,
+        "runtime-only" => true
     }
 }
 ----
@@ -507,9 +550,9 @@ what's in `domain.xml`, the host specific configuration for each host
 application server. The Host Controller processes in a managed domain
 provide access to all or part of the overall resource tree. How much is
 available depends on whether the management client is interacting with
-the Host Controller that is acting as the master Domain Controller. If
-the Host Controller is the master Domain Controller, then the section of
-the tree for each host is available. If the Host Controller is a slave
+the Host Controller that is acting as the Domain Controller. If
+the Host Controller is the Domain Controller, then the section of
+the tree for each host is available. If the Host Controller is a secondary Host Controller
 to a remote Domain Controller, then only the portion of the tree
 associated with that host is available.
 

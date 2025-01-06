@@ -1,36 +1,33 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.infinispan.subsystem;
 
 import org.infinispan.Cache;
+import org.infinispan.configuration.cache.BackupConfiguration.BackupStrategy;
+import org.infinispan.configuration.cache.BackupFailurePolicy;
+import org.infinispan.configuration.cache.ConfigurationBuilder;
+import org.infinispan.configuration.cache.SitesConfiguration;
+import org.infinispan.configuration.cache.SitesConfigurationBuilder;
 import org.jboss.as.clustering.controller.ManagementResourceRegistration;
-import org.jboss.as.clustering.controller.ParentResourceServiceHandler;
 import org.jboss.as.clustering.controller.ResourceDescriptor;
-import org.jboss.as.clustering.controller.ResourceServiceConfiguratorFactory;
-import org.jboss.as.clustering.controller.FunctionExecutorRegistry;
 import org.jboss.as.clustering.controller.ResourceServiceHandler;
-import org.jboss.as.clustering.controller.SimpleResourceRegistration;
+import org.jboss.as.clustering.controller.SimpleResourceRegistrar;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
+import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
+import org.jboss.as.controller.capability.BinaryCapabilityNameResolver;
+import org.jboss.as.controller.capability.RuntimeCapability;
+import org.jboss.as.controller.registry.Resource;
+import org.jboss.dmr.ModelNode;
+import org.wildfly.service.descriptor.BinaryServiceDescriptor;
+import org.wildfly.subsystem.resource.operation.ResourceOperationRuntimeHandler;
+import org.wildfly.subsystem.service.ResourceServiceInstaller;
+import org.wildfly.subsystem.service.capability.CapabilityServiceInstaller;
+import org.wildfly.subsystem.service.capture.FunctionExecutorRegistry;
 
 /**
  * Definition of a backups resource.
@@ -42,6 +39,9 @@ import org.jboss.as.controller.PathElement;
 public class BackupsResourceDefinition extends ComponentResourceDefinition {
 
     static final PathElement PATH = pathElement("backups");
+
+    static final BinaryServiceDescriptor<SitesConfiguration> SERVICE_DESCRIPTOR = serviceDescriptor(PATH, SitesConfiguration.class);
+    private static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of(SERVICE_DESCRIPTOR).setDynamicNameMapper(BinaryCapabilityNameResolver.GRANDPARENT_PARENT).build();
 
     private final FunctionExecutorRegistry<Cache<?, ?>> executors;
 
@@ -55,12 +55,30 @@ public class BackupsResourceDefinition extends ComponentResourceDefinition {
         ManagementResourceRegistration registration = parent.registerSubModel(this);
 
         ResourceDescriptor descriptor = new ResourceDescriptor(this.getResourceDescriptionResolver());
-        ResourceServiceConfiguratorFactory serviceConfiguratorFactory = BackupsServiceConfigurator::new;
-        ResourceServiceHandler handler = new ParentResourceServiceHandler(serviceConfiguratorFactory);
-        new SimpleResourceRegistration(descriptor, handler).register(registration);
+        ResourceOperationRuntimeHandler handler = ResourceOperationRuntimeHandler.configureService(this);
+        new SimpleResourceRegistrar(descriptor, ResourceServiceHandler.of(handler)).register(registration);
 
-        new BackupResourceDefinition(serviceConfiguratorFactory, this.executors).register(registration);
+        new BackupResourceDefinition(handler, this.executors).register(registration);
 
         return registration;
+    }
+
+    @Override
+    public ResourceServiceInstaller configure(OperationContext context, ModelNode model) throws OperationFailedException {
+        SitesConfigurationBuilder builder = new ConfigurationBuilder().sites();
+        Resource resource = context.readResource(PathAddress.EMPTY_ADDRESS);
+        for (Resource.ResourceEntry entry : resource.getChildren(BackupResourceDefinition.WILDCARD_PATH.getKey())) {
+            String siteName = entry.getName();
+            ModelNode backup = entry.getModel();
+            builder.addBackup().site(siteName)
+                    .backupFailurePolicy(BackupFailurePolicy.valueOf(BackupResourceDefinition.Attribute.FAILURE_POLICY.resolveModelAttribute(context, backup).asString()))
+                    .replicationTimeout(BackupResourceDefinition.Attribute.TIMEOUT.resolveModelAttribute(context, backup).asLong())
+                    .strategy(BackupStrategy.valueOf(BackupResourceDefinition.Attribute.STRATEGY.resolveModelAttribute(context, backup).asString()))
+                    .takeOffline()
+                        .afterFailures(BackupResourceDefinition.TakeOfflineAttribute.AFTER_FAILURES.resolveModelAttribute(context, backup).asInt())
+                        .minTimeToWait(BackupResourceDefinition.TakeOfflineAttribute.MIN_WAIT.resolveModelAttribute(context, backup).asLong())
+            ;
+        }
+        return CapabilityServiceInstaller.builder(CAPABILITY, builder.create()).build();
     }
 }

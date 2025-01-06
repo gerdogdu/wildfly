@@ -1,6 +1,14 @@
 [[Configuration_file_git_history]]
 = Git Configuration file history
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 To enhance the initial <<Configuration_file_history,configuration file history>> we have now a native Git support to manage the configuration history. This feature goes a little farther than the initial configuration file history in that it also manages content repository content and all the configuration files (such as properties). This feature only work for **standalone servers** using the default directory layout.
 
 As mentioned in <<Command_line_parameters,Command line parameters>> we support the usage of a remote Git repository to pull the configuration from or create or use a local Git repository.
@@ -38,7 +46,7 @@ The parameter for `--git-repo` can be a URL or a remote alias provided you have 
 
 If a `--git-branch` parameter is added then the branch will be pulled, otherwise it will default to `master`.
 
-For example this is an elytron configuration file that you could use to connect to Github via the `--git-auth` parameter:
+For example this is an elytron configuration file that you could use to connect to GitHub via the `--git-auth` parameter:
 
 [source,xml,options="nowrap"]
 ----
@@ -260,6 +268,6 @@ When using PKCS formatted keys, the keys should not be encrypted with a passphra
 === Credential Store Reference
 
 It is possible to specify your SSH credentials as a reference to a credential store entry.
-See: https://github.com/wildfly/wildfly/blob/master/docs/src/main/asciidoc/_elytron/Credential_Store.adoc#adding-a-credential[Adding a Credential]
-to a credential store and https://github.com/wildfly/wildfly/blob/master/docs/src/main/asciidoc/_elytron/Credential_Store.adoc#referencing-credentials[Referencing Credentials]
+See: https://github.com/wildfly/wildfly/blob/main/docs/src/main/asciidoc/_elytron/Credential_Store.adoc#adding-a-credential[Adding a Credential]
+to a credential store and https://github.com/wildfly/wildfly/blob/main/docs/src/main/asciidoc/_elytron/Credential_Store.adoc#referencing-credentials[Referencing Credentials]
 stored in a credential store.

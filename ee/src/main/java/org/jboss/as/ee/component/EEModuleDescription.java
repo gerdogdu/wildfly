@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.component;
@@ -31,7 +14,6 @@ import java.util.Map;
 
 import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.interceptors.InterceptorClassDescription;
-import org.jboss.as.ee.concurrent.ConcurrentContext;
 import org.jboss.as.ee.naming.InjectedEENamespaceContextSelector;
 import org.jboss.msc.service.ServiceName;
 
@@ -70,8 +52,6 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
 
     private ServiceName defaultClassIntrospectorServiceName = ReflectiveClassIntrospector.SERVICE_NAME;
 
-    private final ConcurrentContext concurrentContext;
-
     private final EEDefaultResourceJndiNames defaultResourceJndiNames;
 
     /**
@@ -97,7 +77,6 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
         this.moduleName = moduleName;
         this.earApplicationName = earApplicationName;
         this.appClient = appClient;
-        this.concurrentContext = new ConcurrentContext();
         this.defaultResourceJndiNames = new EEDefaultResourceJndiNames();
     }
 
@@ -317,10 +296,6 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
 
     public Map<String, InterceptorEnvironment> getInterceptorEnvironment() {
         return interceptorEnvironment;
-    }
-
-    public ConcurrentContext getConcurrentContext() {
-        return concurrentContext;
     }
 
     public EEDefaultResourceJndiNames getDefaultResourceJndiNames() {

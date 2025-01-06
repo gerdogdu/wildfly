@@ -1,6 +1,14 @@
 [[EE_Application_Deployment_Configuration]]
 = Jakarta EE Application Deployment
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 The EE subsystem configuration allows the customisation of the
 deployment behaviour for Jakarta EE Applications.
 
@@ -19,7 +27,7 @@ of its XML configuration:
 ----
   <global-modules>
     <module name="org.jboss.logging" slot="main"/>
-    <module name="org.apache.log4j" annotations="true" meta-inf="true" services="false" />
+    <module name="org.apache.logging.log4j.api" annotations="true" meta-inf="true" services="false" />
   </global-modules>
 ----
 

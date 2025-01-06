@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.controller;
@@ -34,14 +17,15 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.jboss.as.clustering.function.Predicates;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.CapabilityReferenceRecorder;
 import org.jboss.as.controller.OperationStepHandler;
 import org.jboss.as.controller.PathElement;
 import org.jboss.as.controller.ResourceDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
 import org.jboss.as.controller.registry.Resource;
 import org.jboss.dmr.ModelNode;
@@ -62,12 +46,12 @@ public class ResourceDescriptor implements AddStepHandlerDescriptor {
         }
     };
     private static final Comparator<AttributeDefinition> ATTRIBUTE_COMPARATOR = Comparator.comparing(AttributeDefinition::getName);
-    private static final Comparator<Capability> CAPABILITY_COMPARATOR = Comparator.comparing(Capability::getName);
+    private static final Comparator<RuntimeCapability<?>> CAPABILITY_COMPARATOR = Comparator.comparing(RuntimeCapability::getName);
     @SuppressWarnings("deprecation")
     private static final Comparator<CapabilityReferenceRecorder> CAPABILITY_REFERENCE_COMPARATOR = Comparator.comparing(CapabilityReferenceRecorder::getBaseDependentName);
 
     private final ResourceDescriptionResolver resolver;
-    private Map<Capability, Predicate<ModelNode>> capabilities = Map.of();
+    private Map<RuntimeCapability<?>, Predicate<ModelNode>> capabilities = Map.of();
     private List<AttributeDefinition> attributes = List.of();
     private Map<AttributeDefinition, OperationStepHandler> customAttributes = Map.of();
     private List<AttributeDefinition> ignoredAttributes = List.of();
@@ -91,7 +75,7 @@ public class ResourceDescriptor implements AddStepHandlerDescriptor {
     }
 
     @Override
-    public Map<Capability, Predicate<ModelNode>> getCapabilities() {
+    public Map<RuntimeCapability<?>, Predicate<ModelNode>> getCapabilities() {
         return this.capabilities;
     }
 
@@ -264,15 +248,15 @@ public class ResourceDescriptor implements AddStepHandlerDescriptor {
     }
 
     public <E extends Enum<E> & Capability> ResourceDescriptor addCapabilities(Class<E> enumClass) {
-        return this.addCapabilities(Predicates.always(), enumClass);
+        return this.addCapabilities(ModelNode::isDefined, enumClass);
     }
 
     public ResourceDescriptor addCapabilities(Capability... capabilities) {
-        return this.addCapabilities(Predicates.always(), capabilities);
+        return this.addCapabilities(ModelNode::isDefined, capabilities);
     }
 
-    public ResourceDescriptor addCapabilities(Iterable<? extends Capability> capabilities) {
-        return this.addCapabilities(Predicates.always(), capabilities);
+    public ResourceDescriptor addCapabilities(Collection<? extends Capability> capabilities) {
+        return this.addCapabilities(ModelNode::isDefined, capabilities);
     }
 
     public <E extends Enum<E> & Capability> ResourceDescriptor addCapabilities(Predicate<ModelNode> predicate, Class<E> enumClass) {
@@ -283,11 +267,19 @@ public class ResourceDescriptor implements AddStepHandlerDescriptor {
         return this.addCapabilities(predicate, Arrays.asList(capabilities));
     }
 
-    public ResourceDescriptor addCapabilities(Predicate<ModelNode> predicate, Iterable<? extends Capability> capabilities) {
+    public ResourceDescriptor addCapabilities(Predicate<ModelNode> predicate, Collection<? extends Capability> capabilities) {
+        return this.addCapabilities(predicate, capabilities.stream().map(Capability::getDefinition).collect(Collectors.toList()));
+    }
+
+    public ResourceDescriptor addCapabilities(Iterable<RuntimeCapability<?>> capabilities) {
+        return this.addCapabilities(ModelNode::isDefined, capabilities);
+    }
+
+    public ResourceDescriptor addCapabilities(Predicate<ModelNode> predicate, Iterable<RuntimeCapability<?>> capabilities) {
         if (this.capabilities.isEmpty()) {
             this.capabilities = new TreeMap<>(CAPABILITY_COMPARATOR);
         }
-        for (Capability capability : capabilities) {
+        for (RuntimeCapability<?> capability : capabilities) {
             this.capabilities.put(capability, predicate);
         }
         return this;

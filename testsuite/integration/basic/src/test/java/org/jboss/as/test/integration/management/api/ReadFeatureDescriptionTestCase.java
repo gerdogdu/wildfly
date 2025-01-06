@@ -1,17 +1,6 @@
 /*
- * Copyright 2018 Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.management.api;
 
@@ -26,6 +15,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REC
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.NAME;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REFS;
 import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REQUIRES;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.STABILITY;
 
 import java.io.IOException;
 
@@ -35,6 +25,7 @@ import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.test.integration.management.base.ContainerResourceMgmtTestBase;
 import org.jboss.as.test.integration.management.util.MgmtOperationException;
+import org.jboss.as.version.Stability;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.Property;
 import org.junit.Assert;
@@ -89,6 +80,10 @@ public class ReadFeatureDescriptionTestCase extends ContainerResourceMgmtTestBas
                             highestDepth = Math.max(highestDepth, treeDepth);
                         }
                     }
+                    break;
+                case STABILITY:
+                    // Verify validity of stability
+                    Stability.fromString(prop.getValue().asString());
                     break;
                 case ANNOTATION:
                 case PARAMS:

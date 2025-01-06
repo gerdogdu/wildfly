@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.component;
@@ -30,6 +13,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.jboss.as.ee.component.interceptors.ComponentDispatcherInterceptor;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
@@ -45,8 +29,6 @@ import org.jboss.invocation.Interceptors;
 import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.invocation.proxy.ProxyFactory;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.value.Value;
-import org.jboss.msc.value.Values;
 
 import static java.lang.reflect.Modifier.ABSTRACT;
 import static java.lang.reflect.Modifier.PUBLIC;
@@ -179,9 +161,10 @@ public class ViewDescription {
      * Create the injection source
      *
      * @param serviceName     The view service name
-     * @param viewClassLoader
+     * @param viewClassLoader The view class loader
+     * @param appclient       appclient environment
      */
-    protected InjectionSource createInjectionSource(final ServiceName serviceName, Value<ClassLoader> viewClassLoader, boolean appclient) {
+    protected InjectionSource createInjectionSource(final ServiceName serviceName, Supplier<ClassLoader> viewClassLoader, boolean appclient) {
         return new ViewBindingInjectionSource(serviceName);
     }
 
@@ -262,7 +245,7 @@ public class ViewDescription {
             // Create view bindings
             final List<BindingConfiguration> bindingConfigurations = configuration.getBindingConfigurations();
             for (String bindingName : description.getBindingNames()) {
-                bindingConfigurations.add(new BindingConfiguration(bindingName, description.createInjectionSource(description.getServiceName(), Values.immediateValue(componentConfiguration.getModuleClassLoader()), appclient)));
+                bindingConfigurations.add(new BindingConfiguration(bindingName, description.createInjectionSource(description.getServiceName(), () -> componentConfiguration.getModuleClassLoader(), appclient)));
             }
         }
     }

@@ -1,39 +1,22 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.timerservice;
 
 import java.lang.reflect.Method;
 import java.util.Calendar;
 import java.util.Date;
-import javax.ejb.EJBException;
-import javax.ejb.ScheduleExpression;
-import javax.ejb.Timer;
+import jakarta.ejb.EJBException;
+import jakarta.ejb.ScheduleExpression;
+import jakarta.ejb.Timer;
 
 import org.jboss.as.ejb3.logging.EjbLogger;
 import org.jboss.as.ejb3.timerservice.persistence.TimeoutMethod;
 import org.jboss.as.ejb3.timerservice.schedule.CalendarBasedTimeout;
 
 /**
- * Represents a {@link javax.ejb.Timer} which is created out a calendar expression
+ * Represents a {@link jakarta.ejb.Timer} which is created out a calendar expression
  *
  * @author Jaikiran Pai
  * @version $Revision: $
@@ -84,14 +67,14 @@ public class CalendarTimer extends TimerImpl {
      */
     @Override
     public ScheduleExpression getSchedule() throws IllegalStateException, EJBException {
-        this.assertTimerState();
+        this.validateInvocationContext();
         return this.calendarTimeout.getScheduleExpression();
     }
 
     /**
      * This method is similar to {@link #getSchedule()}, except that this method does <i>not</i> check the timer state
-     * and hence does <i>not</i> throw either {@link IllegalStateException} or {@link javax.ejb.NoSuchObjectLocalException}
-     * or {@link javax.ejb.EJBException}.
+     * and hence does <i>not</i> throw either {@link IllegalStateException} or {@link jakarta.ejb.NoSuchObjectLocalException}
+     * or {@link jakarta.ejb.EJBException}.
      *
      * @return
      */
@@ -104,7 +87,7 @@ public class CalendarTimer extends TimerImpl {
      */
     @Override
     public boolean isCalendarTimer() throws IllegalStateException, EJBException {
-        this.assertTimerState();
+        this.validateInvocationContext();
         return true;
     }
 

@@ -1,3 +1,8 @@
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <subsystem xmlns="urn:jboss:domain:resource-adapters:1.0">
     <resource-adapters>
         <resource-adapter>
@@ -9,6 +14,9 @@
                         <interleaving>false</interleaving>
                         <no-tx-separate-pools>false</no-tx-separate-pools>
                     </xa-pool>
+                    <security>
+                        <application/>
+                    </security>
                     <recovery no-recovery="false"></recovery>
                 </connection-definition>
             </connection-definitions>

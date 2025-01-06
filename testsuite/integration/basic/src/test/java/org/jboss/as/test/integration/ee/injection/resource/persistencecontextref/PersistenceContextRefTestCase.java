@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, Red Hat Middleware LLC, and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ee.injection.resource.persistencecontextref;
 
@@ -78,14 +61,14 @@ public class PersistenceContextRefTestCase {
 
     @Test
     public void testCorrectPersistenceUnitInjectedFromAnnotation() throws NamingException {
-        PcManagedBean bean = getManagedBean();
+        PcBean bean = getManagedBean();
         bean.getMypc().getMetamodel().entity(PcMyEntity.class);
     }
 
     @Test
     public void testCorrectPersistenceUnitInjectedFromAnnotation2() throws NamingException {
         try {
-            PcManagedBean bean = getManagedBean();
+            PcBean bean = getManagedBean();
             bean.getMypc().getMetamodel().entity(PcOtherEntity.class);
             Assert.fail();
         } catch (IllegalArgumentException expected) {
@@ -96,7 +79,7 @@ public class PersistenceContextRefTestCase {
     @Test
     public void testCorrectPersistenceUnitInjectedFromPersistenceUnitRef() throws NamingException {
         try {
-            PcManagedBean bean = getManagedBean();
+            PcBean bean = getManagedBean();
             bean.getOtherpc().getMetamodel().entity(PcMyEntity.class);
             Assert.fail();
         } catch (IllegalArgumentException expected) {
@@ -106,20 +89,20 @@ public class PersistenceContextRefTestCase {
 
     @Test
     public void testCorrectPersistenceUnitInjectedFromPersistenceUnitRef2() throws NamingException {
-        PcManagedBean bean = getManagedBean();
+        PcBean bean = getManagedBean();
         bean.getOtherpc().getMetamodel().entity(PcOtherEntity.class);
     }
 
     @Test
     public void testCorrectPersistenceUnitInjectedFromRefInjectionTarget() throws NamingException {
-        PcManagedBean bean = getManagedBean();
+        PcBean bean = getManagedBean();
         bean.getMypc2().getMetamodel().entity(PcMyEntity.class);
     }
 
     @Test
     public void testCorrectPersistenceUnitInjectedFromRefInjectionTarget2() throws NamingException {
         try {
-            PcManagedBean bean = getManagedBean();
+            PcBean bean = getManagedBean();
             bean.getMypc2().getMetamodel().entity(PcOtherEntity.class);
             Assert.fail();
         } catch (IllegalArgumentException expected) {
@@ -129,21 +112,21 @@ public class PersistenceContextRefTestCase {
 
     @Test
     public void testUnsynchronizedPCisNotJoinedToTransaction() throws NamingException {
-        PcManagedBean bean = getManagedBean();
+        PcBean bean = getManagedBean();
         boolean isJoined = bean.unsynchronizedIsNotJoinedToTX();
         Assert.assertFalse("Unsynchronized entity manager should not of been joined to the JTA transaction but was",isJoined);
     }
 
     @Test
     public void testSynchronizedPCisJoinedToTransaction() throws NamingException {
-        PcManagedBean bean = getManagedBean();
+        PcBean bean = getManagedBean();
         boolean isJoined = bean.synchronizedIsJoinedToTX();
         Assert.assertTrue("Synchronized entity manager should of been joined to the JTA transaction but was not",isJoined);
     }
 
-    private PcManagedBean getManagedBean() throws NamingException {
+    private PcBean getManagedBean() throws NamingException {
         InitialContext initialContext = new InitialContext();
-        PcManagedBean bean = (PcManagedBean) initialContext.lookup("java:module/pcManagedBean");
+        PcBean bean = (PcBean) initialContext.lookup("java:module/pcManagedBean");
         assertNotNull(bean);
         return bean;
     }
@@ -171,7 +154,7 @@ public class PersistenceContextRefTestCase {
                 "        <persistence-context-ref-name>AnotherPuBinding</persistence-context-ref-name>\n" +
                 "        <persistence-unit-name>mypc</persistence-unit-name>\n" +
                 "        <injection-target>" +
-                "           <injection-target-class>" + PcManagedBean.class.getName() + "</injection-target-class>" +
+                "           <injection-target-class>" + PcBean.class.getName() + "</injection-target-class>" +
                 "           <injection-target-name>mypc2</injection-target-name>" +
                 "        </injection-target>\n" +
                 "    </persistence-context-ref>\n" +

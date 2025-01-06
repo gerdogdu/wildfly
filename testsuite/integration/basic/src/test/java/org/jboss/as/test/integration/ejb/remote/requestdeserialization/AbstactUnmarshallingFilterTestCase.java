@@ -1,17 +1,6 @@
 /*
- * Copyright (c) 2020. Red Hat, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.ejb.remote.requestdeserialization;
@@ -31,7 +20,6 @@ import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.as.test.shared.TestSuiteEnvironment;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
-import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 
 public class AbstactUnmarshallingFilterTestCase {
@@ -41,9 +29,9 @@ public class AbstactUnmarshallingFilterTestCase {
 
         return ShrinkWrap.create(JavaArchive.class, clazz.getSimpleName() + ".jar")
                 .addPackage(AbstactUnmarshallingFilterTestCase.class.getPackage())
-                .addAsManifestResource(new StringAsset("Dependencies: org.apache.xalan\n"), "MANIFEST.MF")
                 .addAsManifestResource(createPermissionsXmlAsset(
-                        new SocketPermission(SERVER_HOST_PORT, "connect,resolve")
+                        new SocketPermission(SERVER_HOST_PORT, "connect,resolve"),
+                        new RuntimePermission("accessClassInPackage.com.sun.org.apache.xalan.internal.xsltc.trax")
                 ), "permissions.xml");
     }
 
@@ -81,7 +69,7 @@ public class AbstactUnmarshallingFilterTestCase {
         // This call executes in the server in a deployment that has this class's module
         // configured as a dependency
         try {
-            return (Serializable) Class.forName("org.apache.xalan.xsltc.trax.TemplatesImpl").newInstance();
+            return (Serializable) Class.forName("com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl").newInstance();
         } catch (InstantiationException | IllegalAccessException  | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }

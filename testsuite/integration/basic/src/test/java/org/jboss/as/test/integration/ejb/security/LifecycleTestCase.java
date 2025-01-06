@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright (c) 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.test.integration.ejb.security;
 
@@ -27,7 +10,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.jboss.logging.Logger;
-import javax.ejb.EJB;
+import jakarta.ejb.EJB;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
@@ -62,8 +45,6 @@ public class LifecycleTestCase  {
 
     private static final String TRUE = "true";
 
-    private static final String UNSUPPORTED_OPERATION = "UnsupportedOperationException";
-
     private static final String ILLEGAL_STATE = "IllegalStateException";
 
     @EJB(mappedName = "java:global/ejb3security/EntryBean")
@@ -90,9 +71,9 @@ public class LifecycleTestCase  {
         StringBuilder failureMessages = new StringBuilder();
         final Callable<Void> callable = () -> {
             Map<String, String> result = entryBean.testStatefulBean();
-            verifyResult(result, BaseBean.LIFECYCLE_CALLBACK, USER1, UNSUPPORTED_OPERATION, TRUE, ILLEGAL_STATE, failureMessages);
-            verifyResult(result, BaseBean.BUSINESS, USER1, UNSUPPORTED_OPERATION, TRUE, ILLEGAL_STATE, failureMessages);
-            verifyResult(result, BaseBean.AFTER_BEGIN, USER1, UNSUPPORTED_OPERATION, TRUE, ILLEGAL_STATE, failureMessages);
+            verifyResult(result, BaseBean.LIFECYCLE_CALLBACK, USER1, TRUE, failureMessages);
+            verifyResult(result, BaseBean.BUSINESS, USER1, TRUE, failureMessages);
+            verifyResult(result, BaseBean.AFTER_BEGIN, USER1, TRUE, failureMessages);
             return null;
         };
         Util.switchIdentity("user1", "password1", callable);
@@ -107,7 +88,7 @@ public class LifecycleTestCase  {
         StringBuilder failureMessages = new StringBuilder();
         final Callable<Void> callable = () -> {
             Map<String, String> result = entryBean.testStatefulBean();
-            verifyResult(result, BaseBean.DEPENDENCY_INJECTION, ILLEGAL_STATE, UNSUPPORTED_OPERATION, ILLEGAL_STATE, ILLEGAL_STATE,
+            verifyResult(result, BaseBean.DEPENDENCY_INJECTION, ILLEGAL_STATE, ILLEGAL_STATE,
                     failureMessages);
             return null;
         };
@@ -123,10 +104,8 @@ public class LifecycleTestCase  {
         StringBuilder failureMessages = new StringBuilder();
         final Callable<Void> callable = () -> {
             Map<String, String> result = entryBean.testStatlessBean();
-            for (String current : result.keySet()) {
-                log.trace(current + " = " + result.get(current));
-            }
-            verifyResult(result, BaseBean.BUSINESS, USER1, UNSUPPORTED_OPERATION, TRUE, ILLEGAL_STATE, failureMessages);
+            logResult(result);
+            verifyResult(result, BaseBean.BUSINESS, USER1, TRUE, failureMessages);
             return null;
         };
         Util.switchIdentity("user1", "password1", callable);
@@ -142,10 +121,8 @@ public class LifecycleTestCase  {
         StringBuilder failureMessages = new StringBuilder();
         final Callable<Void> callable = () -> {
             Map<String, String> result = entryBean.testStatlessBean();
-            for (String current : result.keySet()) {
-                log.trace(current + " = " + result.get(current));
-            }
-            verifyResult(result, BaseBean.DEPENDENCY_INJECTION, ILLEGAL_STATE, UNSUPPORTED_OPERATION, ILLEGAL_STATE, ILLEGAL_STATE,
+            logResult(result);
+            verifyResult(result, BaseBean.DEPENDENCY_INJECTION, ILLEGAL_STATE, ILLEGAL_STATE,
                     failureMessages);
             return null;
         };
@@ -156,18 +133,19 @@ public class LifecycleTestCase  {
         }
     }
 
+    private static void logResult(Map<String, String> result) {
+        for (Map.Entry<String, String> entry : result.entrySet()) {
+            log.trace(entry.getKey() + " = " + entry.getValue());
+        }
+    }
+
     // TODO - Add test for Message Driven Bean
 
     private void verifyResult(Map<String, String> result, String beanMethod, String getCallerPrincipalResponse,
-            String getCallerIdentityResponse, String isCallerInRoleResponse, String isCallerInRoleIdentityResponse,
-            StringBuilder errors) {
+                              String isCallerInRoleResponse, StringBuilder errors) {
         verify(beanMethod, BaseBean.GET_CALLER_PRINCIPAL, getCallerPrincipalResponse,
                 result.get(beanMethod + ":" + BaseBean.GET_CALLER_PRINCIPAL), errors);
-        verify(beanMethod, BaseBean.GET_CALLER_IDENTITY, getCallerIdentityResponse, result.get(beanMethod + ":" + BaseBean.GET_CALLER_IDENTITY),
-                errors);
         verify(beanMethod, BaseBean.IS_CALLER_IN_ROLE, isCallerInRoleResponse, result.get(beanMethod + ":" + BaseBean.IS_CALLER_IN_ROLE), errors);
-        verify(beanMethod, BaseBean.IS_CALLER_IN_ROLE_IDENITY, isCallerInRoleIdentityResponse,
-                result.get(beanMethod + ":" + BaseBean.IS_CALLER_IN_ROLE_IDENITY), errors);
     }
 
     private void verify(String beanMethod, String ejbContextMethod, String expected, String actual, StringBuilder errors) {

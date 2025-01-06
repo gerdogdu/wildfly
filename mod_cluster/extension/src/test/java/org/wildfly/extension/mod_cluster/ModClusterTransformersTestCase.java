@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.mod_cluster;
@@ -49,7 +32,7 @@ public class ModClusterTransformersTestCase extends AbstractSubsystemTest {
 
     @Parameters
     public static Iterable<ModelTestControllerVersion> parameters() {
-        return EnumSet.of(ModelTestControllerVersion.EAP_7_4_0);
+        return EnumSet.of(ModelTestControllerVersion.EAP_7_4_0, ModelTestControllerVersion.EAP_8_0_0);
     }
 
     ModelTestControllerVersion version;
@@ -63,10 +46,12 @@ public class ModClusterTransformersTestCase extends AbstractSubsystemTest {
         return String.format(pattern, version.getMavenGavVersion());
     }
 
-    private static ModClusterModel getModelVersion(ModelTestControllerVersion controllerVersion) {
+    private static ModClusterSubsystemModel getModelVersion(ModelTestControllerVersion controllerVersion) {
         switch (controllerVersion) {
             case EAP_7_4_0:
-                return ModClusterModel.VERSION_7_0_0;
+                return ModClusterSubsystemModel.VERSION_7_0_0;
+            case EAP_8_0_0:
+                return ModClusterSubsystemModel.VERSION_8_0_0;
         }
         throw new IllegalArgumentException();
     }
@@ -79,6 +64,12 @@ public class ModClusterTransformersTestCase extends AbstractSubsystemTest {
                         "org.jboss.mod_cluster:mod_cluster-core:1.4.3.Final-redhat-00002",
                         formatArtifact("org.jboss.eap:wildfly-clustering-common:%s", version),
                 };
+            case EAP_8_0_0:
+                return new String[] {
+                        formatArtifact("org.jboss.eap:wildfly-mod_cluster-extension:%s", version),
+                        "org.jboss.mod_cluster:mod_cluster-core:2.0.1.Final-redhat-00001",
+                        formatArtifact("org.jboss.eap:wildfly-clustering-common:%s", version),
+                };
         }
         throw new IllegalArgumentException();
     }
@@ -89,7 +80,7 @@ public class ModClusterTransformersTestCase extends AbstractSubsystemTest {
     }
 
     private void testTransformations(ModelTestControllerVersion controllerVersion) throws Exception {
-        ModClusterModel model = getModelVersion(controllerVersion);
+        ModClusterSubsystemModel model = getModelVersion(controllerVersion);
         ModelVersion modelVersion = model.getVersion();
         String[] dependencies = getDependencies(controllerVersion);
 
@@ -121,7 +112,7 @@ public class ModClusterTransformersTestCase extends AbstractSubsystemTest {
 
     private static ModelFixer createModelFixer(ModelVersion version) {
         return model -> {
-            if (ModClusterModel.VERSION_8_0_0.requiresTransformation(version)) {
+            if (ModClusterSubsystemModel.VERSION_8_0_0.requiresTransformation(version)) {
                 Set.of("default", "with-floating-decay-load-provider").forEach(
                         proxy -> model.get(ProxyConfigurationResourceDefinition.pathElement(proxy).getKeyValuePair()).get("connector").set(new ModelNode())
                 );
@@ -138,11 +129,11 @@ public class ModClusterTransformersTestCase extends AbstractSubsystemTest {
     private void testRejections(ModelTestControllerVersion controllerVersion) throws Exception {
         String[] dependencies = getDependencies(controllerVersion);
         String subsystemXml = readResource("subsystem-reject.xml");
-        ModClusterModel model = getModelVersion(controllerVersion);
+        ModClusterSubsystemModel model = getModelVersion(controllerVersion);
         ModelVersion modelVersion = model.getVersion();
 
         KernelServicesBuilder builder = createKernelServicesBuilder(new ModClusterAdditionalInitialization());
-        builder.createLegacyKernelServicesBuilder(model.getVersion().getMajor() >= 4 ? new ModClusterAdditionalInitialization() : null, controllerVersion, modelVersion)
+        builder.createLegacyKernelServicesBuilder(new ModClusterAdditionalInitialization(), controllerVersion, modelVersion)
                 .addSingleChildFirstClass(ModClusterAdditionalInitialization.class)
                 .addMavenResourceURL(dependencies)
                 .skipReverseControllerCheck();

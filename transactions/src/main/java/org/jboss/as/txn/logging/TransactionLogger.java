@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.txn.logging;
@@ -26,12 +9,12 @@ import static org.jboss.logging.Logger.Level.DEBUG;
 import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.WARN;
 
-import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 
-import javax.resource.spi.work.Work;
-import javax.resource.spi.work.WorkCompletedException;
-import javax.transaction.Synchronization;
-import javax.transaction.Transaction;
+import jakarta.resource.spi.work.Work;
+import jakarta.resource.spi.work.WorkCompletedException;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.Transaction;
 import javax.transaction.xa.Xid;
 import javax.xml.stream.Location;
 import javax.xml.stream.XMLStreamException;
@@ -55,7 +38,7 @@ public interface TransactionLogger extends BasicLogger {
     /**
      * A logger with the category of the default transaction package.
      */
-    TransactionLogger ROOT_LOGGER = Logger.getMessageLogger(TransactionLogger.class, "org.jboss.as.txn");
+    TransactionLogger ROOT_LOGGER = Logger.getMessageLogger(MethodHandles.lookup(), TransactionLogger.class, "org.jboss.as.txn");
 
     /**
      * If a transaction could not be rolled back
@@ -85,7 +68,7 @@ public interface TransactionLogger extends BasicLogger {
      *
      * @param cause the reason the creation failed.
      *
-     * @return a {@link org.jboss.msc.service.StartException} initialized with the cause.
+     * @return a {@link StartException} initialized with the cause.
      */
     @Message(id = 4, value = "Create failed")
     StartException createFailed(@Cause Throwable cause);
@@ -96,7 +79,7 @@ public interface TransactionLogger extends BasicLogger {
      * @param cause       the reason the start failed.
      * @param managerName the name of the manager that didn't start.
      *
-     * @return a {@link org.jboss.msc.service.StartException} initialized with the cause and error message.
+     * @return a {@link StartException} initialized with the cause and error message.
      */
     @Message(id = 5, value = "%s manager create failed")
     StartException managerStartFailure(@Cause Throwable cause, String managerName);
@@ -106,7 +89,7 @@ public interface TransactionLogger extends BasicLogger {
      *
      * @param cause the reason the start failed.
      *
-     * @return a {@link org.jboss.msc.service.StartException} initialized with the cause and error message.
+     * @return a {@link StartException} initialized with the cause and error message.
      */
     @Message(id = 6, value = "Failed to configure object store browser bean")
     StartException objectStoreStartFailure(@Cause Throwable cause);
@@ -125,7 +108,7 @@ public interface TransactionLogger extends BasicLogger {
      *
      * @param cause the reason the start failed.
      *
-     * @return a {@link org.jboss.msc.service.StartException} initialized with the cause.
+     * @return a {@link StartException} initialized with the cause.
      */
     @Message(id = 8, value = "Start failed")
     StartException startFailure(@Cause Throwable cause);
@@ -173,27 +156,27 @@ public interface TransactionLogger extends BasicLogger {
     @Message(id = 15, value = "Jndi names have to start with java:/ or java:jboss/")
     OperationFailedException jndiNameInvalidFormat();
 
-    @LogMessage(level = WARN)
-    @Message(id = 16, value = "Transaction started in EE Concurrent invocation left open, starting rollback to prevent leak.")
-    void rollbackOfTransactionStartedInEEConcurrentInvocation();
+//    @LogMessage(level = WARN)
+//    @Message(id = 16, value = "Transaction started in EE Concurrent invocation left open, starting rollback to prevent leak.")
+//    void rollbackOfTransactionStartedInEEConcurrentInvocation();
 
-    @LogMessage(level = WARN)
-    @Message(id = 17, value = "Failed to rollback transaction.")
-    void failedToRollbackTransaction(@Cause Throwable cause);
+//    @LogMessage(level = WARN)
+//    @Message(id = 17, value = "Failed to rollback transaction.")
+//    void failedToRollbackTransaction(@Cause Throwable cause);
 
-    @LogMessage(level = WARN)
-    @Message(id = 18, value = "Failed to suspend transaction.")
-    void failedToSuspendTransaction(@Cause Throwable cause);
+//    @LogMessage(level = WARN)
+//    @Message(id = 18, value = "Failed to suspend transaction.")
+//    void failedToSuspendTransaction(@Cause Throwable cause);
 
-    @LogMessage(level = WARN)
-    @Message(id = 19, value = "System error while checking for transaction leak in EE Concurrent invocation.")
-    void systemErrorWhileCheckingForTransactionLeak(@Cause Throwable cause);
+//    @LogMessage(level = WARN)
+//    @Message(id = 19, value = "System error while checking for transaction leak in EE Concurrent invocation.")
+//    void systemErrorWhileCheckingForTransactionLeak(@Cause Throwable cause);
 
-    @Message(id = 20, value = "EE Concurrent ContextHandle serialization must be handled by the factory.")
-    IOException serializationMustBeHandledByTheFactory();
+//    @Message(id = 20, value = "EE Concurrent ContextHandle serialization must be handled by the factory.")
+//    IOException serializationMustBeHandledByTheFactory();
 
-    @Message(id = 21, value = "EE Concurrent's TransactionSetupProviderService not started.")
-    IllegalStateException transactionSetupProviderServiceNotStarted();
+//    @Message(id = 21, value = "EE Concurrent's TransactionSetupProviderService not started.")
+//    IllegalStateException transactionSetupProviderServiceNotStarted();
 
 //    @Message(id = 22, value = "EE Concurrent's TransactionSetupProviderService not installed.")
 //    IllegalStateException transactionSetupProviderServiceNotInstalled();
@@ -256,4 +239,19 @@ public interface TransactionLogger extends BasicLogger {
 
     @Message(id = 40, value = "There is no active transaction at the current context to register synchronization '%s'")
     IllegalStateException noActiveTransactionToRegisterSynchronization(Synchronization sync);
+
+    @Message(id = 41, value = "JMX error: %s")
+    OperationFailedException jmxError(String message);
+
+    @Message(id = 42, value = "Transaction discovery error")
+    OperationFailedException transactionDiscoveryError(@Cause Exception e);
+
+    @Message(id = 43, value = "InboundTransactionCurrentImpl unable to determine inbound transaction context")
+    RuntimeException unableToDetermineInboundTransactionContext(@Cause Exception e);
+
+    @Message(id = 44, value = "InboundTransactionCurrentImpl unable to suspend inbound transaction context")
+    RuntimeException unableToSuspendInboundTransactionContext(@Cause Exception e);
+
+    @Message(id = 45, value = "Could not register initial reference for InboundTransactionCurrent implementation")
+    RuntimeException cannotRegister(@Cause Exception e);
 }

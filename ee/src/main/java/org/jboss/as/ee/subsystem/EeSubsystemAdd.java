@@ -1,28 +1,10 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ee.subsystem;
 
-import static org.jboss.as.ee.subsystem.EeCapabilities.LEGACY_JACC_CAPABILITY;
 import static org.jboss.as.ee.subsystem.EeCapabilities.ELYTRON_JACC_CAPABILITY;
 import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
 
@@ -55,17 +37,13 @@ import org.jboss.as.ee.component.deployers.ModuleJndiBindingProcessor;
 import org.jboss.as.ee.component.deployers.ResourceInjectionAnnotationParsingProcessor;
 import org.jboss.as.ee.component.deployers.ResourceReferenceProcessor;
 import org.jboss.as.ee.component.deployers.ResourceReferenceRegistrySetupProcessor;
-import org.jboss.as.ee.concurrent.deployers.EEConcurrentContextProcessor;
-import org.jboss.as.ee.concurrent.deployers.EEConcurrentDefaultBindingProcessor;
-import org.jboss.as.ee.concurrent.service.ManagedExecutorHungTasksPeriodicTerminationService;
+import org.jboss.as.ee.concurrent.ConcurrencyImplementation;
 import org.jboss.as.ee.managedbean.processors.JavaEEDependencyProcessor;
 import org.jboss.as.ee.managedbean.processors.ManagedBeanAnnotationProcessor;
 import org.jboss.as.ee.managedbean.processors.ManagedBeanSubDeploymentMarkingProcessor;
 import org.jboss.as.ee.metadata.property.DeploymentPropertiesProcessor;
 import org.jboss.as.ee.metadata.property.DeploymentPropertyResolverProcessor;
-import org.jboss.as.ee.metadata.property.FunctionalResolverProcessor;
 import org.jboss.as.ee.metadata.property.PropertyResolverProcessor;
-import org.jboss.as.ee.metadata.property.SystemPropertyResolverProcessor;
 import org.jboss.as.ee.naming.ApplicationContextProcessor;
 import org.jboss.as.ee.naming.InApplicationClientBindingProcessor;
 import org.jboss.as.ee.naming.InstanceNameBindingProcessor;
@@ -92,6 +70,7 @@ import org.jboss.as.server.deployment.Phase;
 import org.jboss.as.server.deployment.jbossallxml.JBossAllXmlParserRegisteringProcessor;
 import org.jboss.dmr.ModelNode;
 import org.jboss.metadata.ear.jboss.JBossAppMetaData;
+import org.wildfly.security.manager.WildFlySecurityManager;
 
 /**
  * Handler for adding the ee subsystem.
@@ -121,6 +100,12 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
         this.jbossDescriptorPropertyReplacementProcessor = jbossDescriptorPropertyReplacementProcessor;
         this.ejbAnnotationPropertyReplacementProcessor = ejbAnnotationPropertyReplacementProcessor;
         this.directoryDependencyProcessor = directoryDependencyProcessor;
+    }
+
+    @Override
+    public void execute(final OperationContext context, final ModelNode operation) throws OperationFailedException {
+        checkEEvsSM();
+        super.execute(context, operation);
     }
 
     protected void populateModel(ModelNode operation, ModelNode model) throws OperationFailedException {
@@ -155,7 +140,6 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
 
         CapabilityServiceSupport capabilitySupport = context.getCapabilityServiceSupport();
         final boolean elytronJacc = capabilitySupport.hasCapability(ELYTRON_JACC_CAPABILITY);
-        final boolean legacyJacc = !elytronJacc && capabilitySupport.hasCapability(LEGACY_JACC_CAPABILITY);
 
         context.addStep(new AbstractDeploymentChainStep() {
             protected void execute(DeploymentProcessorTarget processorTarget) {
@@ -164,8 +148,6 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
 
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_DEPLOYMENT_PROPERTIES, new DeploymentPropertiesProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_DEPLOYMENT_PROPERTY_RESOLVER, new DeploymentPropertyResolverProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_FUNCTIONAL_RESOLVERS, new FunctionalResolverProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_SYSTEM_PROPERTY_RESOLVER, new SystemPropertyResolverProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_PROPERTY_RESOLVER, new PropertyResolverProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_REGISTER_JBOSS_ALL_EE_APP, new JBossAllXmlParserRegisteringProcessor<JBossAppMetaData>(AppJBossAllParser.ROOT_ELEMENT, AppJBossAllParser.ATTACHMENT_KEY, new AppJBossAllParser()));
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_SPEC_DESC_PROPERTY_REPLACEMENT, specDescriptorPropertyReplacementProcessor);
@@ -184,7 +166,6 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_EE_RESOURCE_INJECTION_REGISTRY, new ResourceReferenceRegistrySetupProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_GLOBAL_MODULES, moduleDependencyProcessor);
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_GLOBAL_DIRECTORIES, directoryDependencyProcessor);
-
 
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_EE_MODULE_NAME, new EEModuleNameProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_EE_ANNOTATIONS, new EEAnnotationProcessor());
@@ -208,15 +189,13 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_IN_APP_CLIENT, new InApplicationClientBindingProcessor(appclient));
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_INSTANCE_NAME, new InstanceNameBindingProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_APP_NAMING_CONTEXT, new ApplicationContextProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_CONCURRENT_CONTEXT, new EEConcurrentContextProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_STARTUP_COUNTDOWN, new EEStartupCountdownProcessor());
 
-                if (legacyJacc || elytronJacc) {
-                    processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_JACC_POLICY, new JaccEarDeploymentProcessor(elytronJacc ? ELYTRON_JACC_CAPABILITY : LEGACY_JACC_CAPABILITY));
+                if (elytronJacc) {
+                    processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_JACC_POLICY, new JaccEarDeploymentProcessor(ELYTRON_JACC_CAPABILITY));
                 }
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_RESOLVE_MESSAGE_DESTINATIONS, new MessageDestinationResolutionProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_COMPONENT_AGGREGATION, new ComponentAggregationProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_DEFAULT_BINDINGS_EE_CONCURRENCY, new EEConcurrentDefaultBindingProcessor());
 
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_MODULE_JNDI_BINDINGS, new ModuleJndiBindingProcessor(appclient));
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_EE_MODULE_CONFIG, new EEModuleConfigurationProcessor());
@@ -224,12 +203,24 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
 
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.CLEANUP, Phase.CLEANUP_EE, new EECleanUpProcessor());
 
+                // add Concurrency Impl DUPs
+                ConcurrencyImplementation.INSTANCE.addDeploymentProcessors(processorTarget);
+
             }
         }, OperationContext.Stage.RUNTIME);
 
         context.getServiceTarget().addService(ReflectiveClassIntrospector.SERVICE_NAME, new ReflectiveClassIntrospector()).install();
 
-        // installs the service which manages managed executor's hung task periodic termination
-        new ManagedExecutorHungTasksPeriodicTerminationService().install(context);
+        ConcurrencyImplementation.INSTANCE.installSubsystemServices(context);
+    }
+
+    private static void checkEEvsSM() throws OperationFailedException {
+        if (WildFlySecurityManager.isChecking()) {
+            try {
+                EeSubsystemAdd.class.getClassLoader().loadClass("jakarta.annotation.ManagedBean");
+            } catch (ClassNotFoundException e) {
+                throw ROOT_LOGGER.securityManagerNotAllowed();
+            }
+        }
     }
 }

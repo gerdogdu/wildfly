@@ -1,22 +1,27 @@
-<subsystem xmlns="urn:jboss:domain:resource-adapters:6.1">
+<!--
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
+<subsystem xmlns="urn:jboss:domain:resource-adapters:7.1">
   <!--Optional:-->
   <resource-adapters>
     <!--1 or more repetitions:-->
     <resource-adapter id="myRA" statistics-enabled="true">
       <!--Optional:-->
       <module id="moduleID" slot="main"/>
-      <!--Optional:-->
-      <bootstrap-context>bootstrapContext</bootstrap-context>
       <bean-validation-groups>
         <!--1 or more repetitions:-->
         <bean-validation-group>group</bean-validation-group>
       </bean-validation-groups>
       <!--Optional:-->
+      <bootstrap-context>bootstrapContext</bootstrap-context>
+      <!--Optional:-->
       <!--Zero or more repetitions:-->
-      <transaction-support>NoTransaction</transaction-support>
       <config-property name="config1">value</config-property>
+      <transaction-support>NoTransaction</transaction-support>
         <workmanager>
-            <security>
+            <security enabled="true">
                 <mapping-required>true</mapping-required>
                 <elytron-security-domain>ApplicationDomain</elytron-security-domain>
             </security>
@@ -77,9 +82,7 @@
           <!--Optional:-->
           <recovery no-recovery="false">
             <!--Optional:-->
-            <recover-credential>
-              <!--Optional:-->
-              <user-name>userName</user-name>
+            <recover-credential user-name="userName">
               <!--Optional:-->
               <credential-reference store="teststore" alias="myalias"/>
               <!--Optional:-->

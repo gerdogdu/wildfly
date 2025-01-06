@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.ejb3.component.session;
@@ -25,23 +8,27 @@ package org.jboss.as.ejb3.component.session;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.ejb.ConcurrencyManagementType;
-import javax.ejb.LockType;
-import javax.ejb.TransactionManagementType;
+import jakarta.ejb.ConcurrencyManagementType;
+import jakarta.ejb.LockType;
+import jakarta.ejb.TransactionManagementType;
 
 import org.jboss.as.ee.component.ComponentConfiguration;
 import org.jboss.as.ee.component.ComponentConfigurator;
 import org.jboss.as.ee.component.ComponentDescription;
+import org.jboss.as.ee.component.ConcurrencyAttachments;
 import org.jboss.as.ee.component.ViewConfiguration;
 import org.jboss.as.ee.component.ViewConfigurator;
 import org.jboss.as.ee.component.ViewDescription;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
+import org.jboss.as.ee.concurrent.handle.ContextHandleFactory;
 import org.jboss.as.ejb3.component.EJBComponentDescription;
 import org.jboss.as.ejb3.component.EJBViewDescription;
 import org.jboss.as.ejb3.component.concurrent.EJBContextHandleFactory;
@@ -73,7 +60,7 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
     private boolean noInterfaceViewPresent;
 
     /**
-     * The {@link javax.ejb.ConcurrencyManagementType} for this bean
+     * The {@link jakarta.ejb.ConcurrencyManagementType} for this bean
      */
     private ConcurrencyManagementType concurrencyManagementType;
 
@@ -93,7 +80,7 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
     private final Map<MethodIdentifier, LockType> methodLockTypes = new HashMap<MethodIdentifier, LockType>();
 
     /**
-     * The {@link javax.ejb.AccessTimeout} applicable for a specific bean methods.
+     * The {@link jakarta.ejb.AccessTimeout} applicable for a specific bean methods.
      */
     private final Map<MethodIdentifier, AccessTimeoutDetails> methodAccessTimeouts = new HashMap<MethodIdentifier, AccessTimeoutDetails>();
 
@@ -196,7 +183,7 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
     }
 
     /**
-     * Sets the {@link javax.ejb.LockType} applicable for the bean.
+     * Sets the {@link jakarta.ejb.LockType} applicable for the bean.
      *
      * @param className The class that has the annotation
      * @param locktype  The lock type applicable for the bean
@@ -229,7 +216,7 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
     }
 
     /**
-     * Returns the {@link javax.ejb.AccessTimeout} applicable for the bean.
+     * Returns the {@link jakarta.ejb.AccessTimeout} applicable for the bean.
      *
      * @return
      */
@@ -238,7 +225,7 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
     }
 
     /**
-     * Sets the {@link javax.ejb.AccessTimeout} applicable for the bean.
+     * Sets the {@link jakarta.ejb.AccessTimeout} applicable for the bean.
      *
      * @param accessTimeout The access timeout applicable for the class
      */
@@ -247,7 +234,7 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
     }
 
     /**
-     * Sets the {@link javax.ejb.AccessTimeout} for the specific bean method
+     * Sets the {@link jakarta.ejb.AccessTimeout} for the specific bean method
      *
      * @param accessTimeout The applicable access timeout for the method
      * @param method        The method
@@ -379,7 +366,14 @@ public abstract class SessionBeanComponentDescription extends EJBComponentDescri
                     configuration.addPrePassivateInterceptor(CurrentInvocationContextInterceptor.FACTORY, InterceptorOrder.ComponentPassivation.EJB_SESSION_CONTEXT_INTERCEPTOR);
                     configuration.addPostActivateInterceptor(CurrentInvocationContextInterceptor.FACTORY, InterceptorOrder.ComponentPassivation.EJB_SESSION_CONTEXT_INTERCEPTOR);
                 }
-                configuration.getConcurrentContext().addFactory(EJBContextHandleFactory.INSTANCE);
+                // add "component config scoped" concurrency context handle factory
+                Map<ComponentConfiguration, List<ContextHandleFactory>> additionalComponentFactories = context.getDeploymentUnit().getAttachment(ConcurrencyAttachments.ADDITIONAL_COMPONENT_FACTORIES);
+                List<ContextHandleFactory> list = additionalComponentFactories.get(configuration);
+                if (list == null) {
+                    list = new ArrayList<>();
+                    additionalComponentFactories.put(configuration, list);
+                }
+                list.add(EJBContextHandleFactory.INSTANCE);
             }
         });
     }

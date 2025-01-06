@@ -1,28 +1,13 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.deployment.xml.datasource;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -67,6 +52,7 @@ public class DeployedXmlDataSourceManagementTestCase {
 
     public static final String TEST_DS_XML = "test-ds.xml";
     public static final String JPA_DS_XML = "jpa-ds.xml";
+    public static final String TEST2_DS_XML = "test2-ds.xml";
 
     static class DeployedXmlDataSourceManagementTestCaseSetup implements ServerSetupTask {
 
@@ -77,21 +63,25 @@ public class DeployedXmlDataSourceManagementTestCase {
             DeploymentPlan plan = manager.newDeploymentPlan()
                     .add(DeployedXmlDataSourceManagementTestCase.class.getResource("/" + packageName + "/" + TEST_DS_XML)).andDeploy()
                     .build();
-            Future<ServerDeploymentPlanResult> future = manager.execute(plan);
-            ServerDeploymentPlanResult result = future.get(20, TimeUnit.SECONDS);
-            ServerDeploymentActionResult actionResult = result.getDeploymentActionResult(plan.getId());
-            if (actionResult != null) {
-                final Throwable deploymentException = actionResult.getDeploymentException();
-                if (deploymentException != null) {
-                    throw new RuntimeException(deploymentException);
-                }
-            }
+            executePlan(manager, plan);
+
             plan = manager.newDeploymentPlan()
                     .add(DeployedXmlDataSourceManagementTestCase.class.getResource("/" + packageName + "/" + JPA_DS_XML)).andDeploy()
                     .build();
-            future = manager.execute(plan);
-            future.get(20, TimeUnit.SECONDS);
-            actionResult = result.getDeploymentActionResult(plan.getId());
+            executePlan(manager, plan);
+
+            URL url = DeployedXmlDataSourceManagementTestCase.class.getResource("/" + packageName + "/" + TEST2_DS_XML);
+            InputStream inputStream = url.openConnection().getInputStream();
+            plan = manager.newDeploymentPlan()
+                    .add(TEST2_DS_XML, TEST2_DS_XML, inputStream).andDeploy()
+                    .build();
+            executePlan(manager, plan);
+        }
+
+        private void executePlan(ServerDeploymentManager manager, DeploymentPlan plan) throws Exception {
+            Future<ServerDeploymentPlanResult> future = manager.execute(plan);
+            ServerDeploymentPlanResult result = future.get(20, TimeUnit.SECONDS);
+            ServerDeploymentActionResult actionResult = result.getDeploymentActionResult(plan.getId());
             if (actionResult != null) {
                 final Throwable deploymentException = actionResult.getDeploymentException();
                 if (deploymentException != null) {
@@ -110,6 +100,11 @@ public class DeployedXmlDataSourceManagementTestCase {
 
             undeployPlan = manager.newDeploymentPlan()
                     .undeploy(JPA_DS_XML).andRemoveUndeployed()
+                    .build();
+            manager.execute(undeployPlan).get();
+
+            undeployPlan = manager.newDeploymentPlan()
+                    .undeploy(TEST2_DS_XML).andRemoveUndeployed()
                     .build();
             manager.execute(undeployPlan).get();
         }
@@ -139,6 +134,22 @@ public class DeployedXmlDataSourceManagementTestCase {
         operation.get(INCLUDE_RUNTIME).set(true);
         ModelNode result = managementClient.getControllerClient().execute(operation).get(RESULT);
         Assert.assertEquals("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE", result.get("connection-url").asString());
+    }
+
+    @Test
+    public void testDeployedDatasourceInManagementModelWithDifferentRuntimeName() throws IOException {
+        final ModelNode address = new ModelNode();
+        address.add("deployment", TEST2_DS_XML);
+        address.add("subsystem", "datasources");
+        address.add("data-source", "java:jboss/datasources/Deployed2DS");
+        address.protect();
+
+        final ModelNode operation = new ModelNode();
+        operation.get(OP).set("read-resource");
+        operation.get(OP_ADDR).set(address);
+        operation.get(INCLUDE_RUNTIME).set(true);
+        ModelNode result = managementClient.getControllerClient().execute(operation).get(RESULT);
+        Assert.assertEquals("jdbc:h2:mem:test2;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE", result.get("connection-url").asString());
     }
 
     @Test

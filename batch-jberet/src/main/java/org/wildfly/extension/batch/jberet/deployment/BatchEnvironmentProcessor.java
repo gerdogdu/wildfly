@@ -1,38 +1,29 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.extension.batch.jberet.deployment;
 
 import static org.jboss.as.server.deployment.Attachments.DEPLOYMENT_COMPLETE_SERVICES;
 import static org.jboss.as.weld.Capabilities.WELD_CAPABILITY_NAME;
+import static org.wildfly.extension.batch.jberet.BatchServiceNames.requestControllerServiceName;
 
+import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.sql.DataSource;
 
+import jakarta.batch.operations.JobOperator;
+import jakarta.enterprise.inject.spi.BeanManager;
 import org.jberet.repository.JobRepository;
 import org.jberet.spi.ArtifactFactory;
 import org.jberet.spi.ContextClassLoaderJobOperatorContextSelector;
 import org.jberet.spi.JobExecutor;
 import org.jberet.spi.JobOperatorContext;
 import org.jboss.as.controller.ProcessStateNotifier;
+import org.jboss.as.controller.RequirementServiceBuilder;
+import org.jboss.as.controller.RequirementServiceTarget;
 import org.jboss.as.controller.capability.CapabilityServiceSupport;
 import org.jboss.as.ee.component.EEModuleDescription;
 import org.jboss.as.ee.structure.DeploymentType;
@@ -49,8 +40,6 @@ import org.jboss.as.weld.WeldCapability;
 import org.jboss.modules.Module;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
 import org.wildfly.extension.batch.jberet.BatchConfiguration;
 import org.wildfly.extension.batch.jberet.BatchServiceNames;
 import org.wildfly.extension.batch.jberet._private.BatchLogger;
@@ -59,10 +48,11 @@ import org.wildfly.extension.batch.jberet.job.repository.JdbcJobRepositoryServic
 import org.wildfly.extension.requestcontroller.RequestController;
 
 /**
- * Deployment unit processor for javax.batch integration.
+ * Deployment unit processor for jakarta.batch integration.
  * <p>
  * Installs the {@link BatchEnvironmentService} and {@link JobOperatorService}.
  * </p>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public class BatchEnvironmentProcessor implements DeploymentUnitProcessor {
 
@@ -90,14 +80,7 @@ public class BatchEnvironmentProcessor implements DeploymentUnitProcessor {
             final Module module = deploymentUnit.getAttachment(Attachments.MODULE);
             final ClassLoader moduleClassLoader = module.getClassLoader();
 
-            final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
-
-            JobRepository jobRepository = null;
-            String jobRepositoryName = null;
-            String dataSourceName = null;
-            String jobExecutorName = null;
-            Boolean restartJobsOnResume = null;
-            Integer executionRecordsLimit = null;
+            final RequirementServiceTarget serviceTarget = phaseContext.getRequirementServiceTarget();
 
             // Check for a deployment descriptor
             BatchEnvironmentMetaData metaData = deploymentUnit.getAttachment(BatchAttachments.BATCH_ENVIRONMENT_META_DATA);
@@ -108,88 +91,86 @@ public class BatchEnvironmentProcessor implements DeploymentUnitProcessor {
                     metaData = parent.getAttachment(BatchAttachments.BATCH_ENVIRONMENT_META_DATA);
                 }
             }
-            if (metaData != null) {
-                jobRepository = metaData.getJobRepository();
-                jobRepositoryName = metaData.getJobRepositoryName();
-                dataSourceName = metaData.getDataSourceName();
-                jobExecutorName = metaData.getExecutorName();
-                restartJobsOnResume = metaData.getRestartJobsOnResume();
-                executionRecordsLimit = metaData.getExecutionRecordsLimit();
-            }
+            final JobRepository jobRepository = metaData != null ? metaData.getJobRepository() : null;
+            final String jobRepositoryName = metaData != null ? metaData.getJobRepositoryName() : null;
+            final String dataSourceName = metaData != null ? metaData.getDataSourceName() : null;
+            final String jobExecutorName = metaData != null ? metaData.getExecutorName() : null;
+            final Boolean restartJobsOnResume = metaData != null ? metaData.getRestartJobsOnResume() : null;
+            final Integer executionRecordsLimit = metaData != null ? metaData.getExecutionRecordsLimit() : null;
 
             final CapabilityServiceSupport support = deploymentUnit.getAttachment(Attachments.CAPABILITY_SERVICE_SUPPORT);
 
             final String deploymentName = deploymentUnit.getName();
 
-            // Create the job operator service used interact with a deployments batch job
-            final JobOperatorService jobOperatorService = new JobOperatorService(restartJobsOnResume, deploymentName, jobXmlResolver);
-
             // Create the batch environment
             final EEModuleDescription eeModuleDescription = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.EE_MODULE_DESCRIPTION);
             final NamespaceContextSelector namespaceContextSelector = eeModuleDescription == null ? null : eeModuleDescription.getNamespaceContextSelector();
-            final BatchEnvironmentService service = new BatchEnvironmentService(moduleClassLoader, jobXmlResolver, deploymentName, namespaceContextSelector);
-            final ServiceBuilder<SecurityAwareBatchEnvironment> serviceBuilder = serviceTarget.addService(BatchServiceNames.batchEnvironmentServiceName(deploymentUnit), service);
-
+            final ServiceName batchEnvSN = BatchServiceNames.batchEnvironmentServiceName(deploymentUnit);
+            final ServiceBuilder<?> serviceBuilder = serviceTarget.addService(batchEnvSN);
+            final Consumer<SecurityAwareBatchEnvironment> batchEnvironmentConsumer = serviceBuilder.provides(batchEnvSN);
             // Add a dependency to the thread-pool
-            if (jobExecutorName != null) {
-                // Register the named thread-pool capability
-                serviceBuilder.addDependency(Capabilities.THREAD_POOL_CAPABILITY.getCapabilityServiceName(jobExecutorName), JobExecutor.class, service.getJobExecutorInjector());
-            }
-
+            final Supplier<JobExecutor> jobExecutorSupplier = jobExecutorName != null ? serviceBuilder.requires(Capabilities.THREAD_POOL_CAPABILITY.getCapabilityServiceName(jobExecutorName)) : null;
             // Register the required services
-            serviceBuilder.addDependency(Capabilities.BATCH_CONFIGURATION_CAPABILITY.getCapabilityServiceName(), BatchConfiguration.class, service.getBatchConfigurationInjector());
+            final Supplier<BatchConfiguration> batchConfigurationSupplier = serviceBuilder.requires(Capabilities.BATCH_CONFIGURATION_CAPABILITY.getCapabilityServiceName());
             // Ensure local transaction support is started
             serviceBuilder.requires(support.getCapabilityServiceName(Capabilities.LOCAL_TRANSACTION_PROVIDER_CAPABILITY));
 
             final ServiceName artifactFactoryServiceName = BatchServiceNames.batchArtifactFactoryServiceName(deploymentUnit);
-            final ArtifactFactoryService artifactFactoryService = new ArtifactFactoryService();
-            final ServiceBuilder<ArtifactFactory> artifactFactoryServiceBuilder = serviceTarget.addService(artifactFactoryServiceName, artifactFactoryService);
-
+            final ServiceBuilder<?> artifactFactoryServiceBuilder = serviceTarget.addService(artifactFactoryServiceName);
+            final Consumer<ArtifactFactory> artifactFactoryConsumer = artifactFactoryServiceBuilder.provides(artifactFactoryServiceName);
+            Supplier<BeanManager> beanManagerSupplier = null;
             // Register the bean manager if this is a Jakarta Contexts and Dependency Injection deployment
             if (support.hasCapability(WELD_CAPABILITY_NAME)) {
                 final WeldCapability api = support.getOptionalCapabilityRuntimeAPI(WELD_CAPABILITY_NAME, WeldCapability.class).get();
                 if (api.isPartOfWeldDeployment(deploymentUnit)) {
                     BatchLogger.LOGGER.tracef("Adding BeanManager service dependency for deployment %s", deploymentUnit.getName());
-                    api.addBeanManagerService(deploymentUnit, artifactFactoryServiceBuilder, artifactFactoryService.getBeanManagerInjector());
+                    beanManagerSupplier = api.addBeanManagerService(deploymentUnit, artifactFactoryServiceBuilder);
                 }
             }
+            final ArtifactFactoryService artifactFactoryService = new ArtifactFactoryService(artifactFactoryConsumer, beanManagerSupplier);
+            artifactFactoryServiceBuilder.setInstance(artifactFactoryService);
             artifactFactoryServiceBuilder.install();
-            serviceBuilder.addDependency(artifactFactoryServiceName, WildFlyArtifactFactory.class, service.getArtifactFactoryInjector());
 
+            final Supplier<WildFlyArtifactFactory> artifactFactorySupplier = serviceBuilder.requires(artifactFactoryServiceName);
+            Supplier<JobRepository> jobRepositorySupplier = null;
             if (jobRepositoryName != null) {
                 // Register a named job repository
-                serviceBuilder.addDependency(support.getCapabilityServiceName(Capabilities.JOB_REPOSITORY_CAPABILITY.getName(), jobRepositoryName), JobRepository.class, service.getJobRepositoryInjector());
+                jobRepositorySupplier = serviceBuilder.requires(support.getCapabilityServiceName(Capabilities.JOB_REPOSITORY_CAPABILITY.getName(), jobRepositoryName));
             } else if (dataSourceName != null) {
                 // Register a jdbc job repository with data-source
-                final JdbcJobRepositoryService jdbcJobRepositoryService = new JdbcJobRepositoryService(executionRecordsLimit);
                 final ServiceName jobRepositoryServiceName = support.getCapabilityServiceName(Capabilities.JOB_REPOSITORY_CAPABILITY.getName(), deploymentName);
-                final ServiceBuilder<JobRepository> jobRepositoryServiceBuilder =
-                        Services.addServerExecutorDependency(serviceTarget.addService(jobRepositoryServiceName, jdbcJobRepositoryService),
-                            jdbcJobRepositoryService.getExecutorServiceInjector())
-                        .addDependency(support.getCapabilityServiceName(Capabilities.DATA_SOURCE_CAPABILITY, dataSourceName), DataSource.class, jdbcJobRepositoryService.getDataSourceInjector());
+                final ServiceBuilder<?> jobRepositoryServiceBuilder = serviceTarget.addService(jobRepositoryServiceName);
+                final Consumer<JobRepository> jobRepositoryConsumer = jobRepositoryServiceBuilder.provides(jobRepositoryServiceName);
+                final Supplier<ExecutorService> executorSupplier = Services.requireServerExecutor(jobRepositoryServiceBuilder);
+                final Supplier<DataSource> dataSourceSupplier = jobRepositoryServiceBuilder.requires(support.getCapabilityServiceName(Capabilities.DATA_SOURCE_CAPABILITY, dataSourceName));
+                final JdbcJobRepositoryService jdbcJobRepositoryService = new JdbcJobRepositoryService(jobRepositoryConsumer, dataSourceSupplier, executorSupplier, executionRecordsLimit);
+                jobRepositoryServiceBuilder.setInstance(jdbcJobRepositoryService);
                 jobRepositoryServiceBuilder.install();
-                serviceBuilder.addDependency(jobRepositoryServiceName, JobRepository.class, service.getJobRepositoryInjector());
+                jobRepositorySupplier = serviceBuilder.requires(jobRepositoryServiceName);
             } else if (jobRepository != null) {
                 // Use the job repository as defined in the deployment descriptor
-                service.getJobRepositoryInjector().setValue(new ImmediateValue<>(jobRepository));
+                jobRepositorySupplier = () -> jobRepository;
             }
 
-            if (rcPresent) {
-                serviceBuilder.addDependency(RequestController.SERVICE_NAME, RequestController.class, service.getRequestControllerInjector());
-            }
+            final Supplier<RequestController> requestControllerSupplier = rcPresent ? serviceBuilder.requires(requestControllerServiceName(support)) : null;
 
             // Install the batch environment service
+            final BatchEnvironmentService service = new BatchEnvironmentService(batchEnvironmentConsumer, artifactFactorySupplier, jobExecutorSupplier, requestControllerSupplier, jobRepositorySupplier, batchConfigurationSupplier, moduleClassLoader, jobXmlResolver, deploymentName, namespaceContextSelector);
+            serviceBuilder.setInstance(service);
             serviceBuilder.install();
 
             // Install the JobOperatorService
-            ServiceName jobOperatorServiceName = BatchServiceNames.jobOperatorServiceName(deploymentUnit);
-            Services.addServerExecutorDependency(serviceTarget.addService(jobOperatorServiceName, jobOperatorService)
-                            .addDependency(support.getCapabilityServiceName(Capabilities.BATCH_CONFIGURATION_CAPABILITY.getName()), BatchConfiguration.class, jobOperatorService.getBatchConfigurationInjector())
-                            .addDependency(support.getCapabilityServiceName(Capabilities.SUSPEND_CONTROLLER_CAPABILITY), SuspendController.class, jobOperatorService.getSuspendControllerInjector())
-                            .addDependency(support.getCapabilityServiceName(Capabilities.PROCESS_STATE_NOTIFIER_CAPABILITY), ProcessStateNotifier.class, jobOperatorService.getProcessStateInjector())
-                            .addDependency(BatchServiceNames.batchEnvironmentServiceName(deploymentUnit), SecurityAwareBatchEnvironment.class, jobOperatorService.getBatchEnvironmentInjector()),
-                    jobOperatorService.getExecutorServiceInjector())
-                    .install();
+            final ServiceName jobOperatorServiceName = BatchServiceNames.jobOperatorServiceName(deploymentUnit);
+            final RequirementServiceBuilder<?> jobOperatorServiceSB = serviceTarget.addService();
+            final Consumer<JobOperator> jobOperatorConsumer = jobOperatorServiceSB.provides(jobOperatorServiceName);
+            final Supplier<ExecutorService> executorSupplier = Services.requireServerExecutor(jobOperatorServiceSB);
+            final Supplier<BatchConfiguration> batchConfigSupplier = jobOperatorServiceSB.requires(support.getCapabilityServiceName(Capabilities.BATCH_CONFIGURATION_CAPABILITY.getName()));
+            final Supplier<SuspendController> suspendControllerSupplier = jobOperatorServiceSB.requires(support.getCapabilityServiceName(Capabilities.SUSPEND_CONTROLLER_CAPABILITY));
+            final Supplier<ProcessStateNotifier> processStateSupplier = jobOperatorServiceSB.requires(ProcessStateNotifier.SERVICE_DESCRIPTOR);
+            final Supplier<SecurityAwareBatchEnvironment> batchEnvironmentSupplier = jobOperatorServiceSB.requires(BatchServiceNames.batchEnvironmentServiceName(deploymentUnit));
+            final JobOperatorService jobOperatorService = new JobOperatorService(jobOperatorConsumer, batchConfigSupplier, batchEnvironmentSupplier, executorSupplier, suspendControllerSupplier, processStateSupplier, restartJobsOnResume, deploymentName, jobXmlResolver);
+            jobOperatorServiceSB.setInstance(jobOperatorService);
+            jobOperatorServiceSB.install();
 
             // Add the JobOperatorService to the deployment unit
             deploymentUnit.putAttachment(BatchAttachments.JOB_OPERATOR, jobOperatorService);

@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <!--
-  Set these VM properties in your IDE debugger
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
 
-  -Djava.util.logging.manager=org.jboss.logmanager.LogManager
-  -Djboss.home=${workspace_loc:jboss-as-build}/target/jboss-as-8.0.0.Alpha4-SNAPSHOT
-  -DallowConnectingToRunningServer=true
--->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -19,7 +16,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
     </parent>
 
     <!-- ********************************************************************************** -->
@@ -36,17 +33,21 @@
         <surefire.forked.process.timeout>3600</surefire.forked.process.timeout>
         <!-- Disable the default surefire test execution. -->
         <surefire.default-test.phase>none</surefire.default-test.phase>
+        <glow.mvc.phase>none</glow.mvc.phase>
+        <glow.vertx.phase>none</glow.vertx.phase>
+        <glow.hibernate-search.phase>none</glow.hibernate-search.phase>
+        <ts.copy-wildfly-standalone-embedded-broker.phase>process-test-resources</ts.copy-wildfly-standalone-embedded-broker.phase>
+        <cloud-profile-provisioning.phase>none</cloud-profile-provisioning.phase>
+        <full-provisioning.phase>generate-test-resources</full-provisioning.phase>
+        <hibernate-search-provisioning.phase>none</hibernate-search-provisioning.phase>
+        <mvc-provisioning.phase>none</mvc-provisioning.phase>
+        <vertx-provisioning.phase>none</vertx-provisioning.phase>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-core-test-runner</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.ejb</groupId>
-            <artifactId>jakarta.ejb-api</artifactId>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -55,13 +56,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>jakarta.persistence</groupId>
-            <artifactId>jakarta.persistence-api</artifactId>
+            <groupId>jakarta.mvc</groupId>
+            <artifactId>jakarta.mvc-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>jakarta.annotation</groupId>
-            <artifactId>jakarta.annotation-api</artifactId>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -70,33 +71,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>jakarta.jms</groupId>
-            <artifactId>jakarta.jms-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.lucene</groupId>
-            <artifactId>lucene-analyzers-common</artifactId>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.hibernate.orm</groupId>
             <artifactId>hibernate-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-backend-lucene</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -116,50 +97,62 @@
         </dependency>
         <dependency>
             <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-mapper-orm-orm6</artifactId>
+            <artifactId>hibernate-search-mapper-orm</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-mapper-orm-coordination-outbox-polling-orm6</artifactId>
+            <artifactId>hibernate-search-mapper-orm-outbox-polling</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-v5migrationhelper-engine</artifactId>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-client</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.hibernate.search</groupId>
-            <artifactId>hibernate-search-v5migrationhelper-orm-orm6</artifactId>
+            <groupId>${ee.maven.groupId}</groupId>
+            <artifactId>wildfly-testsuite-shared</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jboss.shrinkwrap.descriptors</groupId>
-            <artifactId>shrinkwrap-descriptors-impl-javaee</artifactId>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-controller</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-core-testsuite-shared</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>elasticsearch</artifactId>
-            <version>${version.org.testcontainers}</version>
+            <groupId>io.smallrye.common</groupId>
+            <artifactId>smallrye-common-annotation</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Disable the standard copy-based provisioning -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions combine.children="append">
+                    <execution>
+                        <id>ts.copy-wildfly</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -171,46 +164,189 @@
                 </configuration>
             </plugin>
             <plugin>
-                <artifactId>maven-dependency-plugin</artifactId>
+                <groupId>org.wildfly.glow</groupId>
+                <artifactId>wildfly-glow-arquillian-plugin</artifactId>
+                <configuration>
+                    <feature-packs>
+                        <feature-pack>
+                            <groupId>${project.groupId}</groupId>
+                            <artifactId>wildfly-preview-feature-pack</artifactId>
+                            <version>${project.version}</version>
+                        </feature-pack>
+                    </feature-packs>
+                </configuration>
                 <executions>
                     <execution>
-                        <!-- See HibernateSearchOutboxPollingTestCase, HibernateSearchV5MigrationHelperJPATestCase,
-                             HibernateSearchV5MigrationHelperEarMassIndexerTestCase -->
-                        <id>copy-hibernate-search-extra-jars</id>
-                        <phase>generate-sources</phase>
+                        <id>scan-mvc-layers</id>
                         <goals>
-                            <goal>copy</goal>
+                            <goal>scan</goal>
                         </goals>
+                        <phase>${glow.mvc.phase}</phase>
+                        <!--<phase>none</phase>-->
                         <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.hibernate.search</groupId>
-                                    <artifactId>hibernate-search-mapper-orm-coordination-outbox-polling-orm6</artifactId>
-                                    <version>${preview.version.org.hibernate.search}</version>
-                                    <type>jar</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/testlib</outputDirectory>
-                                    <destFileName>hibernate-search-mapper-orm-coordination-outbox-polling.jar</destFileName>
-                                </artifactItem>
-                                <artifactItem>
-                                    <groupId>org.hibernate.search</groupId>
-                                    <artifactId>hibernate-search-v5migrationhelper-engine</artifactId>
-                                    <version>${preview.version.org.hibernate.search}</version>
-                                    <type>jar</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/testlib</outputDirectory>
-                                    <destFileName>hibernate-search-v5migrationhelper-engine.jar</destFileName>
-                                </artifactItem>
-                                <artifactItem>
-                                    <groupId>org.hibernate.search</groupId>
-                                    <artifactId>hibernate-search-v5migrationhelper-orm-orm6</artifactId>
-                                    <version>${preview.version.org.hibernate.search}</version>
-                                    <type>jar</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/testlib</outputDirectory>
-                                    <destFileName>hibernate-search-v5migrationhelper-orm.jar</destFileName>
-                                </artifactItem>
-                            </artifactItems>
+                            <expected-discovery>[cdi, datasources, h2-datasource, h2-default-datasource, jaxrs, mvc-krazo]==>ee-core-profile-server,h2-default-datasource,jaxrs,mvc-krazo</expected-discovery>
+                            <surefire-execution-for-included-classes>mvc.layer.surefire</surefire-execution-for-included-classes>
+                            <add-ons>
+                                <add-on>h2-database:default</add-on>
+                            </add-ons>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>scan-hibernate-search-layers</id>
+                        <goals>
+                            <goal>scan</goal>
+                        </goals>
+                        <phase>${glow.hibernate-search.phase}</phase>
+                        <configuration>
+                            <expected-discovery>[cdi, datasources, h2-datasource, h2-default-datasource, hibernate-search, jpa, transactions]==>ee-core-profile-server,h2-default-datasource,hibernate-search</expected-discovery>
+                            <surefire-execution-for-included-classes>hibernate-search.layer.surefire</surefire-execution-for-included-classes>
+                            <add-ons>
+                                <add-on>h2-database:default</add-on>
+                            </add-ons>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>scan-vertx-layers</id>
+                        <goals>
+                            <goal>scan</goal>
+                        </goals>
+                        <phase>${glow.vertx.phase}</phase>
+                        <configuration>
+                            <expected-discovery>[cdi, datasources, ejb-lite, h2-datasource, h2-default-datasource, jaxrs, vertx]==>ee-core-profile-server,ejb-lite,h2-default-datasource,jaxrs,vertx</expected-discovery>
+                            <surefire-execution-for-included-classes>vertx.layer.surefire</surefire-execution-for-included-classes>
+                            <add-ons>
+                                <add-on>h2-database:default</add-on>
+                            </add-ons>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <version>${version.org.wildfly.plugin}</version>
+                <configuration>
+                    <overwrite-provisioned-server>true</overwrite-provisioned-server>
+                    <record-provisioning-state>false</record-provisioning-state>
+                    <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                    <offline-provisioning>${galleon.offline}</offline-provisioning>
+                    <galleon-options>
+                        <jboss-maven-dist/>
+                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                        <optional-packages>passive+</optional-packages>
+                    </galleon-options>
+                </configuration>
+                <executions>
+                    <!-- Provision a non-slimmed server -->
+                    <execution>
+                        <id>full-server-provisioning</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${full-provisioning.phase}</phase>
+                        <configuration>
+                            <provisioning-dir>${project.build.directory}/wildfly</provisioning-dir>
+                            <feature-packs>
+                                <feature-pack>
+                                    <groupId>${full.maven.groupId}</groupId>
+                                    <artifactId>wildfly-preview-feature-pack</artifactId>
+                                    <version>${full.maven.version}</version>
+                                </feature-pack>
+                            </feature-packs>
+                        </configuration>
+                    </execution>
+
+                    <!-- Provision a server with hibernate-search -->
+                    <execution>
+                        <id>hibernate-search-provisioning</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${hibernate-search-provisioning.phase}</phase>
+                        <configuration>
+                            <provisioning-dir>${project.build.directory}/wildfly-hibernate-search</provisioning-dir>
+                            <provisioning-file>target/glow-scan/hibernate-search.layer.surefire/provisioning.xml</provisioning-file>
+                        </configuration>
+                    </execution>
+
+                    <!-- Provision a server with mvc-krazo -->
+                    <execution>
+                        <id>mvc-provisioning</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${mvc-provisioning.phase}</phase>
+                        <configuration>
+                            <provisioning-dir>${project.build.directory}/wildfly-mvc</provisioning-dir>
+                            <provisioning-file>target/glow-scan/mvc.layer.surefire/provisioning.xml</provisioning-file>
+                        </configuration>
+                    </execution>
+
+                    <!-- Provision a server with vertx-subsystem -->
+                    <execution>
+                        <id>vertx-subsystem-provisioning</id>
+                        <goals>
+                            <goal>provision</goal>
+                        </goals>
+                        <phase>${vertx-provisioning.phase}</phase>
+                        <configuration>
+                            <provisioning-dir>${project.build.directory}/wildfly-vertx</provisioning-dir>
+                            <provisioning-file>target/glow-scan/vertx.layer.surefire/provisioning.xml</provisioning-file>
+                        </configuration>
+                    </execution>
+
+                    <!-- Package a server with hibernate-search -->
+                    <execution>
+                        <id>bootable-jar-hibernate-search-packaging</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <phase>${ts.bootable-jar-packaging.phase}</phase>
+                        <configuration>
+                            <bootableJar>true</bootableJar>
+                            <skipDeployment>true</skipDeployment>
+                            <bootableJarName>test-wildfly-hibernate-search.jar</bootableJarName>
+                            <extra-server-content-dirs>
+                                <!-- Uncomment if we add extra content
+                                <extraServerContent>${project.build.directory}/extraContent/</extraServerContent>
+                                -->
+                            </extra-server-content-dirs>
+                            <provisioning-file>target/glow-scan/hibernate-search.layer.surefire/provisioning.xml</provisioning-file>
+                        </configuration>
+                    </execution>
+
+                    <!-- Package a server with mvc -->
+                    <execution>
+                        <id>bootable-jar-mvc-packaging</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <phase>${ts.bootable-jar-packaging.phase}</phase>
+                        <configuration>
+                            <bootableJar>true</bootableJar>
+                            <skipDeployment>true</skipDeployment>
+                            <bootableJarName>test-wildfly-mvc.jar</bootableJarName>
+                            <extra-server-content-dirs>
+                                <!-- Uncomment if we add extra content
+                                <extraServerContent>${project.build.directory}/extraContent/</extraServerContent>
+                                -->
+                            </extra-server-content-dirs>
+                            <provisioning-file>target/glow-scan/mvc.layer.surefire/provisioning.xml</provisioning-file>
+                        </configuration>
+                    </execution>
+
+                    <!-- Package a server with vertx -->
+                    <execution>
+                        <id>bootable-jar-vertx-packaging</id>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                        <phase>${ts.bootable-jar-packaging.phase}</phase>
+                        <configuration>
+                            <bootableJar>true</bootableJar>
+                            <skipDeployment>true</skipDeployment>
+                            <bootableJarName>test-wildfly-vertx.jar</bootableJarName>
+                            <provisioning-file>target/glow-scan/vertx.layer.surefire/provisioning.xml</provisioning-file>
                         </configuration>
                     </execution>
                 </executions>
@@ -234,11 +370,12 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-resources-plugin</artifactId>
                         <executions combine.children="append">
-                            <!-- Copy the AS into current_submodule/target/wildfly . This is executed recursively in submodules. -->
+                            <!-- Copy the docs/example configs into the regulard configuration dir so
+                                 they are available for use by surefire executions that need them. -->
                             <execution>
                                 <id>ts.copy-wildfly-standalone-embedded-broker</id>
                                 <inherited>true</inherited>
-                                <phase>generate-test-resources</phase>
+                                <phase>${ts.copy-wildfly-standalone-embedded-broker.phase}</phase>
                                 <goals>
                                     <goal>copy-resources</goal>
                                 </goals>
@@ -268,7 +405,7 @@
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
-                                    <!-- Tests to execute. Overriden in webProfileExclusion.profile . -->
+                                    <!-- Tests to execute. Overridden in webProfileExclusion.profile . -->
                                     <includes>
                                         <include>**/*TestCase*.java</include>
                                     </includes>
@@ -285,13 +422,15 @@
                                         <com.sun.CORBA.ORBUseDynamicStub>true</com.sun.CORBA.ORBUseDynamicStub>
                                         <!-- EJB client library hack, see WFLY-4973-->
                                         <org.jboss.ejb.client.wildfly-testsuite-hack>true</org.jboss.ejb.client.wildfly-testsuite-hack>
+                                        <!-- Override the standard module path that points at the shared module set from dist -->
+                                        <module.path>${project.build.directory}/wildfly/modules${path.separator}${basedir}/target/modules</module.path>
                                     </systemPropertyVariables>
 
                                     <additionalClasspathElements>
                                         <additionalClasspathElement>${project.basedir}/../src/test/resources</additionalClasspathElement>
                                     </additionalClasspathElements>
 
-                                    <!--<reportNameSuffix>tests-basic-integration-default</reportNameSuffix>-->
+                                    <reportNameSuffix>basic-preview-default-full.surefire</reportNameSuffix>
                                 </configuration>
                             </execution>
 
@@ -306,7 +445,6 @@
                                     <excludes>
                                         <!-- Tests which need FULL config. -->
                                         <exclude>**/*TestCase*.java</exclude>
-                                        <exclude>org/jboss/as/test/integration/messaging/**/*TestCase*.java</exclude>
                                     </excludes>
 
                                     <environmentVariables>
@@ -319,10 +457,13 @@
                                         <jboss.inst>${basedir}/target/wildfly</jboss.inst>
                                         <!-- EJB client library hack, see WFLY-4973-->
                                         <org.jboss.ejb.client.wildfly-testsuite-hack>true</org.jboss.ejb.client.wildfly-testsuite-hack>
+                                        <!-- Override the standard module path that points at the shared module set from dist -->
+                                        <module.path>${project.build.directory}/wildfly/modules${path.separator}${basedir}/target/modules</module.path>
                                     </systemPropertyVariables>
                                     <additionalClasspathElements>
                                         <additionalClasspathElement>${project.basedir}/../src/test/resources</additionalClasspathElement>
                                     </additionalClasspathElements>
+                                    <reportNameSuffix>basic-preview-default-web.surefire</reportNameSuffix>
                                 </configuration>
                             </execution>
 
@@ -342,112 +483,19 @@
             </activation>
             <properties>
                 <jboss.dist>${project.build.directory}/wildfly</jboss.dist>
+                <glow.cloud-profile.phase>test-compile</glow.cloud-profile.phase>
+                <glow.hibernate-search.phase>test-compile</glow.hibernate-search.phase>
+                <glow.mvc.phase>test-compile</glow.mvc.phase>
+                <glow.vertx.phase>test-compile</glow.vertx.phase>
+                <full-provisioning.phase>none</full-provisioning.phase>
+                <hibernate-search-provisioning.phase>test-compile</hibernate-search-provisioning.phase>
+                <mvc-provisioning.phase>test-compile</mvc-provisioning.phase>
+                <vertx-provisioning.phase>test-compile</vertx-provisioning.phase>
+                <ts.config-as.copy-mgmt-users.phase>process-test-classes</ts.config-as.copy-mgmt-users.phase>
+                <ts.copy-wildfly-standalone-embedded-broker.phase>none</ts.copy-wildfly-standalone-embedded-broker.phase>
             </properties>
             <build>
                 <plugins>
-                    <!-- Disable the standard copy-based provisioning -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <executions combine.children="append">
-                            <execution>
-                                <id>ts.copy-wildfly</id>
-                                <goals>
-                                    <goal>copy-resources</goal>
-                                </goals>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.jboss.galleon</groupId>
-                        <artifactId>galleon-maven-plugin</artifactId>
-                        <executions>
-                            <!-- Provision a cloud-profile server -->
-                            <execution>
-                                <id>cloud-profile-provisioning</id>
-                                <goals>
-                                    <goal>provision</goal>
-                                </goals>
-                                <phase>compile</phase>
-                                <configuration>
-                                    <install-dir>${project.build.directory}/wildfly</install-dir>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <offline>${galleon.offline}</offline>
-                                    <plugin-options>
-                                        <jboss-maven-dist/>
-                                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                                        <optional-packages>passive+</optional-packages>
-                                        <jboss-jakarta-transform-artifacts>false</jboss-jakarta-transform-artifacts>
-                                        <jboss-maven-provisioning-repo>${wildfly.transformed.repo.dir}</jboss-maven-provisioning-repo>
-                                    </plugin-options>
-                                    <feature-packs>
-                                        <feature-pack>
-                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                            <version>${testsuite.ee.galleon.pack.version}</version>
-                                            <inherit-configs>false</inherit-configs>
-                                            <inherit-packages>false</inherit-packages>
-                                        </feature-pack>
-                                    </feature-packs>
-                                    <configurations>
-                                        <config>
-                                            <model>standalone</model>
-                                            <name>standalone.xml</name>
-                                            <layers>
-                                                <layer>cloud-server</layer>
-                                                <layer>h2-default-datasource</layer>
-                                            </layers>
-                                        </config>
-                                    </configurations>
-                                </configuration>
-                            </execution>
-
-                            <!-- Provision a server with jpa -->
-                            <execution>
-                                <id>jpa-provisioning</id>
-                                <goals>
-                                    <goal>provision</goal>
-                                </goals>
-                                <phase>compile</phase>
-                                <configuration>
-                                    <install-dir>${project.build.directory}/wildfly-jpa</install-dir>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <offline>${galleon.offline}</offline>
-                                    <plugin-options>
-                                        <jboss-maven-dist/>
-                                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                                        <optional-packages>passive+</optional-packages>
-                                        <jboss-jakarta-transform-artifacts>false</jboss-jakarta-transform-artifacts>
-                                        <jboss-maven-provisioning-repo>${wildfly.transformed.repo.dir}</jboss-maven-provisioning-repo>
-                                    </plugin-options>
-                                    <feature-packs>
-                                        <feature-pack>
-                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                            <version>${testsuite.ee.galleon.pack.version}</version>
-                                            <inherit-configs>false</inherit-configs>
-                                            <inherit-packages>false</inherit-packages>
-                                        </feature-pack>
-                                    </feature-packs>
-                                    <configurations>
-                                        <config>
-                                            <model>standalone</model>
-                                            <name>standalone.xml</name>
-                                            <layers>
-                                                <layer>jpa</layer>
-                                                <layer>jaxrs-server</layer>
-                                                <layer>h2-default-datasource</layer>
-                                            </layers>
-                                        </config>
-                                    </configurations>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
@@ -462,45 +510,79 @@
                                 <phase>none</phase>
                             </execution>
 
-                            <!-- Tests against the cloud-server install -->
+                            <!-- Tests against the mvc install -->
                             <execution>
-                                <id>cloud-server.layer.surefire</id>
+                                <id>mvc.layer.surefire</id>
                                 <phase>test</phase>
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <jboss.install.dir>${basedir}/target/wildfly</jboss.install.dir>
+                                        <jboss.install.dir>${basedir}/target/wildfly-mvc</jboss.install.dir>
+                                        <jboss.home>${project.build.directory}/wildfly-mvc</jboss.home>
+                                        <jboss.home.dir>${project.build.directory}/wildfly-mvc</jboss.home.dir>
+                                        <jbossas.dist>${project.build.directory}/wildfly-mvc</jbossas.dist>
+                                        <jboss.dist>${project.build.directory}/wildfly-mvc</jboss.dist>
                                         <!-- Override the standard module path that points at the shared module set from dist -->
-                                        <module.path>${project.build.directory}/wildfly/modules${path.separator}${basedir}/target/modules</module.path>
-                                        <server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir}</server.jvm.args>
+                                        <module.path>${project.build.directory}/wildfly-mvc/modules${path.separator}${basedir}/target/modules</module.path>
                                     </systemPropertyVariables>
                                     <includes>
                                         <!-- Dummy test used to validate this pom -->
-                                        <include>org/wildfly/test/preview/util/TestsuiteModuleTestCase.java</include>
+                                        <include>org/wildfly/test/preview/mvc/**/*TestCase.java</include>
                                     </includes>
+                                    <reportNameSuffix>mvc.layer.surefire</reportNameSuffix>
                                 </configuration>
                             </execution>
 
-                            <!-- Tests against the jpa-server install -->
+                            <!-- Tests against the vertx install -->
                             <execution>
-                                <id>jpa.layer.surefire</id>
+                                <id>vertx.layer.surefire</id>
                                 <phase>test</phase>
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <jboss.install.dir>${basedir}/target/wildfly-jpa</jboss.install.dir>
+                                        <jboss.install.dir>${basedir}/target/wildfly-vertx</jboss.install.dir>
+                                        <jboss.home>${project.build.directory}/wildfly-vertx</jboss.home>
+                                        <jboss.home.dir>${project.build.directory}/wildfly-vertx</jboss.home.dir>
+                                        <jbossas.dist>${project.build.directory}/wildfly-vertx</jbossas.dist>
+                                        <jboss.dist>${project.build.directory}/wildfly-vertx</jboss.dist>
                                         <!-- Override the standard module path that points at the shared module set from dist -->
-                                        <module.path>${project.build.directory}/wildfly/modules${path.separator}${basedir}/target/modules</module.path>
-                                        <server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir}</server.jvm.args>
+                                        <module.path>${project.build.directory}/wildfly-vertx/modules${path.separator}${basedir}/target/modules</module.path>
                                     </systemPropertyVariables>
                                     <includes>
                                         <!-- Dummy test used to validate this pom -->
-                                        <include>org/wildfly/test/preview/util/TestsuiteModuleTestCase.java</include>
+                                        <include>org/wildfly/test/preview/vertx/**/*TestCase.java</include>
                                     </includes>
+                                    <reportNameSuffix>vertx.layer.surefire</reportNameSuffix>
+                                </configuration>
+                            </execution>
+                            <!-- Tests against the hibernate-search install -->
+                            <execution>
+                                <id>hibernate-search.layer.surefire</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <jboss.install.dir>${basedir}/target/wildfly-hibernate-search</jboss.install.dir>
+                                        <jboss.home>${project.build.directory}/wildfly-hibernate-search</jboss.home>
+                                        <jboss.home.dir>${project.build.directory}/wildfly-hibernate-search</jboss.home.dir>
+                                        <jbossas.dist>${project.build.directory}/wildfly-hibernate-search</jbossas.dist>
+                                        <jboss.dist>${project.build.directory}/wildfly-hibernate-search</jboss.dist>
+                                        <!-- Override the standard module path that points at the shared module set from dist -->
+                                        <module.path>${project.build.directory}/wildfly-hibernate-search/modules${path.separator}${basedir}/target/modules</module.path>
+                                    </systemPropertyVariables>
+                                    <environmentVariables>
+                                        <JBOSS_HOME>${project.build.directory}/wildfly-hibernate-search</JBOSS_HOME>
+                                    </environmentVariables>
+                                    <includes>
+                                        <include>org/wildfly/test/preview/hibernate/search/**/*TestCase.java</include>
+                                    </includes>
+                                    <reportNameSuffix>hibernate-search.layer.surefire</reportNameSuffix>
                                 </configuration>
                             </execution>
 
@@ -510,12 +592,12 @@
             </build>
         </profile>
 
-        <!-- Test against bootable jar ee9-->
+        <!-- Test against bootable jar -->
         <profile>
-            <id>bootablejar.ee9.profile</id>
+            <id>bootablejar.preview.profile</id>
             <activation>
                 <property>
-                    <name>ts.bootable.ee9</name>
+                    <name>ts.bootable.preview</name>
                 </property>
             </activation>
             <dependencies>
@@ -525,7 +607,14 @@
                 </dependency>
             </dependencies>
             <properties>
-                <extra.server.jvm.args>-Dmaven.repo.local=${wildfly.transformed.repo.dir}</extra.server.jvm.args>
+                <extra.server.jvm.args>-Dmaven.repo.local=${settings.localRepository}</extra.server.jvm.args>
+                <full-provisioning.phase>none</full-provisioning.phase>
+                <glow.cloud-profile.phase>test-compile</glow.cloud-profile.phase>
+                <glow.hibernate-search.phase>test-compile</glow.hibernate-search.phase>
+                <glow.mvc.phase>test-compile</glow.mvc.phase>
+                <glow.vertx.phase>test-compile</glow.vertx.phase>
+                <ts.copy-wildfly-standalone-embedded-broker.phase>none</ts.copy-wildfly-standalone-embedded-broker.phase>
+                <ts.bootable-jar-packaging.phase>process-test-classes</ts.bootable-jar-packaging.phase>
             </properties>
             <build>
                 <plugins>
@@ -562,89 +651,6 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.wildfly.plugins</groupId>
-                        <artifactId>wildfly-jar-maven-plugin</artifactId>
-                        <version>${version.org.wildfly.jar.plugin}</version>
-                        <executions>
-                            <!-- Package a cloud-profile server -->
-                            <execution>
-                                <id>bootable-jar-cloud-profile-packaging</id>
-                                <goals>
-                                    <goal>package</goal>
-                                </goals>
-                                <phase>process-test-classes</phase>
-                                <configuration>
-                                    <output-file-name>test-wildfly-cloud-profile.jar</output-file-name>
-                                    <hollowJar>true</hollowJar>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <extra-server-content-dirs>
-                                        <!-- Uncomment if we add extra content
-                                        <extraServerContent>${project.build.directory}/extraContent/</extraServerContent>
-                                        -->
-                                    </extra-server-content-dirs>
-                                    <offline>true</offline>
-                                    <plugin-options>
-                                        <jboss-maven-dist/>
-                                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                                        <jboss-jakarta-transform-artifacts>false</jboss-jakarta-transform-artifacts>
-                                        <jboss-maven-provisioning-repo>${wildfly.transformed.repo.dir}</jboss-maven-provisioning-repo>
-                                    </plugin-options>
-                                    <feature-packs>
-                                        <feature-pack>
-                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                            <version>${testsuite.ee.galleon.pack.version}</version>
-                                        </feature-pack>
-                                    </feature-packs>
-                                    <layers>
-                                        <layer>cloud-server</layer>
-                                        <layer>h2-default-datasource</layer>
-                                    </layers>
-                                </configuration>
-                            </execution>
-
-                            <!-- Package a server with jpa -->
-                            <execution>
-                                <id>bootable-jar-jpa-packaging</id>
-                                <goals>
-                                    <goal>package</goal>
-                                </goals>
-                                <phase>process-test-classes</phase>
-                                <configuration>
-                                    <output-file-name>test-wildfly-jpa.jar</output-file-name>
-                                    <hollowJar>true</hollowJar>
-                                    <record-state>false</record-state>
-                                    <log-time>${galleon.log.time}</log-time>
-                                    <extra-server-content-dirs>
-                                        <!-- Uncomment if we add extra content
-                                        <extraServerContent>${project.build.directory}/extraContent/</extraServerContent>
-                                        -->
-                                    </extra-server-content-dirs>
-                                    <offline>true</offline>
-                                    <plugin-options>
-                                        <jboss-maven-dist/>
-                                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                                        <jboss-jakarta-transform-artifacts>false</jboss-jakarta-transform-artifacts>
-                                        <jboss-maven-provisioning-repo>${wildfly.transformed.repo.dir}</jboss-maven-provisioning-repo>
-                                    </plugin-options>
-                                    <feature-packs>
-                                        <feature-pack>
-                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                            <version>${testsuite.ee.galleon.pack.version}</version>
-                                        </feature-pack>
-                                    </feature-packs>
-                                    <layers>
-                                        <layer>jpa</layer>
-                                        <layer>jaxrs-server</layer>
-                                        <layer>h2-default-datasource</layer>
-                                    </layers>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <executions>
@@ -658,55 +664,78 @@
                                 <phase>none</phase>
                             </execution>
 
-                            <!-- Tests against the cloud-server install -->
+                            <!-- Tests against the hibernate-search install -->
                             <execution>
-                                <id>cloud.server.surefire</id>
+                                <id>hibernate-search.layer.surefire</id>
                                 <phase>test</phase>
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <install.dir>${project.build.directory}/wildfly</install.dir>
-                                        <bootable.jar>${project.build.directory}/test-wildfly-cloud-profile.jar</bootable.jar>
+                                        <install.dir>${project.build.directory}/wildfly-bootable-hibernate-search</install.dir>
+                                        <bootable.jar>${project.build.directory}/test-wildfly-hibernate-search.jar</bootable.jar>
                                         <arquillian.xml>arquillian-bootable.xml</arquillian.xml>
                                     </systemPropertyVariables>
-                                    <redirectTestOutputToFile>${testLogToFile}</redirectTestOutputToFile>
                                     <classpathDependencyExcludes>
                                         <classpathDependencyExclude>
                                             org.wildfly.arquillian:wildfly-arquillian-container-managed
                                         </classpathDependencyExclude>
                                     </classpathDependencyExcludes>
                                     <includes>
-                                        <!-- Dummy test used to validate this pom -->
-                                        <include>org/wildfly/test/preview/util/TestsuiteModuleTestCase.java</include>
+                                        <include>org/wildfly/test/preview/hibernate/search/**/*TestCase.java</include>
                                     </includes>
+                                    <reportNameSuffix>hibernate-search.surefire</reportNameSuffix>
                                 </configuration>
                             </execution>
 
                             <!-- Tests against a server provisioned with jpa -->
                             <execution>
-                                <id>jpa-layers.surefire</id>
+                                <id>mvc.layer.surefire</id>
                                 <phase>test</phase>
                                 <goals>
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <install.dir>${project.build.directory}/wildfly-bootable-jpa</install.dir>
-                                        <bootable.jar>${project.build.directory}/test-wildfly-jpa.jar</bootable.jar>
+                                        <install.dir>${project.build.directory}/wildfly-bootable-mvc</install.dir>
+                                        <bootable.jar>${project.build.directory}/test-wildfly-mvc.jar</bootable.jar>
                                         <arquillian.xml>arquillian-bootable.xml</arquillian.xml>
                                     </systemPropertyVariables>
-                                    <redirectTestOutputToFile>${testLogToFile}</redirectTestOutputToFile>
                                     <classpathDependencyExcludes>
                                         <classpathDependencyExclude>
                                             org.wildfly.arquillian:wildfly-arquillian-container-managed
                                         </classpathDependencyExclude>
                                     </classpathDependencyExcludes>
                                     <includes>
-                                        <!-- Dummy test used to validate this pom -->
-                                        <include>org/wildfly/test/preview/util/TestsuiteModuleTestCase.java</include>
+                                        <include>org/wildfly/test/preview/mvc/**/*TestCase.java</include>
                                     </includes>
+                                    <reportNameSuffix>mvc.layer.surefire</reportNameSuffix>
+                                </configuration>
+                            </execution>
+
+                            <!-- Tests against a server provisioned with vertx layer -->
+                            <execution>
+                                <id>vertx.layer.surefire</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <configuration>
+                                    <systemPropertyVariables>
+                                        <install.dir>${project.build.directory}/wildfly-bootable-vertx</install.dir>
+                                        <bootable.jar>${project.build.directory}/test-wildfly-vertx.jar</bootable.jar>
+                                        <arquillian.xml>arquillian-bootable.xml</arquillian.xml>
+                                    </systemPropertyVariables>
+                                    <classpathDependencyExcludes>
+                                        <classpathDependencyExclude>
+                                            org.wildfly.arquillian:wildfly-arquillian-container-managed
+                                        </classpathDependencyExclude>
+                                    </classpathDependencyExcludes>
+                                    <includes>
+                                        <include>org/wildfly/test/preview/vertx/**/*TestCase.java</include>
+                                    </includes>
+                                    <reportNameSuffix>vertx.layer.surefire</reportNameSuffix>
                                 </configuration>
                             </execution>
                         </executions>

@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.jboss.as.ejb3.component.stateful;
 
@@ -49,7 +32,7 @@ public class StatefulIdentityInterceptor implements Interceptor {
                 final Class<?> proxyType = componentView.getProxyClass();
                 final SessionID sessionId = context.getPrivateData(SessionID.class);
                 if( proxyType.isAssignableFrom(other.getClass())) {
-                    //now we know that this is an Jakarta Enterprise Beans for the correct component view
+                    //now we know that this is a Jakarta Enterprise Beans bean for the correct component view
                     //as digging out the session id from the proxy object is not really
                     //a viable option, we invoke equals() for the other instance with a
                     //SessionIdHolder as the other side

@@ -1,3 +1,8 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.jaxrs;
 
 import org.jboss.as.jaxrs.deployment.JaxrsMethodParameterProcessor;
@@ -35,10 +40,9 @@ public class JaxrsMethodParameterProcessorTestCase {
      * Check that a custom datatype is process by the ParamConverterProvider.
      * The provider throws an exception by design.
      *
-     * @throws Exception
      */
     @Test
-    public void customParameterTest() throws Exception {
+    public void customParameterTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleClassParamConverterProvider.class.getName());
@@ -55,7 +59,7 @@ public class JaxrsMethodParameterProcessorTestCase {
     }
 
     @Test
-    public void customParameterizedTypeTest() throws Exception {
+    public void customParameterizedTypeTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleClassParamConverterProvider.class.getName());
@@ -73,10 +77,9 @@ public class JaxrsMethodParameterProcessorTestCase {
 
     /**
      * Check the primitive datatypes are not processed by any converter.
-     * @throws Exception
      */
     @Test
-    public void primitiveParameterTest() throws Exception {
+    public void primitiveParameterTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleClassParamConverterProvider.class.getName());
@@ -93,7 +96,7 @@ public class JaxrsMethodParameterProcessorTestCase {
     }
 
     @Test
-    public void fromValueTest() throws Exception {
+    public void fromValueTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleFromValueProvider.class.getName());
@@ -110,7 +113,7 @@ public class JaxrsMethodParameterProcessorTestCase {
     }
 
     @Test
-    public void fromStringTest() throws Exception {
+    public void fromStringTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleFromStringProvider.class.getName());
@@ -127,7 +130,7 @@ public class JaxrsMethodParameterProcessorTestCase {
     }
 
     @Test
-    public void valueOfTest() throws Exception {
+    public void valueOfTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleValueOfProvider.class.getName());
@@ -144,7 +147,7 @@ public class JaxrsMethodParameterProcessorTestCase {
     }
 
     @Test
-    public void lazyLoadAnnotationTest() throws Exception {
+    public void lazyLoadAnnotationTest() {
         providers.clear();
         resources.clear();
         providers.add(SimpleClassLazyParamConverter.class.getName());

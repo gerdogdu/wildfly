@@ -1,7 +1,12 @@
+/*
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.jboss.as.test.integration.ejb.descriptor.ejbnamewildcard;
 
-import javax.ejb.LocalBean;
-import javax.ejb.Stateless;
+import jakarta.ejb.LocalBean;
+import jakarta.ejb.Stateless;
 
 /**
  * @author Jan Martiska

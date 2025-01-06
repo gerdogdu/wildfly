@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.connector.deployers.ds.processors;
@@ -77,8 +60,11 @@ public final class DriverProcessor implements DeploymentUnitProcessor {
                     } else {
                         DEPLOYER_JDBC_LOGGER.deployingNonCompliantJdbcDriver(driverClass, majorVersion, minorVersion);
                     }
-                    String driverName = deploymentUnit.getName();
-                    if ((driverName.contains(".") && ! driverName.endsWith(".jar")) || driverNames.size() != 1) {
+                    final String deploymentName = deploymentUnit.getName();
+                    String driverName = deploymentName;
+                    // in case jdbc drivers are placed in war/ear archives
+                    boolean driverWrapped = deploymentName.contains(".") && ! deploymentName.endsWith(".jar");
+                    if (driverWrapped || driverNames.size() != 1) {
                         driverName += "_" + driverClassName + "_" + majorVersion + "_" + minorVersion;
                     }
                     InstalledDriver driverMetadata = new InstalledDriver(driverName, driverClass.getName(), null, null, majorVersion,
@@ -90,14 +76,13 @@ public final class DriverProcessor implements DeploymentUnitProcessor {
                             .addDependency(ConnectorServices.JDBC_DRIVER_REGISTRY_SERVICE, DriverRegistry.class,
                                     driverService.getDriverRegistryServiceInjector()).setInitialMode(Mode.ACTIVE).install();
 
-                    if (idx == 0 && driverNames.size() != 1) {
+                    if (idx == 0 && driverNames.size() != 1 && !driverWrapped) {
                         // create short name driver service
-                        driverName = deploymentUnit.getName(); // reset driverName to the deployment unit name
-                        driverMetadata = new InstalledDriver(driverName, driverClass.getName(), null,
+                        driverMetadata = new InstalledDriver(deploymentName, driverClass.getName(), null,
                                 null, majorVersion, minorVersion, compliant);
                         driverService = new DriverService(driverMetadata, driver);
                         phaseContext.getServiceTarget()
-                                .addService(ServiceName.JBOSS.append("jdbc-driver", driverName.replaceAll("\\.", "_")), driverService)
+                                .addService(ServiceName.JBOSS.append("jdbc-driver", deploymentName.replaceAll("\\.", "_")), driverService)
                                 .addDependency(ConnectorServices.JDBC_DRIVER_REGISTRY_SERVICE, DriverRegistry.class, driverService.getDriverRegistryServiceInjector())
                                 .setInitialMode(Mode.ACTIVE).install();
                     }
@@ -118,7 +103,7 @@ public final class DriverProcessor implements DeploymentUnitProcessor {
          *
          * This hack allows to deregister all drivers registered by this module. See comments in {@link DriverManagerAdapterProcessor}
          */
-        final Module module = context.getAttachment(org.jboss.as.server.deployment.Attachments.MODULE);
+        final Module module = context.getAttachment(Attachments.MODULE);
         final ServicesAttachment servicesAttachment = context.getAttachment(Attachments.SERVICES);
         if (module != null && servicesAttachment != null) {
             final List<String> driverNames = servicesAttachment.getServiceImplementations(Driver.class.getName());

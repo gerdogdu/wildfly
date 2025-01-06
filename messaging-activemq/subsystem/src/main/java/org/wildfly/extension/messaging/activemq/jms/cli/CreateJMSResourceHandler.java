@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 package org.wildfly.extension.messaging.activemq.jms.cli;
 
@@ -32,6 +15,7 @@ import org.jboss.as.cli.handlers.BatchModeCommandHandler;
 import org.jboss.as.cli.operation.OperationFormatException;
 import org.jboss.as.cli.operation.impl.DefaultOperationRequestBuilder;
 import org.jboss.dmr.ModelNode;
+import org.wildfly.extension.messaging.activemq._private.MessagingLogger;
 
 /**
  *
@@ -49,7 +33,7 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
 
         try {
             if(!ctx.getParsedCommandLine().hasProperties()) {
-                throw new OperationFormatException("Arguments are missing");
+                throw MessagingLogger.ROOT_LOGGER.missingArguments();
             }
         } catch (CommandFormatException e) {
             throw new OperationFormatException(e.getLocalizedMessage());
@@ -92,11 +76,11 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
         }
 
         if(restype == null) {
-            throw new OperationFormatException("Required parameter --restype is missing.");
+            throw MessagingLogger.ROOT_LOGGER.missingRestype();
         }
 
         if(jndiName == null) {
-            throw new OperationFormatException("JNDI name is missing.");
+            throw MessagingLogger.ROOT_LOGGER.missingJNDIName();
         }
 
         String name = null;
@@ -108,13 +92,13 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
             for(String prop : propsArr) {
                 int equalsIndex = prop.indexOf('=');
                 if(equalsIndex < 0 || equalsIndex == prop.length() - 1) {
-                    throw new OperationFormatException("Failed to parse property '" + prop + "'");
+                    throw MessagingLogger.ROOT_LOGGER.failedToParseProperty(prop);
                 }
 
                 String propName = prop.substring(0, equalsIndex).trim();
                 String propValue = prop.substring(equalsIndex + 1).trim();
                 if(propName.isEmpty()) {
-                    throw new OperationFormatException("Failed to parse property '" + prop + "'");
+                    throw MessagingLogger.ROOT_LOGGER.failedToParseProperty(prop);
                 }
 
                 if(propName.equals("imqDestinationName") ||propName.equalsIgnoreCase("name")) {
@@ -131,7 +115,7 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
             name = jndiName.replace('/', '_');
         }
 
-        if(restype.equals("javax.jms.Queue")) {
+        if(restype.equals("jakarta.jms.Queue")) {
 
             DefaultOperationRequestBuilder builder = new DefaultOperationRequestBuilder();
             builder.addNode("subsystem", "messaging-activemq");
@@ -140,13 +124,11 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
             builder.setOperationName("add");
             builder.getModelNode().get("entries").add(jndiName);
 
-            for(String prop : props.keySet()) {
-                builder.addProperty(prop, props.get(prop));
-            }
+            addProperties(props, builder);
 
             return builder.buildRequest();
 
-        } else if(restype.equals("javax.jms.Topic")) {
+        } else if(restype.equals("jakarta.jms.Topic")) {
 
             DefaultOperationRequestBuilder builder = new DefaultOperationRequestBuilder();
             builder.addNode("subsystem", "messaging-activemq");
@@ -155,15 +137,13 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
             builder.setOperationName("add");
             builder.getModelNode().get("entries").add(jndiName);
 
-            for(String prop : props.keySet()) {
-                builder.addProperty(prop, props.get(prop));
-            }
+            addProperties(props, builder);
 
             return builder.buildRequest();
 
-        } else if(restype.equals("javax.jms.ConnectionFactory") ||
-                restype.equals("javax.jms.TopicConnectionFactory") ||
-                restype.equals("javax.jms.QueueConnectionFactory")) {
+        } else if(restype.equals("jakarta.jms.ConnectionFactory") ||
+                restype.equals("jakarta.jms.TopicConnectionFactory") ||
+                restype.equals("jakarta.jms.QueueConnectionFactory")) {
 
             DefaultOperationRequestBuilder builder = new DefaultOperationRequestBuilder();
             builder.addNode("subsystem", "messaging-activemq");
@@ -172,14 +152,18 @@ class CreateJMSResourceHandler extends BatchModeCommandHandler {
             builder.setOperationName("add");
             builder.getModelNode().get("entries").add(jndiName);
 
-            for(String prop : props.keySet()) {
-                builder.addProperty(prop, props.get(prop));
-            }
+            addProperties(props, builder);
 
             return builder.buildRequest();
 
         } else {
-            throw new OperationFormatException("Resource type " + restype + " isn't supported.");
+            throw MessagingLogger.ROOT_LOGGER.unsupportedResourceType(restype);
+        }
+    }
+
+    private void addProperties(Map<String, String> props, DefaultOperationRequestBuilder builder) {
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+            builder.addProperty(entry.getKey(), entry.getValue());
         }
     }
 }

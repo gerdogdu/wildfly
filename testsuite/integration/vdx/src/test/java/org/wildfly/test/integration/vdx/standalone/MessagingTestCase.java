@@ -1,25 +1,14 @@
 /*
- * Copyright 2017 Red Hat, Inc, and individual contributors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *  *
- * http://www.apache.org/licenses/LICENSE-2.0
- *  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.wildfly.test.integration.vdx.standalone;
 
 import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.junit.Arquillian;
-import org.junit.Ignore;
+import org.jboss.as.test.shared.util.AssumeTestGroupUtil;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,6 +30,12 @@ import org.wildfly.test.integration.vdx.utils.server.ServerConfig;
 @RunWith(Arquillian.class)
 @Category(StandaloneTests.class)
 public class MessagingTestCase extends TestBase {
+
+    @BeforeClass
+    public static void noPreview() {
+        // WildFly Preview doesn't configure a messaging broker
+        AssumeTestGroupUtil.assumeNotWildFlyPreview();
+    }
 
     /*
      * append invalid element to subsystem definition
@@ -188,9 +183,9 @@ public class MessagingTestCase extends TestBase {
     * invalid order of elements - append security element to end of messaging-activemq subsystem
     */
     @Test
+    @org.junit.Ignore("WFLY-20101")
     @ServerConfig(configuration = "standalone-full-ha.xml", xmlTransformationGroovy = "messaging/AddSecurityElementToEndOfSubsystem.groovy",
             subtreeName = "messaging", subsystemName = "messaging-activemq")
-    @Ignore("[WFLY-15271] Update to use a different element as security is in the configuration already.")
     public void testWrongOrderOfElements() throws Exception {
         container().tryStartAndWaitForFail();
         String errorLog = container().getErrorMessageFromServerStart();
@@ -226,6 +221,7 @@ public class MessagingTestCase extends TestBase {
     * Reported Issue: https://issues.jboss.org/browse/JBEAP-8437
     */
     @Test
+    @org.junit.Ignore("WFLY-20101")
     @ServerConfig(configuration = "standalone-full-ha.xml", xmlTransformationGroovy = "messaging/AddConnectorWithoutName.groovy",
             subtreeName = "messaging", subsystemName = "messaging-activemq")
     public void testFirstMissingRequiredAttributeInElement() throws Exception {

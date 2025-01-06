@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.test.integration.domain;
@@ -33,6 +16,7 @@ import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUC
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Locale;
 
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
@@ -55,7 +39,7 @@ import org.junit.Test;
 public class DefaultConfigSmokeTestCase extends BuildConfigurationTestBase {
     private static final Logger LOGGER = Logger.getLogger(DefaultConfigSmokeTestCase.class);
 
-    public static final String slaveAddress = System.getProperty("jboss.test.host.slave.address", "127.0.0.1");
+    public static final String secondaryAddress = System.getProperty("jboss.test.host.secondary.address", "127.0.0.1");
 
     @Test
     public void testStandardHost() throws Exception {
@@ -64,7 +48,7 @@ public class DefaultConfigSmokeTestCase extends BuildConfigurationTestBase {
         try {
             utils.start();
             // Double-check server status by confirming server-one can accept a web request to the root
-            URLConnection connection = new URL("http://" + TestSuiteEnvironment.formatPossibleIpv6Address(masterAddress) + ":8080").openConnection();
+            URLConnection connection = new URL("http://" + TestSuiteEnvironment.formatPossibleIpv6Address(PRIMARY_ADDRESS) + ":8080").openConnection();
             connection.connect();
 
             if (Boolean.getBoolean("expression.audit")) {
@@ -76,23 +60,23 @@ public class DefaultConfigSmokeTestCase extends BuildConfigurationTestBase {
     }
 
     @Test
-    public void testMasterAndSlave() throws Exception {
-        final WildFlyManagedConfiguration masterConfig = createConfiguration("domain.xml", "host-primary.xml", getClass().getSimpleName());
-        final DomainLifecycleUtil masterUtils = new DomainLifecycleUtil(masterConfig);
-        final WildFlyManagedConfiguration slaveConfig = createConfiguration("domain.xml", "host-secondary.xml", getClass().getSimpleName(),
-                "secondary", slaveAddress, 19990);
-        final DomainLifecycleUtil slaveUtils = new DomainLifecycleUtil(slaveConfig);
+    public void testPrimaryAndSecondary() throws Exception {
+        final WildFlyManagedConfiguration primaryConfig = createConfiguration("domain.xml", "host-primary.xml", getClass().getSimpleName());
+        final DomainLifecycleUtil primaryUtils = new DomainLifecycleUtil(primaryConfig);
+        final WildFlyManagedConfiguration secondaryConfig = createConfiguration("domain.xml", "host-secondary.xml", getClass().getSimpleName(),
+                "secondary", secondaryAddress, 19990);
+        final DomainLifecycleUtil secondaryUtils = new DomainLifecycleUtil(secondaryConfig);
         try {
-            masterUtils.start();
-            slaveUtils.start();
+            primaryUtils.start();
+            secondaryUtils.start();
             // Double-check server status by confirming server-one can accept a web request to the root
-            URLConnection connection = new URL("http://" + TestSuiteEnvironment.formatPossibleIpv6Address(slaveAddress) + ":8080").openConnection();
+            URLConnection connection = new URL("http://" + TestSuiteEnvironment.formatPossibleIpv6Address(secondaryAddress) + ":8080").openConnection();
             connection.connect();
         } finally {
             try {
-                slaveUtils.stop();
+                secondaryUtils.stop();
             } finally {
-                masterUtils.stop();
+                primaryUtils.stop();
             }
         }
     }
@@ -119,7 +103,7 @@ public class DefaultConfigSmokeTestCase extends BuildConfigurationTestBase {
                 for (Property property : resourceDescription.get(ModelDescriptionConstants.ATTRIBUTES).asPropertyList()) {
                     ModelNode attrdesc = property.getValue();
                     if (!attrdesc.hasDefined(ModelDescriptionConstants.STORAGE) ||
-                            AttributeAccess.Storage.CONFIGURATION.name().toLowerCase().equals(attrdesc.get(ModelDescriptionConstants.STORAGE).asString().toLowerCase())) {
+                            AttributeAccess.Storage.CONFIGURATION.name().toLowerCase(Locale.ENGLISH).equals(attrdesc.get(ModelDescriptionConstants.STORAGE).asString().toLowerCase(Locale.ENGLISH))) {
                         StringBuilder sb = new StringBuilder(paString);
                         sb.append(",").append(property.getName());
                         sb.append(",").append(attrdesc.get(ModelDescriptionConstants.TYPE).asString());

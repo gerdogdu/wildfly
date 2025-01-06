@@ -1,31 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-vi:ts=4:sw=4:expandtab
--->
+  ~ Copyright The WildFly Authors
+  ~ SPDX-License-Identifier: Apache-2.0
+  -->
+
 <!--
-~ JBoss, Home of Professional Open Source.
-~ Copyright (c) 2011, Red Hat, Inc., and individual contributors
-~ as indicated by the @author tags. See the copyright.txt file in the
-~ distribution for a full listing of individual contributors.
-~
-~ This is free software; you can redistribute it and/or modify it
-~ under the terms of the GNU Lesser General Public License as
-~ published by the Free Software Foundation; either version 2.1 of
-~ the License, or (at your option) any later version.
-~
-~ This software is distributed in the hope that it will be useful,
-~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-~ Lesser General Public License for more details.
-~
-~ You should have received a copy of the GNU Lesser General Public
-~ License along with this software; if not, write to the Free
-~ Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-~ 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+vi:ts=4:sw=4:expandtab
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -35,7 +19,7 @@ vi:ts=4:sw=4:expandtab
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>27.0.0.Alpha2-SNAPSHOT</version>
+        <version>35.0.0.Final-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -47,8 +31,15 @@ vi:ts=4:sw=4:expandtab
         <dependencies>
             <dependency>
                 <groupId>${project.groupId}</groupId>
-                <artifactId>wildfly-ee-feature-pack-parent</artifactId>
+                <artifactId>wildfly-standard-ee-bom</artifactId>
                 <version>${ee.maven.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>wildfly-standard-test-bom</artifactId>
+                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -60,14 +51,26 @@ vi:ts=4:sw=4:expandtab
             <groupId>org.jboss.common</groupId>
             <artifactId>jboss-common-beans</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>org.jboss.invocation</groupId>
+            <artifactId>jboss-invocation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.resource</groupId>
+            <artifactId>jakarta.resource-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-connector</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-controller</artifactId>
+            <groupId>org.jboss.ironjacamar</groupId>
+            <artifactId>ironjacamar-core-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.kohsuke.metainf-services</groupId>
+            <artifactId>metainf-services</artifactId>
         </dependency>
 
         <dependency>
@@ -76,48 +79,90 @@ vi:ts=4:sw=4:expandtab
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>wildfly-clustering-ee-cache</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-clustering-ejb-spi</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>wildfly-clustering-infinispan-embedded-spi</artifactId>
+            <artifactId>wildfly-clustering-infinispan-embedded-service</artifactId>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>org.wildfly.clustering</groupId>
             <artifactId>wildfly-clustering-marshalling-jboss</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-clustering-server-service</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>wildfly-clustering-service</artifactId>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-clustering-singleton-api</artifactId>
         </dependency>
 
         <dependency>
+            <groupId>org.wildfly.clustering</groupId>
+            <artifactId>wildfly-clustering-server-local</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.enterprise.concurrent</groupId>
+            <artifactId>jakarta.enterprise.concurrent-api</artifactId>
+        </dependency>
+        <!-- FIXME remove this once impl-30 starts to be prepared -->
+        <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>jakarta.enterprise.concurrent</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>wildfly-concurrency-spi</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-ee</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-threads</artifactId>
         </dependency>
 
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-iiop-openjdk</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.jboss.openjdk-orb</groupId>
+            <artifactId>openjdk-orb</artifactId>
+        </dependency>
 
         <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-network</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>wildfly-naming</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-request-controller</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jboss.invocation</groupId>
+                    <artifactId>jboss-invocation</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.core</groupId>
+            <artifactId>wildfly-subsystem</artifactId>
         </dependency>
 
         <dependency>
@@ -125,6 +170,10 @@ vi:ts=4:sw=4:expandtab
             <artifactId>wildfly-common</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>jakarta.authorization</groupId>
+            <artifactId>jakarta.authorization-api</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-auth</artifactId>
@@ -161,8 +210,36 @@ vi:ts=4:sw=4:expandtab
         </dependency>
 
         <dependency>
+            <groupId>org.wildfly.security.jakarta</groupId>
+            <artifactId>jakarta-authorization</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-transactions</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.narayana.jts</groupId>
+            <artifactId>narayana-jts-integration</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly</groupId>
+            <artifactId>wildfly-naming-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.transaction</groupId>
+            <artifactId>wildfly-transaction-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.wildfly-http-client</groupId>
+            <artifactId>wildfly-http-client-common</artifactId>
         </dependency>
 
         <dependency>
@@ -202,11 +279,6 @@ vi:ts=4:sw=4:expandtab
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.invocation</groupId>
-            <artifactId>jboss-invocation</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
         </dependency>
@@ -232,6 +304,20 @@ projects that depend on this project.-->
         <dependency>
             <groupId>org.jboss.metadata</groupId>
             <artifactId>jboss-metadata-ejb</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>jakarta.ejb</groupId>
+                    <artifactId>jakarta.ejb-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.metadata</groupId>
+            <artifactId>jboss-metadata-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.metadata</groupId>
+            <artifactId>jboss-metadata-ear</artifactId>
         </dependency>
 
         <dependency>
@@ -250,18 +336,13 @@ projects that depend on this project.-->
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.spec.javax.ejb</groupId>
-            <artifactId>jboss-ejb-api_3.2_spec</artifactId>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.spec.javax.jms</groupId>
-            <artifactId>jboss-jms-api_2.0_spec</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jboss.spec.javax.xml.rpc</groupId>
-            <artifactId>jboss-jaxrpc-api_1.1_spec</artifactId>
+            <groupId>jakarta.jms</groupId>
+            <artifactId>jakarta.jms-api</artifactId>
         </dependency>
 
         <dependency>
@@ -285,10 +366,9 @@ projects that depend on this project.-->
         </dependency>
 
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>wildfly-clustering-infinispan-embedded-service</artifactId>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
         </dependency>
-
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-weld-common</artifactId>
@@ -299,10 +379,32 @@ projects that depend on this project.-->
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-subclass</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TODO remove Infinispan dependencies after deprecated passivation store resources are finally removed -->
+        <dependency>
+            <groupId>org.infinispan</groupId>
+            <artifactId>infinispan-commons</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.infinispan</groupId>
+            <artifactId>infinispan-core</artifactId>
+        </dependency>
+
+        <!-- Internal test dependencies -->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>wildfly-clustering-ejb-infinispan</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -314,13 +416,8 @@ projects that depend on this project.-->
         </dependency>
 
         <dependency>
-            <groupId>org.wildfly.transaction</groupId>
-            <artifactId>wildfly-transaction-client</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.codehaus.groovy</groupId>
-            <artifactId>groovy-all</artifactId>
+            <groupId>org.apache.groovy</groupId>
+            <artifactId>groovy</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

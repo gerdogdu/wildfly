@@ -1,6 +1,14 @@
 [[Implicit_module_dependencies_for_deployments]]
 = Implicit module dependencies for deployments
 
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 As explained in the <<Class_Loading_in_WildFly,Class Loading in WildFly>> article,
 WildFly {wildflyVersion} is based on module classloading. A class within a module B
 isn't visible to a class within a module A, unless module B adds a
@@ -13,10 +21,10 @@ when and which modules are added as implicit dependencies.
 == What's an implicit module dependency?
 
 Consider an application deployment which contains Jakarta Enterprise Beans. Jakarta Enterprise Beans typically
-need access to classes from the javax.ejb.* package and other Jakarta EE
+need access to classes from the jakarta.ejb.* package and other Jakarta EE
 API packages. The jars containing these packages are already shipped in
 WildFly and are available as "modules". The module which contains the
-javax.ejb.* classes has a specific name and so does the module which
+jakarta.ejb.* classes has a specific name and so does the module which
 contains all the Jakarta EE API classes. For an application to be able to
 use these classes, it has to add a dependency on the relevant modules.
 Forcing the application developers to add module dependencies like these
@@ -35,7 +43,7 @@ When a deployment is being processed by the server, it goes through a
 chain of "deployment processors". Each of these processors will have a
 way to check if the deployment meets a certain criteria and if it does,
 the deployment processor adds an implicit module dependency to that
-deployment. Let's take an example - Consider (again) an Jakarta Enterprise Beans 3 deployment
+deployment. Let's take an example - Consider (again) a Jakarta Enterprise Beans 3 deployment
 which has the following class:
 
 .MySuperDuperBean.java
@@ -53,7 +61,7 @@ public class MySuperDuperBean {
 As can be seen, we have a simple @Stateless Jakarta Enterprise Beans. When the deployment
 containing this class is being processed, the Jakarta Enterprise Beans deployment processor
 will see that the deployment contains a class with the @Stateless
-annotation and thus identifies this as an Jakarta Enterprise Beans deployment. *This is just
+annotation and thus identifies this as a Jakarta Enterprise Beans deployment. *This is just
 one of the several ways, various deployment processors can identify a
 deployment of some specific type.* The Jakarta Enterprise Beans deployment processor will
 then add an implicit dependency on the Jakarta EE API module, so that all
@@ -68,6 +76,8 @@ that are added to a deployment, by various deployers within WildFly.
 [[which-are-the-implicit-module-dependencies]]
 == Which are the implicit module dependencies?
 
+NOTE: The sun.jdk is no longer added by the Core Server as an implicit dependency.
+
 [cols=",,,",,options="header"]
 |=======================================================================
 |Subsystem responsible for adding the implicit dependency |Dependencies
@@ -75,9 +85,9 @@ that are always added |Dependencies that are added if a trigger
 condition is met |Trigger which leads to the implicit module dependency
 being added
 
-|Core Server |javax.api sun.jdk org.jboss.vfs |  | 
+|Core Server |java.se org.jboss.vfs|  | 
 
-|Batch Subsystem |javax.batch.api |  | implicit
+|Batch Subsystem |jakarta.batch.api |  | implicit
 
 |EE Subsystem |javaee.api |  | 
 
@@ -91,10 +101,10 @@ com.fasterxml.jackson.core.jackson-core +
 com.fasterxml.jackson.core.jackson-databind +
 com.fasterxml.jackson.datatype.jackson-datatype-jdk8 +
 com.fasterxml.jackson.datatype.jackson-datatype-jsr310 +
-com.fasterxml.jackson.jaxrs.jackson-jaxrs-json-provider +
-javax.json.api +
-javax.ws.rs.api +
-javax.xml.bind.api +
+com.fasterxml.jackson.jakarta.jackson-jakarta-json-provider +
+jakarta.json.api +
+jakarta.ws.rs.api +
+jakarta.xml.bind.api +
 org.eclipse.microprofile.restclient +
 org.jboss.resteasy.resteasy-atom-provider +
 org.jboss.resteasy.resteasy-client +
@@ -113,31 +123,30 @@ org.jboss.resteasy.resteasy-validator-provider
 |
 |The presence of Jakarta RESTful Web Services annotations in the deployment
 
-|Jakarta Connectors subsystem |javax.resource.api |javax.jms.api javax.validation.api
+|Jakarta Connectors subsystem |jakarta.resource.api |jakarta.jms.api jakarta.validation.api
 org.jboss.logging org.jboss.ironjacamar.api org.jboss.ironjacamar.impl
 org.hibernate.validator |If the deployment is a resource adaptor (RAR)
 deployment.
 
-|Jakarta Persistence (Hibernate) subsystem |javax.persistence.api |javaee.api
+|Jakarta Persistence (Hibernate) subsystem |jakarta.persistence.api |javaee.api
 org.jboss.as.jpa org.hibernate |The presence of an @PersistenceUnit or
 @PersistenceContext annotation, or a <persistence-unit-ref> or
 <persistence-context-ref> in a deployment descriptor..
 
 |Logging Subsystem |org.jboss.logging org.apache.commons.logging
-org.apache.log4j org.apache.logging.log4j.api org.slf4j org.jboss.logging.jul-to-slf4j-stub |  | 
+ org.apache.logging.log4j.api org.slf4j org.jboss.logging.jul-to-slf4j-stub |  | 
 
 |SAR Subsystem |  |org.jboss.logging org.jboss.modules |The deployment
 is a SAR archive
 
 |Security Subsystem |org.picketbox |  | 
 
-|Web Subsystem |  |javaee.api com.sun.jsf-impl org.hibernate.validator
-org.jboss.as.web org.jboss.logging |The deployment is a WAR archive. Jakarta Server Faces
-is only added if used. Multiple version options exist for mojarra.
+|Web Subsystem |  |javaee.api jakarta.faces.api jakarta.faces.impl org.hibernate.validator org.jboss.as.web org.jboss.logging |The deployment is a WAR archive. Jakarta Faces
+is only added if used. Multiple version options exist for Jakarta Faces.
 
 |Web Services Subsystem |org.jboss.ws.api org.jboss.ws.spi |  | 
 
-|Weld (CDI) Subsystem |  |javax.persistence.api javaee.api org.javassist
+|Weld (CDI) Subsystem |  |jakarta.persistence.api javaee.api org.javassist
 org.jboss.interceptor org.jboss.as.weld org.jboss.logging
 org.jboss.weld.core org.jboss.weld.api org.jboss.weld.spi |If a
 beans.xml file is detected in the deployment

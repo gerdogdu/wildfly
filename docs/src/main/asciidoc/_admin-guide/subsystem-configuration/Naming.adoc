@@ -1,8 +1,16 @@
 [[Naming]]
-= Naming Subsystem Configuration
+= Naming Subsystem
+
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 The Naming subsystem provides the JNDI implementation on WildFly, and
-its configuration allows to:
+its configuration allows you to:
 
 * bind entries in global JNDI namespaces
 * turn off/on the remote JNDI interface

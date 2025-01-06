@@ -1,23 +1,6 @@
 /*
- * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
- *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
- *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package org.jboss.as.clustering.controller;
@@ -30,6 +13,7 @@ import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.dmr.ModelNode;
@@ -38,7 +22,7 @@ import org.jboss.dmr.ModelNode;
  * Convenience extension of {@link org.jboss.as.controller.ReloadRequiredWriteAttributeHandler} that can be initialized with an {@link Attribute} set.
  * @author Paul Ferraro
  */
-public class WriteAttributeStepHandler extends ReloadRequiredWriteAttributeHandler implements Registration<ManagementResourceRegistration> {
+public class WriteAttributeStepHandler extends ReloadRequiredWriteAttributeHandler implements ManagementRegistrar<ManagementResourceRegistration> {
 
     private final WriteAttributeStepHandlerDescriptor descriptor;
     private final ResourceServiceHandler handler;
@@ -62,24 +46,24 @@ public class WriteAttributeStepHandler extends ReloadRequiredWriteAttributeHandl
 
     @Override
     protected void recordCapabilitiesAndRequirements(OperationContext context, AttributeDefinition attribute, ModelNode newValue, ModelNode oldValue) {
-        Map<Capability, Predicate<ModelNode>> capabilities = this.descriptor.getCapabilities();
+        Map<RuntimeCapability<?>, Predicate<ModelNode>> capabilities = this.descriptor.getCapabilities();
         if (!capabilities.isEmpty()) {
             PathAddress address = context.getCurrentAddress();
             // newValue is already applied to the model
             ModelNode newModel = context.readResource(PathAddress.EMPTY_ADDRESS).getModel();
             ModelNode oldModel = newModel.clone();
             oldModel.get(attribute.getName()).set(oldValue);
-            for (Map.Entry<Capability, Predicate<ModelNode>> entry : capabilities.entrySet()) {
-                Capability capability = entry.getKey();
+            for (Map.Entry<RuntimeCapability<?>, Predicate<ModelNode>> entry : capabilities.entrySet()) {
+                RuntimeCapability<?> capability = entry.getKey();
                 Predicate<ModelNode> predicate = entry.getValue();
                 boolean registered = predicate.test(oldModel);
                 boolean shouldRegister = predicate.test(newModel);
                 if (!registered && shouldRegister) {
                     // Attribute change enables capability registration
-                    context.registerCapability(capability.resolve(address));
+                    context.registerCapability(capability.isDynamicallyNamed() ? capability.fromBaseCapability(address) : capability);
                 } else if (registered && !shouldRegister) {
                     // Attribute change disables capability registration
-                    context.deregisterCapability(capability.resolve(address).getName());
+                    context.deregisterCapability(capability.isDynamicallyNamed() ? capability.getDynamicName(address) : capability.getName());
                 }
             }
         }
@@ -89,10 +73,11 @@ public class WriteAttributeStepHandler extends ReloadRequiredWriteAttributeHandl
     @Override
     protected boolean applyUpdateToRuntime(OperationContext context, ModelNode operation, String attributeName, ModelNode resolvedValue, ModelNode currentValue, HandbackHolder<Void> handback) throws OperationFailedException {
         boolean updated = super.applyUpdateToRuntime(context, operation, attributeName, resolvedValue, currentValue, handback);
-        if (updated && handler != null) {
+        if (updated && (this.handler != null)) {
             PathAddress address = context.getCurrentAddress();
             if (context.isResourceServiceRestartAllowed() && this.getAttributeDefinition(attributeName).getFlags().contains(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES) && context.markResourceRestarted(address, this.handler)) {
-                this.restartServices(context);
+                this.handler.removeServices(context, context.getOriginalRootResource().navigate(context.getCurrentAddress()).getModel());
+                this.handler.installServices(context, context.readResource(PathAddress.EMPTY_ADDRESS, false).getModel());
                 // Returning false prevents going into reload required state
                 return false;
             }
@@ -104,12 +89,8 @@ public class WriteAttributeStepHandler extends ReloadRequiredWriteAttributeHandl
     protected void revertUpdateToRuntime(OperationContext context, ModelNode operation, String attributeName, ModelNode valueToRestore, ModelNode resolvedValue, Void handback) throws OperationFailedException {
         PathAddress address = context.getCurrentAddress();
         if (context.isResourceServiceRestartAllowed() && this.getAttributeDefinition(attributeName).getFlags().contains(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES) && context.revertResourceRestarted(address, this.handler)) {
-            this.restartServices(context);
+            this.handler.removeServices(context, context.readResource(PathAddress.EMPTY_ADDRESS, false).getModel());
+            this.handler.installServices(context, context.getOriginalRootResource().navigate(context.getCurrentAddress()).getModel());
         }
-    }
-
-    private void restartServices(OperationContext context) throws OperationFailedException {
-        this.handler.removeServices(context, context.getOriginalRootResource().navigate(context.getCurrentAddress()).getModel());
-        this.handler.installServices(context, context.readResource(PathAddress.EMPTY_ADDRESS).getModel());
     }
 }

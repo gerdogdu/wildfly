@@ -1,43 +1,27 @@
 /*
-* JBoss, Home of Professional Open Source.
-* Copyright 2012, Red Hat, Inc., and individual contributors
-* as indicated by the @author tags. See the copyright.txt file in the
-* distribution for a full listing of individual contributors.
-*
-* This is free software; you can redistribute it and/or modify it
-* under the terms of the GNU Lesser General Public License as
-* published by the Free Software Foundation; either version 2.1 of
-* the License, or (at your option) any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-* Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public
-* License along with this software; if not, write to the Free
-* Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
-* 02110-1301 USA, or see the FSF site: http://www.fsf.org.
-*/
+ * Copyright The WildFly Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 package org.jboss.as.test.integration.jpa.webtxem;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import javax.annotation.Resource;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.transaction.UserTransaction;
+import jakarta.annotation.Resource;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Status;
+import jakarta.transaction.UserTransaction;
 
-import org.jboss.as.test.integration.jpa.hibernate.entity.Flight;
+import org.jboss.as.test.integration.jpa.webtxem.entity.WebJPAEntity;
 
 /**
- * Test servlet used by {@link WebJPATestCase}. Entity {@link Flight} is read or written, type of operation depends on
+ * Test servlet used by {@link WebJPATestCase}. Entity {@link WebJPAEntity} is read or written, type of operation depends on
  * parameter: mode=write or mode=read.
  *
  * @author Zbyněk Roubalík
@@ -48,7 +32,7 @@ public class TestServlet extends HttpServlet {
 
     @PersistenceContext(unitName = "web_jpa_pc")
     EntityManager em;
-
+    Long databaseGeneratedID = null;
     @Resource
     private UserTransaction tx;
 
@@ -63,14 +47,35 @@ public class TestServlet extends HttpServlet {
                 String mode = req.getParameter("mode");
 
                 if (mode.equals("write")) {
-                    Flight f = new Flight();
-                    f.setId(new Long(1));
-                    f.setName("Flight number one");
-                    em.merge(f);
+                    WebJPAEntity f = new WebJPAEntity();
+                    f.setName("WebJPAEntity One");
+                    f = em.merge(f);
+                    // Since we are using a @GeneratedValue id, we want ORM to create it for us on persist operation
+                    // and then we'll store it in the test for further entity manipulations.
+                    //
+                    // While previous versions of ORM may have allowed users to set the value of a generated id, now the rules are stricter.
+                    // Pasting from https://docs.jboss.org/hibernate/orm/6.6/migration-guide/migration-guide.html:
+                    // "
+                    // Merge versioned entity when row is deleted
+                    //
+                    // Previously, merging a detached entity resulted in a SQL insert whenever there was no matching row in the database (for example, if the object had been deleted in another transaction). This behavior was unexpected and violated the rules of optimistic locking.
+                    //
+                    // An OptimisticLockException is now thrown when it is possible to determine that an entity is definitely detached, but there is no matching row. For this determination to be possible, the entity must have either:
+                    //
+                    // *  a generated @Id field, or
+                    // *  a non-primitive @Version field.
+                    //
+                    // For entities which have neither, it’s impossible to distinguish a new instance from a deleted detached instance, and there is no change from the previous behavior.
+                    // "
+                    //
+                    // Previously, we specified the WebJPAEntity id value but as mentioned ^ because the @Id field is
+                    // also annotated with @GeneratedValue we can no longer do that,
+                    // i.e. trying to set an id explicitly: `f.setId(1L);` will lead to an exception in this case.
+                    databaseGeneratedID = f.getId();
 
                 } else if (mode.equals("read")) {
 
-                    Flight f = em.find(Flight.class, new Long(1));
+                    WebJPAEntity f = em.find(WebJPAEntity.class, databaseGeneratedID);
                     resp.setContentType("text/plain");
                     PrintWriter out = resp.getWriter();
                     out.print(f.getName());
@@ -82,7 +87,11 @@ public class TestServlet extends HttpServlet {
                 tx.setRollbackOnly();
                 throw e;
             } finally {
-                tx.commit();
+                if (tx.getStatus() == Status.STATUS_MARKED_ROLLBACK) {
+                    tx.rollback();
+                } else {
+                    tx.commit();
+                }
             }
 
         } catch (Exception e) {
