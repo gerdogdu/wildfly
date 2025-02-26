@@ -17,7 +17,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>35.0.0.Final-SNAPSHOT</version>
+        <version>36.0.0.Beta1-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -47,9 +47,9 @@
                 Re-expose the standard-expansion deps.
              -->
             <dependency>
-                <groupId>${ee.maven.groupId}</groupId>
+                <groupId>${full.maven.groupId}</groupId>
                 <artifactId>wildfly-standard-expansion-bom</artifactId>
-                <version>${ee.maven.version}</version>
+                <version>${full.maven.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

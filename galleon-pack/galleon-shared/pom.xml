@@ -17,7 +17,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>35.0.0.Final-SNAPSHOT</version>
+        <version>36.0.0.Beta1-SNAPSHOT</version>
     </parent>
 
     <artifactId>wildfly-feature-pack-galleon-shared</artifactId>
@@ -92,6 +92,10 @@
         <dependency>
             <groupId>io.smallrye</groupId>
             <artifactId>smallrye-fault-tolerance-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.smallrye</groupId>
+            <artifactId>smallrye-fault-tolerance-apiimpl</artifactId>
         </dependency>
         <dependency>
             <groupId>io.smallrye</groupId>
@@ -320,11 +324,6 @@
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>smallrye-mutiny-vertx-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.smallrye.reactive</groupId>
-            <artifactId>smallrye-mutiny-vertx-kafka-client</artifactId>
         </dependency>
 
         <dependency>
