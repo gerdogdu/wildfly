@@ -5,16 +5,12 @@
 
 package org.wildfly.clustering.ejb.infinispan.bean;
 
-import static org.wildfly.clustering.cache.function.Functions.constantFunction;
-import static org.wildfly.common.function.Functions.discardingConsumer;
-
 import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 
 import org.infinispan.Cache;
 import org.wildfly.clustering.cache.CacheEntryMutator;
 import org.wildfly.clustering.cache.CacheEntryMutatorFactory;
-import org.wildfly.clustering.cache.infinispan.embedded.EmbeddedCacheEntryComputerFactory;
 import org.wildfly.clustering.ejb.bean.BeanExpiration;
 import org.wildfly.clustering.ejb.bean.BeanInstance;
 import org.wildfly.clustering.ejb.bean.BeanMetaData;
@@ -27,6 +23,8 @@ import org.wildfly.clustering.ejb.cache.bean.DefaultBeanMetaDataEntry;
 import org.wildfly.clustering.ejb.cache.bean.DefaultImmutableBeanMetaData;
 import org.wildfly.clustering.ejb.cache.bean.MutableBeanMetaDataEntry;
 import org.wildfly.clustering.ejb.cache.bean.RemappableBeanMetaDataEntry;
+import org.wildfly.clustering.function.Consumer;
+import org.wildfly.clustering.function.Function;
 import org.wildfly.clustering.server.offset.OffsetValue;
 
 /**
@@ -48,14 +46,14 @@ public class InfinispanBeanMetaDataFactory<K> implements BeanMetaDataFactory<K, 
         this.readForUpdateCache = configuration.getReadForUpdateCache();
         this.tryReadForUpdateCache = configuration.getTryReadForUpdateCache();
         this.expiration = configuration.getExpiration();
-        this.mutatorFactory = (this.expiration != null) && !this.expiration.getTimeout().isZero() ? new EmbeddedCacheEntryComputerFactory<>(this.writeOnlyCache, BeanMetaDataEntryFunction::new) : null;
+        this.mutatorFactory = (this.expiration != null) && !this.expiration.getTimeout().isZero() ? configuration.getCacheEntryMutatorFactory(BeanMetaDataEntryFunction::new) : null;
         this.beanName = configuration.getBeanName();
     }
 
     @Override
     public CompletionStage<RemappableBeanMetaDataEntry<K>> createValueAsync(BeanInstance<K> instance, K groupId) {
         RemappableBeanMetaDataEntry<K> entry = new DefaultBeanMetaDataEntry<>(this.beanName, groupId);
-        return this.writeOnlyCache.putAsync(new InfinispanBeanMetaDataKey<>(instance.getId()), entry).thenApply(constantFunction(entry));
+        return this.writeOnlyCache.putAsync(new InfinispanBeanMetaDataKey<>(instance.getId()), entry).thenApply(Function.of(entry));
     }
 
     @Override
@@ -70,7 +68,7 @@ public class InfinispanBeanMetaDataFactory<K> implements BeanMetaDataFactory<K, 
 
     @Override
     public CompletionStage<Void> removeAsync(K id) {
-        return this.writeOnlyCache.removeAsync(new InfinispanBeanMetaDataKey<>(id)).thenAccept(discardingConsumer());
+        return this.writeOnlyCache.removeAsync(new InfinispanBeanMetaDataKey<>(id)).thenAccept(Consumer.empty());
     }
 
     @Override
@@ -86,7 +84,7 @@ public class InfinispanBeanMetaDataFactory<K> implements BeanMetaDataFactory<K, 
     @Override
     public BeanMetaData<K> createBeanMetaData(K id, RemappableBeanMetaDataEntry<K> entry) {
         OffsetValue<Instant> lastAccess = (this.mutatorFactory != null) ? entry.getLastAccess().rebase() : entry.getLastAccess();
-        CacheEntryMutator mutator = (this.mutatorFactory != null) ? this.mutatorFactory.createMutator(new InfinispanBeanMetaDataKey<>(id), lastAccess) : CacheEntryMutator.NO_OP;
+        Runnable mutator = (this.mutatorFactory != null) ? this.mutatorFactory.createMutator(new InfinispanBeanMetaDataKey<>(id), lastAccess) : CacheEntryMutator.EMPTY;
         return new DefaultBeanMetaData<>((this.mutatorFactory != null) ? new MutableBeanMetaDataEntry<>(entry, lastAccess) : entry, this.expiration, mutator);
     }
 }

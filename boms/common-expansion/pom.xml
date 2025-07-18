@@ -17,7 +17,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>36.0.0.Beta1-SNAPSHOT</version>
+        <version>37.0.0.Final-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -401,6 +401,17 @@
                     </exclusion>
                 </exclusions>
             </dependency>
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-registry-prometheus</artifactId>
+                <version>${version.io.micrometer}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
 
             <dependency>
                 <groupId>io.netty</groupId>
@@ -604,17 +615,6 @@
             </dependency>
             <dependency>
                 <groupId>io.opentelemetry.instrumentation</groupId>
-                <artifactId>opentelemetry-java-http-client</artifactId>
-                <version>${version.io.opentelemetry.opentelemetry}-alpha</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>*</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>io.opentelemetry.instrumentation</groupId>
                 <artifactId>opentelemetry-runtime-telemetry-java8</artifactId>
                 <version>${version.io.opentelemetry.instrumentation}-alpha</version>
                 <exclusions>
@@ -652,6 +652,40 @@
                 <groupId>io.perfmark</groupId>
                 <artifactId>perfmark-api</artifactId>
                 <version>${version.io.perfmark}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>prometheus-metrics-exposition-formats</artifactId>
+                <version>${version.io.prometheus}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>prometheus-metrics-config</artifactId>
+                <version>${version.io.prometheus}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.prometheus</groupId>
+                <artifactId>prometheus-metrics-model</artifactId>
+                <version>${version.io.prometheus}</version>
                 <exclusions>
                     <exclusion>
                         <groupId>*</groupId>
@@ -766,47 +800,6 @@
             </dependency>
 
             <dependency>
-                <groupId>io.smallrye.common</groupId>
-                <artifactId>smallrye-common-annotation</artifactId>
-                <version>${version.io.smallrye.smallrye-common}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>jakarta.enterprise</groupId>
-                        <artifactId>jakarta.enterprise.cdi-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>jakarta.inject</groupId>
-                        <artifactId>jakarta.inject-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>io.smallrye.common</groupId>
-                <artifactId>smallrye-common-classloader</artifactId>
-                <version>${version.io.smallrye.smallrye-common}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.smallrye.common</groupId>
-                <artifactId>smallrye-common-constraint</artifactId>
-                <version>${version.io.smallrye.smallrye-common}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.smallrye.common</groupId>
-                <artifactId>smallrye-common-expression</artifactId>
-                <version>${version.io.smallrye.smallrye-common}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.smallrye.common</groupId>
-                <artifactId>smallrye-common-function</artifactId>
-                <version>${version.io.smallrye.smallrye-common}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.smallrye.common</groupId>
-                <artifactId>smallrye-common-vertx-context</artifactId>
-                <version>${version.io.smallrye.smallrye-common}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>io.smallrye.config</groupId>
                 <artifactId>smallrye-config</artifactId>
                 <version>${version.io.smallrye.smallrye-config}</version>
@@ -893,18 +886,6 @@
                 </exclusions>
             </dependency>
 
-
-            <dependency>
-                <groupId>io.smallrye.reactive</groupId>
-                <artifactId>mutiny</artifactId>
-                <version>${version.io.smallrye.smallrye-mutiny}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>*</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
             <dependency>
                 <groupId>io.smallrye.reactive</groupId>
                 <artifactId>mutiny-reactive-streams-operators</artifactId>

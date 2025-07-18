@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.infinispan.Cache;
@@ -40,6 +39,7 @@ import org.wildfly.clustering.ejb.timer.TimeoutMetaData;
 import org.wildfly.clustering.ejb.timer.Timer;
 import org.wildfly.clustering.ejb.timer.TimerManager;
 import org.wildfly.clustering.ejb.timer.TimerRegistry;
+import org.wildfly.clustering.function.Supplier;
 import org.wildfly.clustering.marshalling.Marshaller;
 import org.wildfly.clustering.server.infinispan.CacheContainerGroup;
 import org.wildfly.clustering.server.infinispan.CacheContainerGroupMember;
@@ -143,8 +143,8 @@ public class InfinispanTimerManager<I, C> implements TimerManager<I> {
         }
 
         Consumer<CacheStreamFilter<Map.Entry<TimerMetaDataKey<I>, RemappableTimerMetaDataEntry<C>>>> scheduleTask = new CacheEntriesTask<>(this.cache, TimerCacheEntryFilter.META_DATA_ENTRY.cast(), localScheduler::schedule);
-        org.wildfly.clustering.cache.function.Consumer<I> cancel = localScheduler::cancel;
-        Consumer<CacheStreamFilter<TimerMetaDataKey<I>>> cancelTask = new CacheKeysTask<>(this.cache, TimerCacheKeyFilter.META_DATA_KEY, cancel.map(Key::getId));
+        org.wildfly.clustering.function.Consumer<I> cancel = localScheduler::cancel;
+        Consumer<CacheStreamFilter<TimerMetaDataKey<I>>> cancelTask = new CacheKeysTask<>(this.cache, TimerCacheKeyFilter.META_DATA_KEY, cancel.compose(Key::getId));
 
         this.schedulerListenerRegistration.set(new SchedulerTopologyChangeListener<>(this.cache, scheduleTask, cancelTask).register());
 

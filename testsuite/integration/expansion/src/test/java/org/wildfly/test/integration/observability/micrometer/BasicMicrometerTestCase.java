@@ -8,7 +8,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.inject.Inject;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.arquillian.testcontainers.api.DockerRequired;
+import org.jboss.arquillian.testcontainers.api.TestcontainersRequired;
 import org.jboss.as.arquillian.api.ServerSetup;
 import org.jboss.as.test.shared.CdiUtils;
 import org.jboss.as.test.shared.observability.setuptasks.MicrometerSetupTask;
@@ -19,12 +19,11 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.wildfly.test.integration.observability.JaxRsActivator;
-import org.wildfly.test.integration.observability.micrometer.multiple.application.MicrometerMetricResource;
 
 
 @RunWith(Arquillian.class)
 @ServerSetup(MicrometerSetupTask.class)
-@DockerRequired
+@TestcontainersRequired
 public class BasicMicrometerTestCase {
     @Inject
     private MeterRegistry meterRegistry;
@@ -34,7 +33,7 @@ public class BasicMicrometerTestCase {
         return ShrinkWrap.create(WebArchive.class, "micrometer-test.war")
                 .addClasses(
                         JaxRsActivator.class,
-                        MicrometerMetricResource.class)
+                        MicrometerResource.class)
                 .addAsWebInfResource(CdiUtils.createBeansXml(), "beans.xml");
     }
 

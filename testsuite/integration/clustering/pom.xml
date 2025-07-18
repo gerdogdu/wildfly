@@ -15,7 +15,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>36.0.0.Beta1-SNAPSHOT</version>
+        <version>37.0.0.Final-SNAPSHOT</version>
     </parent>
 
     <artifactId>wildfly-ts-integ-clustering</artifactId>
@@ -250,6 +250,11 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -770,7 +775,7 @@
                                     <goal>wget</goal>
                                 </goals>
                                 <configuration>
-                                    <url>https://downloads.jboss.org/infinispan/${version.org.infinispan.server}/infinispan-server-${version.org.infinispan.server}.zip</url>
+                                    <url>https://github.com/infinispan/infinispan/releases/download/${version.org.infinispan.server}/infinispan-server-${version.org.infinispan.server}.zip</url>
                                     <unpack>true</unpack>
                                 </configuration>
                             </execution>
@@ -1202,7 +1207,6 @@
                                     <!-- Needed for EJB client tests -->
                                     <useSystemClassLoader>true</useSystemClassLoader>
                                     <useManifestOnlyJar>true</useManifestOnlyJar>
-                                    <forkMode>once</forkMode>
                                     <environmentVariables>
                                         <BYTEMAN_HOME/>
                                     </environmentVariables>

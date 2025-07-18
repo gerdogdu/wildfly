@@ -13,7 +13,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>36.0.0.Beta1-SNAPSHOT</version>
+        <version>37.0.0.Final-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -71,6 +71,18 @@
                 <artifactId>jcommander</artifactId>
                 <version>${version.com.beust}</version>
                 <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>jakarta.mvc</groupId>
+                <artifactId>jakarta.mvc-api</artifactId>
+                <version>${version.jakarta.mvc}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
@@ -150,6 +162,18 @@
                     <exclusion>
                         <groupId>xml-apis</groupId>
                         <artifactId>xml-apis</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.krazo</groupId>
+                <artifactId>krazo-core</artifactId>
+                <version>${version.org.eclipse.krazo}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -347,6 +371,13 @@
                 <groupId>org.wildfly.glow</groupId>
                 <artifactId>wildfly-glow-maven-resolver</artifactId>
                 <version>${version.org.wildfly.glow}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.htmlunit</groupId>
+                <artifactId>htmlunit</artifactId>
+                <version>${version.org.htmlunit}</version>
+                <scope>test</scope>
             </dependency>
 
             <!-- The below BOM's are imported last as to not override any dependencies above -->

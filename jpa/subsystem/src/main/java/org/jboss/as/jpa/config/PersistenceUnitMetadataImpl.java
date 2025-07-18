@@ -10,10 +10,10 @@ import static org.jboss.as.jpa.messages.JpaLogger.ROOT_LOGGER;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import jakarta.persistence.SharedCacheMode;
 import jakarta.persistence.ValidationMode;
@@ -21,7 +21,6 @@ import jakarta.persistence.spi.ClassTransformer;
 import jakarta.persistence.spi.PersistenceUnitTransactionType;
 import javax.sql.DataSource;
 
-import org.jboss.jandex.Index;
 import org.jipijapa.plugin.spi.PersistenceUnitMetadata;
 import org.jipijapa.plugin.spi.TempClassLoaderFactory;
 
@@ -98,7 +97,7 @@ public class PersistenceUnitMetadataImpl implements PersistenceUnitMetadata {
 
     private volatile ClassLoader cachedTempClassLoader;
 
-    private volatile Map<URL, Index> annotationIndex;
+    private final AtomicBoolean onlyCheckIfClassFileTransformerIsNeededOnce = new AtomicBoolean(false);
 
     @Override
     public void setPersistenceUnitName(String name) {
@@ -196,16 +195,6 @@ public class PersistenceUnitMetadataImpl implements PersistenceUnitMetadata {
     @Override
     public URL getPersistenceUnitRootUrl() {
         return persistenceUnitRootUrl;
-    }
-
-    @Override
-    public void setAnnotationIndex(Map<URL, Index> indexes) {
-        annotationIndex = indexes;
-    }
-
-    @Override
-    public Map<URL, Index> getAnnotationIndex() {
-        return annotationIndex;
     }
 
     @Override
@@ -377,6 +366,15 @@ public class PersistenceUnitMetadataImpl implements PersistenceUnitMetadata {
     @Override
     public List<ClassTransformer> getTransformers() {
         return transformers;
+    }
+
+    @Override
+    public boolean needsJPADelegatingClassFileTransformer() {
+        // WFLY-20393 Ensure that only one internal JPADelegatingClassFileTransformer bytecode transformer is configured for each Persistence Unit
+        if (onlyCheckIfClassFileTransformerIsNeededOnce.compareAndSet(false, true)) {
+            return Configuration.needClassFileTransformer(this);
+        }
+        return false;
     }
 
     @Override

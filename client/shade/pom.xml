@@ -16,7 +16,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>36.0.0.Beta1-SNAPSHOT</version>
+        <version>37.0.0.Final-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -387,7 +387,7 @@
                         <Bundle-SymbolicName>org.jboss.client</Bundle-SymbolicName>
                         <Bundle-Version>1.0</Bundle-Version>
                         <Bundle-Name>Jakarta Enterprise Beans and Jakarta Messaging client library</Bundle-Name>
-                        <Fragment-Host>org.openjdk.jmc.rjmx</Fragment-Host>
+                        <Fragment-Host>org.openjdk.jmc.rjmx.common</Fragment-Host>
                         <Export-Package>*</Export-Package>
                         <Automatic-Module-Name>org.jboss.client</Automatic-Module-Name>
                     </manifestEntries>
@@ -444,7 +444,7 @@
                                         <Bundle-SymbolicName>org.jboss.client</Bundle-SymbolicName>
                                         <Bundle-Version>1.0</Bundle-Version>
                                         <Bundle-Name>Jakarta Enterprise Beans and Jakarta Messaging client library</Bundle-Name>
-                                        <Fragment-Host>org.openjdk.jmc.rjmx</Fragment-Host>
+                                        <Fragment-Host>org.openjdk.jmc.rjmx.common</Fragment-Host>
                                         <Export-Package>*</Export-Package>
                                         <Automatic-Module-Name>org.jboss.client</Automatic-Module-Name>
                                     </manifestEntries>

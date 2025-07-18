@@ -466,8 +466,8 @@ public interface JpaLogger extends BasicLogger {
      *
      * @return a {@link RuntimeException} for the error.
      */
-    @Message(id = 41, value = "Can only inject from a Hibernate EntityManagerFactoryImpl")
-    RuntimeException hibernateOnlyEntityManagerFactory();
+//     @Message(id = 41, value = "Can only inject from a Hibernate EntityManagerFactoryImpl")
+//     RuntimeException hibernateOnlyEntityManagerFactory();
 
 //    /**
 //     * Creates an exception indicating the entity manager factory implementation can only be a Hibernate version.
@@ -756,5 +756,9 @@ public interface JpaLogger extends BasicLogger {
 
     @Message(id = 75, value="Illegal to call this method from injected, managed EntityManager")
     IllegalStateException illegalCallOnCloseMethod();
+
+    @LogMessage(level = INFO)
+    @Message(id = 76, value = "persistence.xml in application client %s deployment will not be deployed in server mode")
+    void ignoreAppclientPersistenceUnitsInServer(String deploymentName);
 
 }

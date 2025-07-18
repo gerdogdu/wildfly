@@ -52,8 +52,6 @@ public abstract class LayersTestBase {
             "org.hornetq.client",
             // TODO we need to add an xts layer
             "org.jboss.as.xts",
-            // TODO should an undertow layer specify this?
-            "org.wildfly.event.logger",
     };
 
     /**
@@ -152,8 +150,6 @@ public abstract class LayersTestBase {
             "org.infinispan.cdi.common",
             "org.infinispan.cdi.embedded",
             "org.infinispan.cdi.remote",
-            "org.infinispan.counter",
-            "org.infinispan.lock",
             "org.infinispan.query",
             "org.infinispan.query.core",
             // WFLY-8770 jgroups-aws layer modules needed to configure the aws.S3_PING protocol are not referenced
@@ -238,6 +234,7 @@ public abstract class LayersTestBase {
             "org.wildfly.extension.micrometer",
             "org.wildfly.micrometer.deployment",
             "io.micrometer",
+            "io.prometheus",
             "io.opentelemetry.proto",
             // Extension not included in the default config
             "org.wildfly.extension.mvc-krazo",

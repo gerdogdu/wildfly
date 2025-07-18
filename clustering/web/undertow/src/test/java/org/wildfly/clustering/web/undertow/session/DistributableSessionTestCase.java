@@ -16,7 +16,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -28,7 +27,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSessionActivationListener;
@@ -52,8 +50,9 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.wildfly.clustering.cache.batch.Batch;
-import org.wildfly.clustering.cache.batch.BatchContext;
 import org.wildfly.clustering.cache.batch.SuspendedBatch;
+import org.wildfly.clustering.context.Context;
+import org.wildfly.clustering.function.Supplier;
 import org.wildfly.clustering.session.ImmutableSessionMetaData;
 import org.wildfly.clustering.session.Session;
 import org.wildfly.clustering.session.SessionManager;
@@ -410,7 +409,7 @@ public class DistributableSessionTestCase {
 
     @Test
     public void getWebSocketChannelsSessionAttribute() {
-        this.getLocalContextSessionAttribute(DistributableSession.WEB_SOCKET_CHANNELS_ATTRIBUTE);
+        this.getLocalContextSessionAttribute(AbstractSession.WEB_SOCKET_CHANNELS_ATTRIBUTE);
     }
 
     private void getLocalContextSessionAttribute(String name) {
@@ -641,7 +640,7 @@ public class DistributableSessionTestCase {
 
     @Test
     public void setWebSocketChannelsSessionAttribute() {
-        this.setLocalContextSessionAttribute(DistributableSession.WEB_SOCKET_CHANNELS_ATTRIBUTE);
+        this.setLocalContextSessionAttribute(AbstractSession.WEB_SOCKET_CHANNELS_ATTRIBUTE);
     }
 
     private void setLocalContextSessionAttribute(String name) {
@@ -789,7 +788,7 @@ public class DistributableSessionTestCase {
 
     @Test
     public void removeWebSocketChannelsSessionAttribute() {
-        this.removeLocalContextSessionAttribute(DistributableSession.WEB_SOCKET_CHANNELS_ATTRIBUTE);
+        this.removeLocalContextSessionAttribute(AbstractSession.WEB_SOCKET_CHANNELS_ATTRIBUTE);
     }
 
     private void removeLocalContextSessionAttribute(String name) {
@@ -851,15 +850,28 @@ public class DistributableSessionTestCase {
         verify(listener).attributeRemoved(session, attributeName, attributeValue);
         verify(batch).close();
         verify(this.closeTask).accept(exchange);
+    }
 
-        reset(this.session, this.closeTask);
+    @Test
+    public void invalidateInvalid() {
+        String sessionId = "session";
+        HttpServerExchange exchange = new HttpServerExchange(null);
+        Batch batch = mock(Batch.class);
 
+        doReturn(this.metaData).when(this.session).getMetaData();
+        doReturn(false).when(this.metaData).isNew();
+        doReturn(sessionId).when(this.session).getId();
+
+        io.undertow.server.session.Session session = new DistributableSession(this.manager, this.session, this.config, this.suspendedBatch, this.closeTask, this.statistics);
+
+        doReturn(batch).when(this.suspendedBatch).resume();
+        doReturn(false).when(this.session).isValid();
         doThrow(IllegalStateException.class).when(this.session).invalidate();
 
         assertThrows(IllegalStateException.class, () -> session.invalidate(exchange));
 
-        verify(batch, times(2)).close();
-        verify(this.session).close();
+        verify(this.config).clearSession(exchange, sessionId);
+        verify(batch).close();
         verify(this.closeTask).accept(exchange);
     }
 
@@ -882,7 +894,7 @@ public class DistributableSessionTestCase {
 
         HttpServerExchange exchange = new HttpServerExchange(null);
         SessionConfig config = mock(SessionConfig.class);
-        BatchContext<Batch> context = mock(BatchContext.class);
+        Context<Batch> context = mock(Context.class);
         SessionManager<Map<String, Object>> manager = mock(SessionManager.class);
         Supplier<String> identifierFactory = mock(Supplier.class);
         Session<Map<String, Object>> newSession = mock(Session.class);
@@ -975,7 +987,7 @@ public class DistributableSessionTestCase {
 
         HttpServerExchange exchange = new HttpServerExchange(null);
         SessionConfig config = mock(SessionConfig.class);
-        BatchContext<Batch> context = mock(BatchContext.class);
+        Context<Batch> context = mock(Context.class);
         SessionManager<Map<String, Object>> manager = mock(SessionManager.class);
         Supplier<String> identifierFactory = mock(Supplier.class);
         Session<Map<String, Object>> newSession = mock(Session.class);

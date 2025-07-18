@@ -12,7 +12,6 @@ import static org.wildfly.extension.micrometer.MicrometerSubsystemRegistrar.MICR
 
 import java.util.function.Supplier;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.capability.CapabilityServiceSupport;
 import org.jboss.as.server.deployment.AttachmentKey;
@@ -26,6 +25,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.weld.WeldCapability;
 import org.wildfly.extension.micrometer.api.MicrometerCdiExtension;
 import org.wildfly.extension.micrometer.metrics.MetricRegistration;
+import org.wildfly.service.Installer.StartWhen;
 import org.wildfly.subsystem.service.ServiceDependency;
 import org.wildfly.subsystem.service.ServiceInstaller;
 
@@ -48,7 +48,7 @@ class MicrometerDeploymentProcessor implements DeploymentUnitProcessor {
         ServiceInstaller.builder(factory)
                 .requires(ServiceDependency.on(DeploymentCompleteServiceProcessor.serviceName(deploymentUnit.getServiceName())))
                 .requires(serviceDependency)
-                .asActive()
+                .startWhen(StartWhen.INSTALLED)
                 .onStop(MetricRegistration::unregister)
                 .build()
                 .install(phaseContext);
@@ -77,8 +77,8 @@ class MicrometerDeploymentProcessor implements DeploymentUnitProcessor {
             if (!weldCapability.isPartOfWeldDeployment(deploymentUnit)) {
                 MICROMETER_LOGGER.noCdiDeployment();
             } else {
-                weldCapability.registerExtensionInstance(new MicrometerCdiExtension(
-                    (MeterRegistry) micrometerService.getMicrometerRegistry()), deploymentUnit);
+                weldCapability.registerExtensionInstance(new MicrometerCdiExtension(micrometerService.getMicrometerRegistry()),
+                    deploymentUnit);
             }
         } catch (CapabilityServiceSupport.NoSuchCapabilityException e) {
             //We should not be here since the subsystem depends on weld capability. Just in case ...

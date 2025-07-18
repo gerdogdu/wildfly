@@ -16,7 +16,7 @@
         Maintain separation between the artifact id and the version to help prevent
         merge conflicts between commits changing the GA and those changing the V.
         -->
-        <version>36.0.0.Beta1-SNAPSHOT</version>
+        <version>37.0.0.Final-SNAPSHOT</version>
     </parent>
 
     <!-- ********************************************************************************** -->
@@ -149,12 +149,6 @@
         <dependency>
             <groupId>jakarta.ejb</groupId>
             <artifactId>jakarta.ejb-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>jakarta.enterprise</groupId>
-            <artifactId>jakarta.enterprise.cdi-api</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -327,8 +321,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.arquillian.junit</groupId>
-            <artifactId>arquillian-junit-container</artifactId>
+            <groupId>org.jboss.arquillian.junit5</groupId>
+            <artifactId>arquillian-junit5-container</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -363,18 +357,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.shrinkwrap</groupId>
-            <artifactId>shrinkwrap-api</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jboss.shrinkwrap</groupId>
-            <artifactId>shrinkwrap-impl-base</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.jboss.spec.jakarta.xml.soap</groupId>
             <artifactId>jboss-saaj-api_3.0_spec</artifactId>
             <scope>test</scope>
@@ -384,6 +366,12 @@
             <groupId>org.jboss.spec.jakarta.xml.ws</groupId>
             <artifactId>jboss-jakarta-xml-ws-api_4.0_spec</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <dependency>
+           <groupId>org.junit.jupiter</groupId>
+           <artifactId>junit-jupiter</artifactId>
+           <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -405,12 +393,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.wildfly.arquillian</groupId>
-            <artifactId>wildfly-arquillian-protocol-jmx</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.wildfly.core</groupId>
             <artifactId>wildfly-core-testsuite-shared</artifactId>
             <scope>test</scope>
@@ -419,6 +401,12 @@
         <dependency>
             <groupId>wsdl4j</groupId>
             <artifactId>wsdl4j</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.htmlunit</groupId>
+            <artifactId>htmlunit</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -475,83 +463,28 @@
                     </executions>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-resources-plugin</artifactId>
-                    <version>${version.resources.plugin}</version>
-                    <executions combine.self="override">
+                    <groupId>org.wildfly.plugins</groupId>
+                    <artifactId>wildfly-maven-plugin</artifactId>
+                    <version>${version.org.wildfly.plugin}</version>
+                    <executions>
                         <execution>
-                            <id>ts.copy-wildfly</id>
-                            <phase>none</phase>
+                            <id>bootable-jar-provisioning</id>
+                            <goals>
+                                <goal>package</goal>
+                            </goals>
+                            <phase>${ts.bootable-jar-packaging.phase}</phase>
+                            <configuration>
+                                <skipDeployment>true</skipDeployment>
+                                <provisioning-file>target/glow-scan/microprofile.surefire/provisioning.xml</provisioning-file>
+                                <bootableJar>true</bootableJar>
+                                <bootableJarName>test-wildfly-cloud-profile.jar</bootableJarName>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.wildfly.plugins</groupId>
-                <artifactId>wildfly-maven-plugin</artifactId>
-                <version>${version.org.wildfly.plugin}</version>
-                <configuration>
-                    <overwrite-provisioned-server>true</overwrite-provisioned-server>
-                    <record-provisioning-state>false</record-provisioning-state>
-                    <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
-                    <offline-provisioning>${galleon.offline}</offline-provisioning>
-                    <galleon-options>
-                        <jboss-maven-dist/>
-                        <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
-                        <optional-packages>passive+</optional-packages>
-                    </galleon-options>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>server-provisioning</id>
-                        <goals>
-                            <goal>provision</goal>
-                        </goals>
-                        <phase>generate-resources</phase>
-                        <configuration>
-                            <provisioning-dir>${project.build.directory}/wildfly</provisioning-dir>
-                            <feature-packs>
-                                <feature-pack>
-                                    <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
-                                    <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
-                                    <version>${testsuite.ee.galleon.pack.version}</version>
-                                    <inherit-configs>false</inherit-configs>
-                                    <inherit-packages>false</inherit-packages>
-                                    <included-configs>
-                                        <config>
-                                            <model>standalone</model>
-                                            <name>standalone.xml</name>
-                                        </config>
-                                        <config>
-                                            <model>standalone</model>
-                                            <name>standalone-full.xml</name>
-                                        </config>
-                                        <config>
-                                            <model>standalone</model>
-                                            <name>standalone-microprofile.xml</name>
-                                        </config>
-                                    </included-configs>
-                                </feature-pack>
-                            </feature-packs>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>bootable-jar-provisioning</id>
-                        <goals>
-                            <goal>package</goal>
-                        </goals>
-                        <phase>${ts.bootable-jar-packaging.phase}</phase>
-                        <configuration>
-                            <skipDeployment>true</skipDeployment>
-                            <provisioning-file>target/glow-scan/microprofile.surefire/provisioning.xml</provisioning-file>
-                            <bootableJar>true</bootableJar>
-                            <bootableJarName>test-wildfly-cloud-profile.jar</bootableJarName>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.wildfly.glow</groupId>
                 <artifactId>wildfly-glow-arquillian-plugin</artifactId>
@@ -640,6 +573,83 @@
             </build>
         </profile>
 
+        <profile>
+            <id>server-provisioning-profile</id>
+            <activation>
+                <property>
+                    <name>!jboss.dist</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <!-- Disable the standard copy-based provisioning -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>ts.copy-wildfly</id>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.wildfly.plugins</groupId>
+                        <artifactId>wildfly-maven-plugin</artifactId>
+                        <version>${version.org.wildfly.plugin}</version>
+                        <configuration>
+                            <overwrite-provisioned-server>true</overwrite-provisioned-server>
+                            <record-provisioning-state>false</record-provisioning-state>
+                            <log-provisioning-time>${galleon.log.time}</log-provisioning-time>
+                            <offline-provisioning>${galleon.offline}</offline-provisioning>
+                            <galleon-options>
+                                <jboss-maven-dist/>
+                                <jboss-fork-embedded>${galleon.fork.embedded}</jboss-fork-embedded>
+                                <optional-packages>passive+</optional-packages>
+                            </galleon-options>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>server-provisioning</id>
+                                <goals>
+                                    <goal>provision</goal>
+                                </goals>
+                                <phase>generate-resources</phase>
+                                <configuration>
+                                    <provisioning-dir>${project.build.directory}/wildfly</provisioning-dir>
+                                    <feature-packs>
+                                        <feature-pack>
+                                            <groupId>${testsuite.ee.galleon.pack.groupId}</groupId>
+                                            <artifactId>${testsuite.ee.galleon.pack.artifactId}</artifactId>
+                                            <version>${testsuite.ee.galleon.pack.version}</version>
+                                            <inherit-configs>false</inherit-configs>
+                                            <inherit-packages>false</inherit-packages>
+                                            <included-configs>
+                                                <config>
+                                                    <model>standalone</model>
+                                                    <name>standalone.xml</name>
+                                                </config>
+                                                <config>
+                                                    <model>standalone</model>
+                                                    <name>standalone-full.xml</name>
+                                                </config>
+                                                <config>
+                                                    <model>standalone</model>
+                                                    <name>standalone-microprofile.xml</name>
+                                                </config>
+                                            </included-configs>
+                                        </feature-pack>
+                                    </feature-packs>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 
         <profile>
             <id>standalone.microprofile.profile</id>
@@ -648,40 +658,8 @@
                     <name>ts.standalone.microprofile</name>
                 </property>
             </activation>
-            <properties>
-                <!-- We don't want to use the default jboss.dist for this module, which is provisioned locally -->
-                <jboss.dist>${jbossas.project.dir}/${wildfly.build.output.dir}</jboss.dist>
-                <jboss.home>${jboss.dist}</jboss.home>
-            </properties>
             <build>
                 <plugins>
-                    <plugin>
-                        <!-- Turn off the standard galleon provisioning -->
-                        <groupId>org.wildfly.plugins</groupId>
-                        <artifactId>wildfly-maven-plugin</artifactId>
-                        <version>${version.org.wildfly.plugin}</version>
-                        <executions>
-                            <execution>
-                                <id>server-provisioning</id>
-                                <goals>
-                                    <goal>provision</goal>
-                                </goals>
-                                <phase>none</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- Turn back on the standard copy based provisioning -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-resources-plugin</artifactId>
-                        <version>${version.resources.plugin}</version>
-                        <executions combine.self="override">
-                            <execution>
-                                <id>ts.copy-wildfly</id>
-                                <phase>generate-test-resources</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
@@ -807,7 +785,7 @@
                                     </systemPropertyVariables>
                                 </configuration>
                             </execution>
-                            
+
                             <!-- Tests against the install with legacy sar support -->
                             <execution>
                                 <id>legacy-sar-layers.surefire</id>
@@ -834,7 +812,7 @@
                                     </includes>
                                 </configuration>
                             </execution>
-                            
+
                         </executions>
                     </plugin>
                 </plugins>
@@ -927,7 +905,7 @@
                 </plugins>
             </build>
         </profile>
-        
+
         <!-- Test against bootable jar -->
         <profile>
             <id>bootablejar.preview.profile</id>
